@@ -311,12 +311,13 @@ describe('docs folder', () => {
     expect(section(MAINTAINERS, '## Testimporte')).toContain('| Datum | BMD-Version | Dialekt | Ergebnis |');
   });
 
-  it('plans later only items inside this product, no other target formats', () => {
+  it('plans later only items inside this product, no other target formats and no BMD-only items', () => {
     const backlog = section(MAINTAINERS, '## Später geplant');
-    for (const item of ['Personenkonten-Datei', 'Summendatei', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
+    for (const item of ['Summendatei', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
       expect(backlog).toContain(item);
     }
     expect(backlog).not.toMatch(/DATEV|RZL|lexoffice|Mews|Smoobu|Zielformat/);
+    expect(backlog).not.toMatch(/\bBMD\b|Personenkonten-Datei|BMD Com/);
   });
 
   it('Metadata applied: lists the German description and every topic for discoverability', () => {

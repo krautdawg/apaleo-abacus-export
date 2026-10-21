@@ -25,6 +25,8 @@ gh pr checks <number> --watch --fail-fast && gh pr merge <number> --squash
 
 ## Vor der Veröffentlichung
 
+Das Tool wird gerade von BMD auf Abacus umgestellt. Bis README und Anleitungen das Abacus-Produkt beschreiben (OpenSpec-Änderung a08), bleibt das Repository privat.
+
 In dieser Reihenfolge:
 
 1. [ ] Mach mit einer Kanzlei einen ersten echten Testimport in BMD NTCS (Testmandant, Checkliste in [bmd-import.md](bmd-import.md#erster-import-bitte-prüfen)) und trag ihn unten unter [Testimporte](#testimporte) ein: Datum, BMD-Version, Dialekt und Ergebnis. Erst wenn der Import ohne Nacharbeit ging, darf das README mehr sagen als „folgt dem dokumentierten BMD-Importformat“.
@@ -52,7 +54,6 @@ Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beisp
 
 Nicht Teil von Version 1, in keiner bestimmten Reihenfolge, und alles innerhalb dieses Tools. Jeder Punkt braucht eine eigene OpenSpec-Änderung.
 
-- **Personenkonten-Datei**: die Stammdaten der Debitoren (Firmen mit Name, Adresse und UID) als eigene Importdatei für BMD, damit Rechnungen an Firmen nicht nur auf den Sammeldebitor gehen.
 - **Summendatei**: neben der Datei mit einer Buchung pro apaleo-Zeile eine verdichtete Datei mit einer Buchung pro Tag, Konto und Steuersatz, für sehr große Hotels.
 - **Gebühren aus Abrechnungsdateien**: die Gebühren und Rückbuchungen (Chargebacks) der Zahlungsdienstleister aus ihren Abrechnungen buchen.
 - **E-Mail-Versand**: die Dateien per SMTP an die Kanzlei schicken statt über einen gemeinsamen Ordner.
