@@ -29,6 +29,12 @@ export interface RenderedFile {
 export interface TargetWriter<B> {
   /** Short id, for example `bmd`. */
   readonly id: string;
+  /**
+   * The one currency (ISO 4217) every amount of the file is booked in, for this
+   * config. The export refuses a property or ledger line in another currency
+   * with `E-CURRENCY`: the tool does not convert.
+   */
+  currency(config: Config): string;
   /** The first line of the protocol beside each file. */
   readonly protocolTitle: string;
   /**
@@ -52,11 +58,14 @@ export interface TargetWriter<B> {
 }
 
 /**
- * Sentences the output folder logic puts into `E-PERIOD-OVERLAP` and
- * `E-FILE-EXISTS`. They name the program the Kanzlei imports into, its config
- * keys and how an imported file is undone there.
+ * Sentences the export puts into its refusals: `E-PERIOD-OVERLAP` and
+ * `E-FILE-EXISTS` of the output folder logic, and `E-CURRENCY`. They name the
+ * program the file is imported into, its config keys and how an imported file
+ * is undone there.
  */
 export interface TargetAdvice {
+  /** In `E-CURRENCY`, after the two currencies: why the file cannot carry another currency. */
+  currency: string;
   /** After "<file> already covers some of the days …": why not to import both, and what to do with the other file. */
   overlap: string;
   /** Before the `--overwrite` hint: why not to import both files, and how to undo an imported old file first. */

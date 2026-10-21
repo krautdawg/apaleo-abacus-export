@@ -11,6 +11,7 @@ Die Geschichte von apaleo-bmd-export beginnt hier. Das Projekt ist eine Kopie vo
 ### Geändert
 
 - **Neuer Name apaleo-abacus-export** (a01): das Paket `apaleo-abacus-export` (Version 0.0.0), die Kommandozeile `apaleo-abacus`, die Konfigurationsdatei `apaleo-abacus.config.yaml` und die Umgebungsvariablen `APALEO_ABACUS_*`. `APALEO_CLIENT_ID` und `APALEO_CLIENT_SECRET` bleiben, die alten Variablen `APALEO_BMD_*` liest das Tool nicht mehr.
+- **Währung des Zielformats** (a01): Der `TargetWriter` nennt die Währung, in der seine Datei bucht, und `E-CURRENCY` vergleicht das Hotel und jede Zeile des Buchungsjournals damit. Der BMD-Writer bucht weiterhin in EUR, seine Dateien bleiben gleich.
 
 ## [0.1.0] - 2026-10-21
 

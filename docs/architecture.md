@@ -57,7 +57,7 @@ Eine `LedgerLine` ist ein gebuchtes Paar aus Soll und Haben im Buchungsjournal d
 | `postedAt` | der Zeitstempel der Quelle, wie gesendet |
 | `debit`, `credit` | die beiden Konten: `number`, `name`, `type`, optional `parentNumber` |
 | `command` | der Geschäftsvorfall, zum Beispiel `PostCharge`, `PostPayment` |
-| `currency` | muss für den Export `EUR` sein (sonst `E-CURRENCY`) |
+| `currency` | muss die Währung des Zielformats sein (`TargetWriter.currency`, bei BMD `EUR`; sonst `E-CURRENCY`) |
 | `grossCents` | Bruttobetrag in ganzen Cent mit dem Vorzeichen der Quelle; Nachlässe sind negativ |
 | `netPrecise`, `netCents` | Nettobetrag als genauer Dezimaltext der Quelle (apaleo schickt bis zu acht Nachkommastellen, z. B. `"12.5210084"`) und kaufmännisch auf ganze Cent gerundet |
 | `taxes[]` | `vatType`, `percent`, `amountPrecise` (genauer Dezimaltext) und `amountCents` (gerundet), so weitergegeben, wie sie ankommen |
@@ -99,7 +99,8 @@ Nur `src/bmd/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dateie
 - den Dateinamen und ein Muster, an dem der Ausgabeordner vorhandene und überlappende Dateien erkennt (`fileName`, `filePattern`);
 - die gerenderten Bytes und die Befunde über geänderte Werte (`render`, wie `renderBuchungsimport` in `src/bmd/writer.ts`, dessen `BmdValidationError` aus `src/bmd/errors.ts` als `FindingsError` alle Fehler auf einmal enthält);
 - den Vergleich „unverändert“ (`sameContent`), den Titel des Protokolls und den Block zum Import im Protokoll (`importBlock`, bei BMD „Import into BMD“);
-- die Hinweise (`advice`) für die Meldungen `E-PERIOD-OVERLAP` und `E-FILE-EXISTS`: welches Programm die Datei importiert, welche Konfigurationswerte jede Zeile ändern und wie die Kanzlei eine importierte Datei rückgängig macht.
+- die Währung, in der die Datei bucht (`currency`, bei BMD `EUR`): Ein Hotel oder eine apaleo-Zeile in einer anderen Währung lehnt der Export mit `E-CURRENCY` ab, denn das Tool rechnet nicht um;
+- die Hinweise (`advice`) für die Meldungen `E-PERIOD-OVERLAP`, `E-FILE-EXISTS` und `E-CURRENCY`: welches Programm die Datei importiert, welche Konfigurationswerte jede Zeile ändern, wie die Kanzlei eine importierte Datei rückgängig macht und warum die Datei keine andere Währung tragen kann.
 
 Was der BMD-Writer schreibt und gegen welche Quellen er geprüft wurde, steht in [bmd-format.md](bmd-format.md). Seine Golden Files liegen in `test/golden/bmd/` und werden Byte für Byte verglichen (siehe `test/bmd/golden.test.ts`).
 

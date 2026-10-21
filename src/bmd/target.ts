@@ -45,6 +45,8 @@ export function createBmdTarget(settingsOf: (meta: TargetFileMeta) => BmdTargetS
   });
   return {
     id: 'bmd',
+    // A Buchungsimport line has no currency field, see `advice.currency`.
+    currency: () => 'EUR',
     protocolTitle: 'apaleo-abacus export protocol',
     filePattern: BMD_FILE,
     fileName: (meta) => buchungsimportFileName(optionsOf(meta), fileTag(meta)),
@@ -56,6 +58,7 @@ export function createBmdTarget(settingsOf: (meta: TargetFileMeta) => BmdTargetS
     // The file has no creation time: unchanged means byte-identical.
     sameContent: (existing, next) => existing.length === next.length && existing.every((byte, i) => byte === next[i]),
     advice: {
+      currency: "A BMD Buchungsimport line has no currency field: BMD books every amount in the Mandant's Grundwährung (EUR).",
       overlap:
         'Importing both files would book those days twice in BMD NTCS. Export the same period as that file, or move it away ' +
         '(and have the Kanzlei reverse its imported bookings in BMD if it was imported) and run again',

@@ -17,6 +17,7 @@ import { exportSetup, latePosting, type ExportSetup } from '../helpers/export.js
  */
 const fakeTarget: TargetWriter<PostedBooking> = {
   id: 'fake',
+  currency: () => 'EUR',
   protocolTitle: 'FAKE protocol',
   filePattern: /^FAKE_(\d{8})-(\d{8})_[A-Za-z0-9_-]+\.txt$/,
   fileName: ({ part, ...meta }) => `FAKE_${part.from.replaceAll('-', '')}-${part.to.replaceAll('-', '')}_${fileTag(meta)}.txt`,
@@ -27,6 +28,7 @@ const fakeTarget: TargetWriter<PostedBooking> = {
   sameContent: (existing, next) => Buffer.from(existing).equals(Buffer.from(next)),
   importBlock: (bookings) => ['FAKE import:', `  ${bookings.length} lines`],
   advice: {
+    currency: 'FAKE currency advice.',
     overlap: 'FAKE overlap advice',
     reimport: 'FAKE reimport advice.',
   },
@@ -168,6 +170,55 @@ describe('the BMD target through the export', () => {
     const outcome = await runWith(setup, {}, createBmdTarget(() => ({ ...BMD_DEFAULT_SETTINGS, sachkontenlaenge: 5 })));
     expect(outcome.status).toBe('failed');
     expect(new Set(errorCodes(outcome))).toEqual(new Set(['E-BMD-ACCOUNT']));
+    expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
+  });
+});
+
+describe('the currency of the target (export-run, "Currency of the target")', () => {
+  /** The fake target, booking in CHF. */
+  const chfTarget: TargetWriter<PostedBooking> = { ...fakeTarget, currency: () => 'CHF', advice: { ...fakeTarget.advice, currency: 'FAKE files are in CHF.' } };
+  /** Hotel Beispiel keeping its books in CHF; `eurLines` ledger lines stay in EUR. */
+  const swissSetup = (eurLines = 0) =>
+    exportSetup({
+      data: (data) => {
+        for (const property of data.properties) property.currency = 'CHF';
+        for (const [i, line] of (data.ledger[BSP] ?? []).entries()) line.currency = i < eurLines ? 'EUR' : 'CHF';
+      },
+    });
+
+  it('asks the target for its currency: the BMD target books in EUR', async () => {
+    const { ctx } = exportSetup();
+    const { config } = await loadConfig({ path: join(ctx.cwd, 'apaleo-abacus.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
+    expect(DEFAULT_TARGET.currency(config)).toBe('EUR');
+    expect(createBmdTarget().currency(config)).toBe('EUR');
+  });
+
+  it('refuses a Swiss property with the BMD target before reading its ledger, naming CHF and EUR', async () => {
+    const setup = swissSetup();
+    const outcome = await runWith(setup, {}, DEFAULT_TARGET);
+    expect(outcome.status).toBe('failed');
+    expect(outcome.findings.map((f) => [f.code, f.value])).toEqual([['E-CURRENCY', 'CHF']]);
+    expect(outcome.findings[0]?.message).toContain('keeps its books in CHF, but the export file books in EUR only');
+    expect(outcome.findings[0]?.message).toContain('This tool does not convert');
+    expect(setup.fake.calls.some((call) => call.startsWith('getLedger'))).toBe(false);
+    expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
+  });
+
+  it('writes the file of a target that books in CHF for a property and ledger in CHF', async () => {
+    const setup = swissSetup();
+    const outcome = await runWith(setup, {}, chfTarget);
+    expect(outcome.findings.map((f) => f.code)).not.toContain('E-CURRENCY');
+    expect(outcome.status).toBe('written');
+    expect(readdirSync(folderOf(setup))).toContain('FAKE_20260901-20260930_BSP.txt');
+  });
+
+  it('refuses a month with one EUR line under the CHF target, naming the count and both currencies', async () => {
+    const setup = swissSetup(1);
+    const outcome = await runWith(setup, {}, chfTarget);
+    expect(outcome.status).toBe('failed');
+    expect(outcome.findings.map((f) => [f.code, f.value])).toEqual([['E-CURRENCY', 'EUR']]);
+    expect(outcome.findings[0]?.message).toContain('1 apaleo line(s) of BSP are in EUR, but the export file books in CHF only. FAKE files are in CHF. This tool does not convert.');
+    expect(outcome.findings[0]?.message).not.toMatch(/\bBMD\b/);
     expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
   });
 });

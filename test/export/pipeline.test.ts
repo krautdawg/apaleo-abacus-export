@@ -159,8 +159,8 @@ describe('the period-part runner', () => {
     const [outcome] = await run(setup);
     expect(outcome?.status).toBe('failed');
     expect(outcome?.findings.map((f) => [f.code, f.value])).toEqual([['E-CURRENCY', 'CHF']]);
-    expect(outcome?.findings[0]?.message).toContain('writes BMD files in EUR only');
-    expect(outcome?.findings[0]?.message).toContain("A BMD Buchungsimport line has no currency field: BMD books every amount in the Mandant's Grundwährung (EUR)");
+    expect(outcome?.findings[0]?.message).toContain('but the export file books in EUR only');
+    expect(outcome?.findings[0]?.message).toContain("A BMD Buchungsimport line has no currency field: BMD books every amount in the Mandant's Grundwährung (EUR). This tool does not convert.");
     expect(setup.fake.calls.some((call) => call.startsWith('getLedger'))).toBe(false);
     expect(existsSync(exportsOf(setup))).toBe(false);
   });
