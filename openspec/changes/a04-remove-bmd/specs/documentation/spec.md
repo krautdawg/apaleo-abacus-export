@@ -1,0 +1,24 @@
+## MODIFIED Requirements
+
+### Requirement: Docs folder
+The repository SHALL contain, in German, `docs/setup-apaleo.md` (custom app creation with the exact permissions, the optional one marked `optional`), `docs/mapping-guide.md` (columns, resolution order, MWST-Codes, VAT guard, Kurtaxe, Anzahlungen, Debitorenverlust, payments, and a last section `## Checkliste zur Freigabe durch den Treuhänder`), `docs/abacus-import.md` (how the Treuhänder imports the file in Abacus and what to check after the first import), `docs/abacus-format.md` (fields, rules and sources), `docs/configuration.md`, `docs/docker.md`, `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintainers.md` (`## Vor der Veröffentlichung` checklist, `## Testimporte` record and `## Später geplant` backlog with items inside this product only, no other target formats), `docs/posting-rules.md`, `docs/export.md`, `docs/apaleo-source.md` and `docs/examples/README.md`. The mapping guide SHALL explain that MWST rates depend on the service date (3.8 % for Beherbergung including breakfast, MWSTG Art. 25 Abs. 4; 8.1 % for meals, drinks, minibar and services with a surcharge such as parking or wellness; 2.6 % for take-away food without alcohol; 7.7 %, 3.7 % and 2.5 % until 2023-12-31) and SHALL list every template row marked `Vorschlag (ungeprüft)`. No `docs/bmd-*.md` or `docs/datev-*.md` file SHALL exist.
+
+#### Scenario: Treuhänder review
+- **WHEN** a Treuhänder reads the mapping guide and a mapping CSV
+- **THEN** they can decide each row without running the tool, and the guide ends with the sign-off checklist
+
+#### Scenario: Contributor adds a source
+- **WHEN** a contributor wants to add a Smoobu source
+- **THEN** `docs/architecture.md` explains in German the SourceAdapter contract, the canonical ledger line (`LedgerLine`) and where tests and fixtures go
+
+#### Scenario: Former file names
+- **WHEN** someone looks for `docs/setup-apaleo.de.md`, `docs/mapping-guide.de.md`, `docs/bmd-import.md` or `docs/bmd-format.md`
+- **THEN** none exists, and the README and every doc link `docs/setup-apaleo.md`, `docs/mapping-guide.md`, `docs/abacus-import.md` and `docs/abacus-format.md`
+
+#### Scenario: Contributor adds a target
+- **WHEN** a contributor wants to add a writer for another target format
+- **THEN** `docs/architecture.md` explains in German the `TargetWriter` boundary (including `currency` and `movements`), the `AbacusBooking` example and where golden files go, without announcing any other target as planned
+
+#### Scenario: First import in Abacus
+- **WHEN** a Treuhänder imports the first file
+- **THEN** `docs/abacus-import.md` names the programs (F11 Buchen, F5534 "Import/Export Buchungen AbaConnect" with import type "XML Buchungen"), the option "MWST berechnen", the Mandant and the Geschäftsbereich per property in a shared Mandant, where the imported bookings land (Nebenjournal) and how to undo them, and a checklist to compare with the protocol (Saldenliste, MWST-Journal per MWST-Code and Ziffer 303/313/343, Anzahlungen, Debitorenverlust as Entgeltsminderung, Kurtaxe and 0 % revenue accounts without default MWST-Code, Belegnummern)
