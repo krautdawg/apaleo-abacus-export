@@ -9,7 +9,7 @@ The CLI SHALL load configuration from the file given by `--config`, else from `A
 
 #### Scenario: Abacus section missing
 - **WHEN** the config file has no `abacus` section
-- **THEN** loading fails with an error that names `abacus.mandant` as required and points to `docs/abacus-import.md`
+- **THEN** loading fails with an error that names `abacus.mandant` as required and points to `docs/configuration.md`
 
 #### Scenario: Mandant missing
 - **WHEN** the config file has an `abacus` section without `mandant`

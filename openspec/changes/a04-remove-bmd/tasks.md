@@ -12,7 +12,7 @@
 - [ ] 2.1 Delete `docs/bmd-format.md` and `docs/bmd-import.md`; replace links with `docs/abacus-format.md` or `docs/abacus-import.md`; update the required-file list in `test/docs.test.ts` and the "First import" test in `test/readme.test.ts` to `docs/abacus-import.md`
 - [ ] 2.2 Remove the deleted codes from `docs/troubleshooting.md`
 - [ ] 2.3 Rename the last section of `docs/mapping-guide.md` to `## Checkliste zur Freigabe durch den Treuhänder` and update `test/readme.test.ts`
-- [ ] 2.4 Complete `docs/abacus-import.md` with the points of the scenario "First import in Abacus"
+- [ ] 2.4 Write `docs/abacus-import.md` (Swiss Standard German, "du", no "ß"; already in the docs test's `SWISS_FILES`) with every point of the scenario "First import in Abacus": F11 or F5534 with import type "XML Buchungen", licence, "MWST berechnen" and the F21 default MWST-Code per account, Nebenjournal and undo, Mandant and Geschäftsbereich, the protocol checklist with the "account -> MWST-Code" pairs, and the first-test-import checklist of research §9; link it from README and `docs/configuration.md`
 - [ ] 2.5 Remove the BMD topics (`bmd`, `bmd-ntcs`, `bmd-export`, `buchungsimport`, `ekr`, `austria`, `oesterreich`) from the topic command in `docs/maintainers.md` (final list in a08)
 - [ ] 2.6 Delete `openspec/research/bmd-target.md` and point `docs/architecture.md` to `renderXmlBuchungen`, `AbacusValidationError` and `test/golden/abacus/`
 

@@ -1,7 +1,7 @@
 ## 1. Protocol, dry run and manifest
 
-- [ ] 1.1 Summary output in `src/export/summary.ts` per Abacus account and per MWST-Code and rate, with apaleo's precise VAT, the difference, the rounding sentence and the Ziffer for 8.1/2.6/3.8 % (one table in `src/abacus/format.ts`)
-- [ ] 1.2 Levies per account with or without MWST, written-off receivables per rate, deposits received/released/refunded in the summary text
+- [ ] 1.1 Render, in `src/export/summary.ts`, the totals that `src/posting/summary.ts` already computes (per Abacus account and per MWST-Code and rate from a03; levies per account with or without MWST and written-off receivables per rate from a05) in the final protocol layout: add the Ziffer column for 8.1/2.6/3.8 % (one table in `src/abacus/format.ts`), keep the rounding sentence; no new totals are computed in this slice
+- [ ] 1.2 Render the levy, write-off and deposit (received/released/refunded) totals as their own summary sections in the dry run and the protocol
 - [ ] 1.3 Manifest fields in `src/export/output.ts`: journal total, tax per MWST-Code and rate, Mandant and Geschäftsbereich; keep file hash, booking count, mapping hash, tool version, creation time
 - [ ] 1.4 `E-FILE-EXISTS` and `E-PERIOD-OVERLAP` texts from `abacusTarget.advice` (Nebenjournal, reversing); `.replaced-<timestamp>.xml` names
 - [ ] 1.5 Tests for every export-run scenario of this change in `test/export/` and `test/cli/export.test.ts`; regenerate `test/golden/export/` and review the diff
@@ -14,8 +14,8 @@
 ## 3. Demo and examples
 
 - [ ] 3.1 Fabricate the Swiss demo responses in `examples/demo/apaleo/` (property `BSP` "Hotel Beispiel", CHF, `Europe/Zurich`, September 2026, the cases of the CH month) and validate them against the Swagger excerpt
-- [ ] 3.2 `examples/demo/apaleo-abacus.config.yaml` with `abacus.mandant: 7777` and `leitwaehrung: CHF`; `examples/demo/mapping-BSP.csv` from `init-mapping --template kmu-hotel` with the Kurtaxe row filled; `examples/demo/README.md` in Swiss Standard German
-- [ ] 3.3 Regenerate `docs/examples/` (XML, protocol, mapping, README) and keep `test/examples.test.ts` comparing them with the golden output; `test/cli/demo.test.ts` asserts CHF and the three codes
+- [ ] 3.2 `examples/demo/apaleo-abacus.config.yaml` with `abacus.mandant: 7777` and `leitwaehrung: CHF`; `examples/demo/mapping-BSP.csv` from `init-mapping --template kmu-hotel` with the Kurtaxe row filled; `examples/demo/README.md` in Swiss Standard German, added to the docs test's `SWISS_FILES`
+- [ ] 3.3 Regenerate `docs/examples/` (XML, protocol, mapping, README in Swiss Standard German, added to `SWISS_FILES`) and keep `test/examples.test.ts` comparing them with the golden output; `test/cli/demo.test.ts` asserts CHF and the three codes
 
 ## 4. Release check
 

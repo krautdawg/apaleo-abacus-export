@@ -17,6 +17,7 @@
 ## 3. Docs test and scope cut
 
 - [ ] 3.1 `test/docs.test.ts`: read command lines of `apaleo-abacus`, fail on any `apaleo-bmd` or `apaleo-datev` command line inside `sh`/`bash` fences, add `abacus` to the config-key prefix pattern, and drop `Kurtaxe` and `Mandantennummer` from the list of German DATEV terms (both are Swiss and Abacus terms; the final term list follows in a08)
+- [ ] 3.1a `test/helpers/docs.ts`: match rate terms only when not preceded by a digit, `.` or `,` (`(?<![\d.,])7 ?%`); add `SWISS_FILES` (`docs/abacus-format.md`, `docs/abacus-import.md`; missing files skipped) with the checks for `ß`, the Austrian BMD terms, the `BMD` token and the Swiss rate notation `8,1 %` in prose; tests for the scenarios "Old Swiss rates are not foreign rates", "Swiss file checked from the start" and "Swiss rate notation"
 - [ ] 3.2 Remove the BMD-only backlog items from `docs/maintainers.md` `## Später geplant` (for example the BMD Personenkonten file and BMD Com); keep generic items
 - [ ] 3.3 `grep -rn "apaleo-bmd\|APALEO_BMD" --exclude-dir=node_modules --exclude-dir=openspec .` returns only README/README.en prose that a08 rewrites, `CHANGELOG.md` history and the `.gitignore` legacy names; no clone URL, `cd` line, badge, CI step, image tag or command line
 

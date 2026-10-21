@@ -11,7 +11,7 @@
 
 ## 3. Docs
 
-- [ ] 3.1 Rewrite `docs/docker.md` in Swiss Standard German ("du", no "ß"): build, compose loop, host-cron alternative, file locations for the Treuhänder, handover, the demo in the image (`-w /data`, uid 1000), the `chown` hint for `E-EXPORT`
+- [ ] 3.1 Rewrite `docs/docker.md` in Swiss Standard German ("du", no "ß") and add it to the docs test's `SWISS_FILES`: build, compose loop, host-cron alternative, file locations for the Treuhänder, handover, the demo in the image (`-w /data`, uid 1000), the `chown` hint for `E-EXPORT`
 - [ ] 3.2 `docs/configuration.md`: `schedule.timezone` default and the cadence table with Swiss examples
 
 ## 4. Release check

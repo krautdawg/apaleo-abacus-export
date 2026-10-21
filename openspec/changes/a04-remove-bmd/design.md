@@ -14,7 +14,7 @@ a03 switched mapping, posting, pipeline and checks to Abacus; the BMD writer, it
 ## Decisions
 
 1. **Delete, do not archive in-tree.** apaleo-bmd-export stays the public home of the BMD writer; keeping a copy here would double maintenance and confuse the docs test. Contributors who want BMD next to Abacus use the documented `TargetWriter` boundary.
-2. **Keep the refusals of old inputs.** The `bmd` and `datev` config sections and BMD/DATEV/Grman mapping files stay refused with a helpful message (a03 rules); these messages are the only places where "BMD" or "DATEV" remain in `src/`.
+2. **Keep the refusals of old inputs.** The `bmd` and `datev` config sections and BMD and DATEV mapping files and the account export of a paid connector stay refused with a helpful message (a03 rules); these messages are the only places where "BMD" or "DATEV" remain in `src/`, and none names a connector vendor.
 3. **Rename the sign-off heading now.** `## Checkliste zur Freigabe durch den Treuhänder` replaces the Kanzlei heading together with the test that checks it, because the mapping guide is already Swiss after a03 and the docs-folder requirement is rewritten here.
 4. **Remove the Austrian research note.** `openspec/research/bmd-target.md` described the BMD target; `a-target.md` is the research note of this product. The BMD note stays available in apaleo-bmd-export.
 

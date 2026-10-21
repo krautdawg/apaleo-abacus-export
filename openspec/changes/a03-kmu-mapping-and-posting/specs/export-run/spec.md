@@ -54,6 +54,51 @@ The export SHALL verify that the absolute gross of all ledger lines equals the s
 - **WHEN** a defect causes a ledger line to be neither booked nor listed as skipped
 - **THEN** error `E-CONSERVATION` is raised and no file is written
 
+### Requirement: Dry run
+With `--dry-run` the export SHALL run every step except writing, SHALL print the posting summary (totals per Abacus account; net, tax and gross per MWST-Code and rate with apaleo's precise VAT and the difference to the tax per booking; deposit tax per MWST-Code and rate the same way; Kurtaxe and other levies; payments per clearing account; deposits received, released and refunded; accounts receivable; write-offs; skipped lines with unsigned totals; findings) and the import block of the target, and SHALL exit with code 1 if any error finding exists. The protocol file SHALL contain the same summary.
+
+#### Scenario: Review before the first file
+- **WHEN** the user runs `apaleo-abacus export --month 2026-10 --property BSP --dry-run`
+- **THEN** the summary and the import block are printed and no file or folder is created
+
+#### Scenario: VAT comparison on the recorded VIE day
+- **WHEN** the recorded VIE day 2026-10-21 is exported with `--dry-run` and the Abacus live mapping
+- **THEN** the summary shows for revenue at 10 % the tax 7.74 of the bookings, apaleo's VAT 7.75 and the difference 0.01, with one sentence explaining that the tax is rounded per booking and apaleo's total per day
+
+#### Scenario: VAT comparison in the protocol
+- **WHEN** the recorded VIE day 2026-10-21 is exported with the Abacus live mapping (codes `V10`, `V13`, `V20`)
+- **THEN** the protocol shows for revenue `V10 10 %: net 77.46, tax 7.74, gross 85.20, apaleo VAT 7.75, difference 0.01` and `V20 20 %: net 39.49, tax 7.89, gross 47.38, apaleo VAT 7.90, difference 0.01`, with the same sentence on the rounding
+
+### Requirement: Output layout and manifest
+The export SHALL write each file to `<output.dir>/<propertyId>/<YYYY-MM>/` with the deterministic name the target gives (`ABACUS_Buchungen_<from>-<to>_<propertyId>.xml`), SHALL write a protocol text file `<name>.protokoll.txt` beside it, and SHALL record in `manifest.json` the file name, SHA-256 of the file, booking count, tax per rate, mapping file SHA-256, tool version and creation time. The protocol SHALL contain the target's import block (see the `abacus-xml-writer` capability).
+
+#### Scenario: Files after a run
+- **WHEN** a monthly export for BSP 2026-10 succeeds
+- **THEN** the folder `exports/BSP/2026-10/` contains `ABACUS_Buchungen_20261001-20261031_BSP.xml`, its protocol with the Abacus import block and a manifest entry with the file hash and the tax per rate
+
+### Requirement: Idempotent re-runs
+Re-running an export for a period whose file exists SHALL do nothing when the new file is byte-identical to the existing one, SHALL refuse with `E-FILE-EXISTS` when any byte differs, and with `--overwrite` SHALL keep the old file under a `.replaced-<timestamp>` name with the file's extension (`.replaced-<timestamp>.xml`), write the new one and record both in the manifest. The comparison SHALL read the existing file, so it works without the manifest. When the file is unchanged but its protocol or current manifest entry is missing or describes another file (a run interrupted between writing the file and its companions), the run SHALL rewrite them and report `N-COMPANIONS-REPAIRED`. Writing SHALL hold an exclusive lock file in the property-month folder and SHALL re-check the file on disk under that lock, so two concurrent runs never both write or replace the same file; the run that finds the lock or a changed file SHALL fail that property-month with `E-EXPORT` and write nothing. An export whose period overlaps another file of the target in the same folder SHALL be refused with `E-PERIOD-OVERLAP`, because importing both would book the shared days twice.
+
+#### Scenario: Unchanged re-run
+- **WHEN** the same month is exported twice with unchanged apaleo data and mapping
+- **THEN** the second run reports `unchanged`, rewrites nothing and exits 0
+
+#### Scenario: Late posting changed the month
+- **WHEN** a late posting changed the month after it was exported
+- **THEN** the second run refuses with `E-FILE-EXISTS`, carries the target's advice on undoing the imported bookings of that file in Abacus, and suggests `--overwrite`
+
+#### Scenario: Manifest deleted
+- **WHEN** `manifest.json` was deleted and the same month is exported again with unchanged data
+- **THEN** the run reports `unchanged` by comparing the existing file, leaves the Abacus file untouched and writes the missing manifest entry again (`N-COMPANIONS-REPAIRED`)
+
+#### Scenario: Config changed the content
+- **WHEN** the month was exported and `abacus.geschaeftsbereich` was changed before the same month is exported again with unchanged data
+- **THEN** the run refuses with `E-FILE-EXISTS` and keeps the old file, and with `--overwrite` it replaces the file and the new bookings carry the new `Division`
+
+#### Scenario: Overlapping period
+- **WHEN** the folder holds the file for 2026-09-01 to 2026-09-30 and the user exports 2026-09-20 to 2026-09-30
+- **THEN** the export refuses with `E-PERIOD-OVERLAP`, names the existing file and writes nothing
+
 ### Requirement: Regression on recorded live data
 The repository SHALL contain recorded real apaleo responses in `test/fixtures/apaleo/live/` (chart of accounts, `export-gross-daily` and `aggregate-daily` of BER and VIE for 2026-10-21 and 2026-10-22, synthetic sandbox data, no folios), scanned for tokens, secrets, e-mail addresses, guest names and addresses on every test run, with a README naming origin, files and scan; a committed Abacus live mapping `test/fixtures/apaleo/live/VIE/mapping-VIE.abacus.csv` for the VIE chart; and tests that run the full pipeline (apaleo adapter on a fake fetch, mapping, posting, plausibility and aggregate checks, the configured `TargetWriter`) on them and assert the hand-checked totals. Because both recorded properties book in EUR, these tests SHALL set `abacus.leitwaehrung: EUR`.
 

@@ -8,7 +8,7 @@ This repository is a copy of apaleo-bmd-export v0.1.0: package, binary, config, 
 - **BREAKING** Config file `./apaleo-abacus.config.yaml`, `APALEO_ABACUS_CONFIG`, override prefix `APALEO_ABACUS_`; `APALEO_CLIENT_ID`/`APALEO_CLIENT_SECRET` stay; example config renamed; `.gitignore` covers new and old config names.
 - `TargetWriter` names the currency it books in, and `E-CURRENCY` compares property and ledger lines with it. The BMD target answers `EUR`, so output and golden files stay unchanged.
 - Dockerfile, compose and `.env` examples, CI smoke steps, quick-start filter and image tag follow the new names.
-- README and docs command lines, clone URL, `cd` line and badges point to apaleo-abacus-export; the docs test reads the new binary and no longer forbids the Swiss terms `Kurtaxe` and `Mandantennummer`. Prose is rewritten in a08.
+- README and docs command lines, clone URL, `cd` line and badges point to apaleo-abacus-export; the docs test reads the new binary and no longer forbids the Swiss terms `Kurtaxe` and `Mandantennummer`, matches rate terms so that `7,7 %` is not read as `7 %`, and checks a growing list of Swiss files (`SWISS_FILES`) for "ß", Austrian BMD terms and the Swiss rate notation from the first new Abacus doc on. Prose is rewritten where a slice touches it and finally in a08.
 - Scope cut: BMD-only backlog items leave `docs/maintainers.md`; `openspec/config.yaml` and `openspec/research/a-target.md` describe the Abacus product.
 
 ## Capabilities
@@ -23,7 +23,7 @@ None.
 - `export-run`: command name; the currency rule moves into the target-writer boundary.
 - `apaleo-source`: command names of `properties` and `live-smoke`.
 - `container-deployment`: config path, entry point, image and environment names.
-- `documentation`: docs test for `apaleo-abacus` command lines, `abacus` config prefix, Swiss terms allowed.
+- `documentation`: docs test for `apaleo-abacus` command lines, `abacus` config prefix, Swiss terms allowed, rate-token matching, Swiss-file checks.
 
 ## Non-goals
 

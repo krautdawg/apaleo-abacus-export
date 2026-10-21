@@ -23,17 +23,20 @@ After a02 the repository has two writers behind `TargetWriter`: BMD (default, fe
 7. **Movement model is a `TargetWriter` method.** `movements(booking)` returns signed amounts per account; `src/export/checks.ts` compares them with apaleo without knowing field names. This removes the last BMD knowledge from the checks and keeps a future target to one function.
 8. **`posting.text2` replaces `posting.extbelegnr`.** The apaleo receipt or reference goes into `Text2` (80 characters), the generated Belegnummer into `DocumentNumber`. The option name says where the value lands in Abacus.
 9. **VIE stays the regression day, with an Abacus mapping written by hand.** No Swiss recording exists (research open question 6). VIE has every line shape (deposits, release, refund, AR, offsets) and hand-checked totals that are target-independent; its Austrian rates produce warnings, not errors, with a hand-written mapping. BER with the template is the negative test that a non-Swiss chart is not mapped silently.
+10. **Carry a paid connector's account mapping over, never its vendor name.** A hotel that switches from the paid connector already has an account mapping its Treuhänder signed off (apaleo account, type, Abacus account, Kostenstelle; research §3). Refusing that file with "start over" would throw the sign-off away. `init-mapping --template kmu-hotel --accounts-from <file>` copies the Abacus account and Kostenstelle per apaleo account and type and leaves MWST-Codes to the template, because the connector export has no MWST column; `mapping check` then catches every row whose code is missing. The refusal message and the docs call it "the account export of a paid connector" (no vendor names, same rule as the README comparison). Alternative: refuse only and explain the manual copy. Rejected: the copy is a few lines of code, the manual way is error-prone for dozens of rows.
+11. **Docs in this slice: only what the tests force.** Command lines (`--template kmu-hotel`), mapping columns, config keys and finding codes change here because the docs test and `test/readme.test.ts` pin them. The prose of `docs/posting-rules.md` and `docs/mapping-guide.md` is rewritten in a05, which writes the Swiss rules into them anyway, and `docs/abacus-import.md` is written once, in a04. This keeps the atomic engine switch reviewable.
 
 ## Risks / Trade-offs
 
 - [The template's account numbers differ from a Treuhänder's Kontenplan] → every row is `Vorschlag (ungeprüft)`; the mapping guide's sign-off checklist (a08) asks for each row; `mapping check` validates format, not meaning.
 - [A Mandant's 0 % revenue account carries a default MWST-Code that "MWST berechnen" applies] → `W-UNTAXED-REVENUE` and a template comment; the import guide's checklist compares the MWST-Journal with the protocol.
-- [Spec wording lags behind the code until a06] → the export-run requirements "Dry run", "Output layout and manifest" and "Idempotent re-runs" keep their BMD file names and wording until a06 rewrites them; their behaviour is already target-neutral (names, patterns and advice come from the `TargetWriter`), and the tests of this slice assert the Abacus names.
-- [Large slice] → task groups are ordered so that mapping, posting, pipeline and docs can be reviewed one by one; BMD code is untouched until a04 deletes it.
+- [Spec wording lags behind the code] → this slice modifies the export-run requirements "Dry run", "Output layout and manifest" and "Idempotent re-runs" just enough to match the code after the switch (Abacus file name and pattern, the target's import block and undo advice, Kurtaxe instead of Ortstaxe, MWST-Code per rate, no BMD-only scenarios), so an archive of a03 alone leaves no false requirement; a06 adds the Ziffer column, the manifest journal total and the Nebenjournal wording.
+- [Large slice] → the code switch stays atomic; the docs prose moved to a04 and a05 (decision 11); task groups are ordered so that mapping, posting, pipeline and docs can be reviewed one by one; BMD code is untouched until a04 deletes it.
+- [The paid connector's export layout changes] → the layout is detected by its header; an unknown header is refused like any other file with the hint to `init-mapping --template kmu-hotel`.
 
 ## Migration Plan
 
-No users yet. A developer with a BMD mapping runs `init-mapping --template kmu-hotel` again; the loader refuses BMD files with that hint.
+No users yet. A developer with a BMD mapping runs `init-mapping --template kmu-hotel` again; the loader refuses BMD files with that hint. A hotel coming from the paid connector runs `init-mapping --template kmu-hotel --accounts-from <export>`.
 
 ## Open Questions
 

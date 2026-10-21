@@ -20,7 +20,7 @@ Lines on CityTaxes, SecondCityTax and GuestLevies accounts SHALL be booked throu
 - **THEN** `E-VAT-MISSING` is raised and names the mapping row
 
 ### Requirement: Deposits and accounts receivable in Abacus
-Prepayment lines (`PostPrepayment`) SHALL be booked to the mapped deposit account with the MWST of their rate, because an Anzahlung is taxed when it is received under both Abrechnungsarten (MWSTG Art. 40 Abs. 1 Bst. c and Abs. 2), and accounts-receivable lines (`PostToAccountsReceivables`) to the mapped Sachkonto, both under the VAT guard. A Liabilities side SHALL count as a deposit increase when it is credited with a positive amount or debited with a negative amount, and as a decrease otherwise; a decrease whose other side is a Payments account is a refund. This covers apaleo's real shapes: a release as `PostCharge` debit guest receivables, credit `<reservation>_Liabilities/<rate>` with negative gross and negative taxes, a refund as `PostPrepayment` with negative gross, and an overpayment parked on the 0 % deposit as `PostCharge` credit `<reservation>_Liabilities/Null:0.00` with positive gross. `abacus.abrechnungsart` SHALL change only `UseCode` and the Collective `TaxAccount` of the written file, never which lines are booked, their accounts, amounts or tax.
+Prepayment lines (`PostPrepayment`) SHALL be booked to the mapped deposit account with the MWST of their rate, because an Anzahlung is taxed when it is received under both Abrechnungsarten (MWSTG Art. 40 Abs. 1 Bst. c and Abs. 2), and accounts-receivable lines (`PostToAccountsReceivables`) to the mapped Sachkonto, both under the VAT guard. A Liabilities side SHALL count as a deposit increase when it is credited with a positive amount or debited with a negative amount, and as a decrease otherwise; a decrease whose other side is a Payments account is a refund. This covers apaleo's real shapes: a release as `PostCharge` debit guest receivables, credit `<reservation>_Liabilities/<rate>` with negative gross and negative taxes, a refund as `PostPrepayment` with negative gross, and an overpayment parked on the 0 % deposit as `PostCharge` credit `<reservation>_Liabilities/Null:0.00` with positive gross. In the written file `abacus.abrechnungsart` SHALL change only `UseCode` and the Collective `TaxAccount`, never which lines are booked, their accounts, amounts or tax; what Abacus then does with the tax of a `vereinnahmt` booking is covered by "Vereinnahmte Entgelte".
 
 #### Scenario: Prepayment at 3.8 %
 - **WHEN** a line debits the Twint payment account (`1090`) and credits the guest liabilities 3.8 % account mapped to `2030` with MWST-Code `313` and rate 3.8, with gross 311.40, net 300.00 and taxes 11.40 at 3.8 %
@@ -28,7 +28,7 @@ Prepayment lines (`PostPrepayment`) SHALL be booked to the mapped deposit accoun
 
 #### Scenario: Same deposit with vereinnahmte Entgelte
 - **WHEN** the same line is exported with `abacus.abrechnungsart: vereinnahmt`
-- **THEN** the booking's accounts, gross and tax are unchanged, and the file has `UseCode` `1` and the Collective `TaxAccount` `abacus.mwstHilfskonto`
+- **THEN** the booking's accounts, gross and tax are unchanged, the file has `UseCode` `1` and the Collective `TaxAccount` `abacus.mwstHilfskonto`, and the export reports `W-ABRECHNUNGSART-VEREINNAHMT`
 
 #### Scenario: Release as a negative charge
 - **WHEN** a `PostCharge` line debits `ENG-ALPHA-1_Receivables` and credits `ENG-ALPHA-1_Liabilities/Special:3.80` (3.8 % wildcard, `2030`, MWST-Code `313`) with gross −207.60 and tax −7.60 at 3.8 %
@@ -45,6 +45,21 @@ Prepayment lines (`PostPrepayment`) SHALL be booked to the mapped deposit accoun
 #### Scenario: Check-out on accounts receivable
 - **WHEN** a line debits the AccountsReceivable account (mapped to `1102`) and credits guest receivables (`1101`) with gross 208.46 and receipt type Invoice number `ENG-2026-0815`
 - **THEN** the booking has Collective account `1102`, Single account `1101`, `DebitCredit` `D`, gross 208.46 and `Text2` `ENG-2026-0815`
+
+### Requirement: Vereinnahmte Entgelte
+With `abacus.abrechnungsart: vereinnahmt`, `doctor` and every export (dry run included, once per run in the summary and the protocol) SHALL warn `W-ABRECHNUNGSART-VEREINNAHMT`, explaining that Abacus books the output tax of these bookings to the Hilfskonto (`abacus.mwstHilfskonto`) and moves it to the Steuerkonto only when a payment is recorded, normally in the Debitorenbuchhaltung, which this tool does not feed; that the file books the tax on the charge date while it legally arises at payment (MWSTG Art. 40 Abs. 2), which matters for charges on accounts receivable that are unpaid at period end; and that the Treuhänder must correct the Hilfskonto at period end as `docs/mapping-guide.md` describes, until a test import shows how Abacus treats FIBU-only bookings with `UseCode` `1` (research §9 open question 15). The warning SHALL NOT change the exit code, and `vereinbart` SHALL raise no such warning.
+
+#### Scenario: Doctor with vereinnahmte Entgelte
+- **WHEN** the config sets `abacus.abrechnungsart: vereinnahmt` and the user runs `doctor`
+- **THEN** `doctor` warns `W-ABRECHNUNGSART-VEREINNAHMT` naming the Hilfskonto `2202` and `docs/mapping-guide.md`, and exits with code 0 if nothing else fails
+
+#### Scenario: Export with vereinnahmte Entgelte
+- **WHEN** the Swiss fixture month is exported with `abacus.abrechnungsart: vereinnahmt`
+- **THEN** the summary and the protocol show `W-ABRECHNUNGSART-VEREINNAHMT` once, the file is written, and the exit code is 0
+
+#### Scenario: Default Abrechnungsart
+- **WHEN** `abacus.abrechnungsart` is not set
+- **THEN** no `W-ABRECHNUNGSART-VEREINNAHMT` is raised
 
 ### Requirement: Bad debt with MWST correction
 Lines that debit a LossOfAccountsReceivable account SHALL be booked through its mapping row: with tax entries, the write-off row SHALL carry the MWST-Code of the line's rate, so that the booking has the write-off account as Single account (debited, `DebitCredit` `C`), the gross amount and a positive tax that reduces the Umsatzsteuer (Entgeltsminderung, MWSTG Art. 41); without tax entries the row SHALL have no MWST-Code and the line is booked without `TaxData`. The posting summary SHALL show the total of written-off receivables per rate.
