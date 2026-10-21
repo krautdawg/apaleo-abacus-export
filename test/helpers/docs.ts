@@ -40,6 +40,8 @@ export function sourceFiles(): string[] {
 // --- Commands --------------------------------------------------------------
 
 const PROGRAMS = ['apaleo-abacus ', 'node dist/cli/main.js '];
+/** The binaries of the projects this tool was copied from: a doc that still shows one is stale (a01). */
+const OLD_PROGRAM = /(?:^|\s)(apaleo-bmd|apaleo-datev)(?=\s|$)/;
 /** Flags the CLI accepts before or instead of a command, and on every command. */
 const TOP_LEVEL_FLAGS = new Set(['help', 'version']);
 const GLOBAL_FLAGS = new Set(Object.keys(COMMON_OPTIONS));
@@ -79,6 +81,8 @@ export function checkCommandLines(file: string, markdown: string, commands: read
   const phrases = commandPhrases(commands);
   const problems: string[] = [];
   for (const raw of shellLines(markdown)) {
+    const old = OLD_PROGRAM.exec(raw.split(/\s#/)[0] ?? '')?.[1];
+    if (old) problems.push(`${file}: "${raw}": ${old} is the binary of another project; write apaleo-abacus`);
     const program = PROGRAMS.find((p) => raw.startsWith(p));
     if (!program) continue;
     // A shell comment, pipe, redirection or second command ends the apaleo-abacus part.
@@ -112,7 +116,7 @@ export function checkCommandLines(file: string, markdown: string, commands: read
  * A backticked config key. The design's pattern plus an optional `[]` after the
  * section, so `properties[].mapping` is checked too and not silently ignored.
  */
-export const CONFIG_KEY = /^(apaleo|bmd|output|posting|properties|schedule|checks)(\[\])?(\.[A-Za-z[\]]+)+$/;
+export const CONFIG_KEY = /^(apaleo|abacus|bmd|output|posting|properties|schedule|checks)(\[\])?(\.[A-Za-z[\]]+)+$/;
 
 interface SchemaDef {
   type: string;
@@ -344,10 +348,10 @@ export function checkInformalAddress(file: string, markdown: string): string[] {
 // --- Austrian terms ------------------------------------------------------------
 
 /**
- * Terms of German DATEV practice that have no place in an Austrian BMD doc
- * (b08 design decision 1): a copied DATEV paragraph, a German levy or a German
- * VAT rate. The Austrian words are Buchungsimport, Steuercode, EKR, Ortstaxe,
- * Kanzlei and UVA.
+ * Terms of German DATEV practice that have no place in an Austrian BMD or a
+ * Swiss Abacus doc (b08 design decision 1): a copied DATEV paragraph, a German
+ * levy or a German VAT rate. `Kurtaxe` and `Mandantennummer` are not on the
+ * list: both are the words Swiss Treuhänder and Abacus use (a01).
  */
 export const GERMAN_PRACTICE_TERMS = [
   'Buchungsstapel',
@@ -355,11 +359,9 @@ export const GERMAN_PRACTICE_TERMS = [
   'SKR03',
   'SKR04',
   'Automatikkonto',
-  'Kurtaxe',
   'Beherbergungssteuer',
   'Übernachtungssteuer',
   'Beraternummer',
-  'Mandantennummer',
   'EXTF',
   'Belegfeld',
   'Festschreibung',
@@ -376,7 +378,7 @@ export const GERMAN_SETUP_SECTION = 'Einrichtung aus Deutschland übernommen';
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** A rate (`19 %`) must not follow a digit or decimal sign, so `4,9 %` and `17 %` pass; a word must start a word, its plural is caught too. */
+/** A rate (`19 %`) must not follow a digit or decimal sign, so `4,9 %`, `7,7 %`, `7.7 %` and `17 %` pass; a word must start a word, its plural is caught too. */
 const termPattern = (term: string) =>
   /^\d/.test(term) ? new RegExp(`(?<![\\d,.])${escapeRegExp(term).replace(' ', '\\s?')}`, 'u') : new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(term)}`, 'u');
 
@@ -436,6 +438,64 @@ export function checkGermanPracticeTerms(file: string, markdown: string): string
       if (usesTerm(line.text, pattern, exemption)) problems.push(`${file}: "${quoted}": "${term}" is a term of German DATEV practice; use the Austrian BMD term`);
     }
     if (DATEV_TOKEN.test(line.text)) problems.push(`${file}: "${quoted}": "DATEV" is named outside the origin sentence and the findings for a copied German setup`);
+  }
+  return problems;
+}
+
+// --- Swiss files ----------------------------------------------------------------
+
+/**
+ * The docs written in Swiss Standard German (a01). Each slice that rewrites a
+ * doc for Switzerland adds it here; a listed file that does not exist yet is
+ * skipped.
+ */
+export const SWISS_FILES: readonly string[] = ['docs/abacus-format.md', 'docs/abacus-import.md'];
+
+/** The listed Swiss files that exist. */
+export function existingSwissFiles(files: readonly string[] = SWISS_FILES, root: string = ROOT): string[] {
+  return files.filter((file) => existsSync(join(root, file)));
+}
+
+/** Terms of Austrian BMD practice that have no place in a Swiss Abacus doc, matched like the DATEV terms. */
+export const AUSTRIAN_PRACTICE_TERMS = [
+  'Kanzlei',
+  'Steuercode',
+  'Buchungssymbol',
+  'Einheitskontenrahmen',
+  'EKR',
+  'UVA',
+  'Ortstaxe',
+  'Nächtigungsabgabe',
+  'Personenkonto',
+  '10 %',
+  '13 %',
+  '20 %',
+] as const;
+
+const AUSTRIAN_PATTERNS = AUSTRIAN_PRACTICE_TERMS.map((term) => ({ term, pattern: termPattern(term) }));
+const BMD_TOKEN = /(?<![\p{L}\p{N}])BMD(?![\p{L}\p{N}])/u;
+/** A rate in prose that is not written `8,1 %`: with a decimal point, or without the space before `%`. */
+const NON_SWISS_RATE = /(?<![\p{L}\p{N}.,])\d+(?:\.\d+\s?%|(?:,\d+)?%)/gu;
+
+/**
+ * Problems of a Swiss file (`SWISS_FILES`): the letter ß anywhere, a term of
+ * Austrian BMD practice or the token `BMD` in its prose, and a rate in prose
+ * that is not in the Swiss notation `8,1 %`. A file not in `swissFiles` has no
+ * problems here.
+ */
+export function checkSwissFile(file: string, markdown: string, swissFiles: readonly string[] = SWISS_FILES): string[] {
+  if (!swissFiles.includes(file)) return [];
+  const problems: string[] = [];
+  for (const [i, line] of markdown.split('\n').entries()) {
+    if (line.includes('ß')) problems.push(`${file}:${i + 1}: "${line.trim()}": the letter "ß" is not Swiss; write "ss"`);
+  }
+  for (const { text } of proseLines(markdown)) {
+    const quoted = text.trim();
+    for (const { term, pattern } of AUSTRIAN_PATTERNS) {
+      if (pattern.test(text)) problems.push(`${file}: "${quoted}": "${term}" is a term of Austrian BMD practice; use the Swiss Abacus term`);
+    }
+    if (BMD_TOKEN.test(text)) problems.push(`${file}: "${quoted}": "BMD" is named in a Swiss Abacus doc`);
+    for (const [rate] of text.matchAll(NON_SWISS_RATE)) problems.push(`${file}: "${quoted}": "${rate}" is not the Swiss rate notation; write it like "8,1 %"`);
   }
   return problems;
 }
