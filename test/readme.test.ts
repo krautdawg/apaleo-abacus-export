@@ -320,11 +320,13 @@ describe('docs folder', () => {
     expect(backlog).not.toMatch(/\bBMD\b|Personenkonten-Datei|BMD Com/);
   });
 
-  it('Metadata applied: lists the German description and every topic for discoverability', () => {
-    const topics = ['apaleo', 'bmd', 'bmd-ntcs', 'bmd-export', 'buchungsimport', 'ekr', 'hotel', 'hospitality', 'accounting', 'buchhaltung', 'steuerberater', 'austria', 'oesterreich'];
-    expect(MAINTAINERS).toContain(`--add-topic ${topics.join(',')}`);
-    expect(MAINTAINERS).toMatch(/--description "Kostenloser apaleo BMD Export.*BMD NTCS/);
-    expect(section(MAINTAINERS, '## Das Repository ist vorerst privat')).not.toContain('--visibility');
+  it('Metadata applied: lists the Swiss Abacus description and interim topics, no BMD metadata, until a08 sets the final ones', () => {
+    const topics = ['apaleo', 'abacus', 'abaconnect', 'hotel', 'buchhaltung', 'treuhand', 'schweiz', 'switzerland'];
+    const privateSection = section(MAINTAINERS, '## Das Repository ist vorerst privat');
+    expect(privateSection).toContain(`--add-topic ${topics.join(',')}`);
+    expect(privateSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*für Hotels in der Schweiz/);
+    expect(privateSection).not.toMatch(/--description "[^"]*\bBMD\b|--add-topic [^\n]*\b(bmd|ekr|austria|oesterreich)\b/);
+    expect(privateSection).not.toContain('--visibility');
   });
 });
 

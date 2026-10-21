@@ -2,14 +2,14 @@
 
 ## Das Repository ist vorerst privat
 
-Das Repository ist privat. README, Beschreibung und Themen sind für Hotels und Kanzleien in Österreich geschrieben, die auf GitHub nach „apaleo BMD Export“, „BMD NTCS Import“ oder „apaleo Buchhaltung Österreich“ suchen, aber **niemand außerhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**. Bis dahin bringen sie für die Auffindbarkeit nichts.
+Das Repository ist privat. Beschreibung und Themen sollen Hotels und Treuhänder in der Schweiz finden, die auf GitHub nach „apaleo Abacus Export“, „AbaConnect Import“ oder „apaleo Buchhaltung Schweiz“ suchen, aber **niemand außerhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**. Bis dahin bringen sie für die Auffindbarkeit nichts. README und Anleitungen beschreiben noch das BMD-Produkt; die OpenSpec-Änderung a08 stellt sie auf Abacus um.
 
-Beschreibung und Themen sind so gesetzt; die Sichtbarkeit hat dabei niemand geändert:
+Gesetzt ist bisher nur die Beschreibung; Themen sind noch keine gesetzt, und die Sichtbarkeit hat niemand geändert. Die OpenSpec-Änderung a08 setzt die endgültigen Themen. Bis dahin setzt dieser Befehl Beschreibung und Themen, ohne die Sichtbarkeit zu ändern:
 
 ```sh
 gh repo edit krautdawg/apaleo-abacus-export \
-  --description "Kostenloser apaleo BMD Export (Open Source): Buchungsimport für BMD NTCS aus apaleo. Selbst gehostet, MIT, kein Abo." \
-  --add-topic apaleo,bmd,bmd-ntcs,bmd-export,buchungsimport,ekr,hotel,hospitality,accounting,buchhaltung,steuerberater,austria,oesterreich
+  --description "Kostenloser apaleo Abacus Export (Open Source): Buchungsimport für Abacus aus apaleo, für Hotels in der Schweiz. Selbst gehostet, MIT, kein Abo." \
+  --add-topic apaleo,abacus,abaconnect,hotel,buchhaltung,treuhand,schweiz,switzerland
 gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility
 ```
 
