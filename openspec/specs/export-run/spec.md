@@ -4,14 +4,14 @@
 The `export` command that turns one period of a property's apaleo ledger into DATEV Buchungsstapel files: period parsing and the split per month and fiscal year, the date rules that stand in for the night-audit status, the blocking coverage, posting and plausibility checks, the dry run, the output folder with protocol and manifest, and idempotent re-runs.
 ## Requirements
 ### Requirement: Export command
-The CLI SHALL provide `apaleo-bmd export` taking either `--from <date> --to <date>` (inclusive business dates) or `--month <YYYY-MM>`, an optional `--property <id>` (default: every configured property), and the flags `--dry-run` and `--overwrite`. It SHALL exit with code 0 when every property and month succeeded and 1 when any failed.
+The CLI SHALL provide `apaleo-abacus export` taking either `--from <date> --to <date>` (inclusive business dates) or `--month <YYYY-MM>`, an optional `--property <id>` (default: every configured property), and the flags `--dry-run` and `--overwrite`. It SHALL exit with code 0 when every property and month succeeded and 1 when any failed.
 
 #### Scenario: Monthly export
-- **WHEN** the user runs `apaleo-bmd export --month 2026-10 --property BSP` with a complete mapping
+- **WHEN** the user runs `apaleo-abacus export --month 2026-10 --property BSP` with a complete mapping
 - **THEN** one file of the configured target for 2026-10-01 to 2026-10-31 is written for BSP and the exit code is 0
 
 #### Scenario: Missing period
-- **WHEN** the user runs `apaleo-bmd export` without a period
+- **WHEN** the user runs `apaleo-abacus export` without a period
 - **THEN** the CLI exits with code 2 and explains `--month` and `--from/--to`
 
 ### Requirement: Period rules
@@ -35,13 +35,6 @@ For each property and month the export SHALL run the mapping coverage check, the
 #### Scenario: Unmapped account blocks only its property
 - **WHEN** property BSP has an unmapped booked account and property BSP2 is fully mapped
 - **THEN** no file is written for BSP, the file for BSP2 is written, `E-UNMAPPED` is printed for BSP, and the exit code is 1
-
-### Requirement: EUR only
-The export SHALL refuse with `E-CURRENCY`, per property-month and before writing, a property whose currency is not EUR and a month with any ledger line whose currency is not EUR, because the BMD lines carry no currency and are booked in the Mandant's Grundwährung, and the tool does not convert.
-
-#### Scenario: Swiss property
-- **WHEN** the property's currency is CHF
-- **THEN** `E-CURRENCY` names the currency, the ledger is not read and no file is written for that property
 
 ### Requirement: Plausibility checks
 The export SHALL verify that the absolute gross of all ledger lines equals the sum over booked and skipped lines; that per business day the signed movement of each mapped BMD account in the bookings equals the signed apaleo movement of the booked lines mapped to it, where a booking moves `konto` by its amount and `gkonto` by minus its amount plus tax, which is apaleo's gross (the tax leg on BMD's own tax account is not part of this check); and that per rate the tax amounts in the bookings equal the sum of apaleo's per-line tax rounded to cents of the booked lines of that rate, apart from tax amounts of deposit releases computed from a chart rate (`W-VAT-INFERRED`); violations SHALL be errors. The `E-VAT-TOTAL` message SHALL also name apaleo's precise VAT total of the rate and the line-rounding difference; the difference between the tax per booking and apaleo's precise total SHALL never be an error by itself. When `checks.aggregates` is true (default false), it SHALL call apaleo's daily aggregates once per business day and compare each listed account's balance (debit minus credit) with the signed sum of that day's ledger lines: a side on a global chart account counts for that account, any other side for its main account; Revenues and Liabilities sides count with their precise net amount, all other types with their gross amount; each tax of a line with a Revenues side counts for the chart's `Vat` account of that VAT type and rate, and of a line with a Liabilities side for the `VatOnLiabilities` account, signed like that side; both balances are rounded to cents only for the comparison. A difference SHALL be reported as a warning. The aggregate comparison SHALL depend only on the ledger lines and the chart, never on the bookings of a target.
@@ -132,7 +125,11 @@ Re-running an export for a period whose file exists SHALL do nothing when the ne
 - **THEN** the export refuses with `E-PERIOD-OVERLAP`, names the existing file and writes nothing
 
 ### Requirement: Target writer boundary
-The export pipeline SHALL write files only through a `TargetWriter` that provides the file name for a property and period, the file-name pattern used to find existing and overlapping files of that target, the rendered bytes, the comparison that decides whether an existing file is unchanged, the protocol title, and the target's advice in the `E-PERIOD-OVERLAP` and `E-FILE-EXISTS` refusals (the program the file is imported into, its config keys, how an imported file is undone). `src/export/` SHALL NOT import a target module's internals other than its `TargetWriter`, and the output folder logic SHALL NOT contain a target-specific file pattern, program name or config key. A manifest entry SHALL count as a file of the target only when its name matches the target's file pattern.
+The export pipeline SHALL write files only through a `TargetWriter` that provides the file name for a property and period, the file-name pattern used to find existing and overlapping files of that target, the rendered bytes, the comparison that decides whether an existing file is unchanged, the protocol title, the target's advice in the `E-PERIOD-OVERLAP` and `E-FILE-EXISTS` refusals (the program the file is imported into, its config keys, how an imported file is undone), and the currency the target books in for a given config. `src/export/` SHALL NOT import a target module's internals other than its `TargetWriter`, and the output folder logic SHALL NOT contain a target-specific file pattern, program name, currency or config key. A manifest entry SHALL count as a file of the target only when its name matches the target's file pattern.
+
+#### Scenario: BMD output unchanged behind the boundary
+- **WHEN** the golden-file tests run after the currency moves into the `TargetWriter`
+- **THEN** every golden BMD file is byte-identical to before, and the golden protocol and `manifest.json` differ only in the tool name, the tool version and the mapping SHA-256 (the header line of the committed mappings names the tool)
 
 #### Scenario: DATEV output unchanged behind the boundary
 - **WHEN** the golden-file tests run after the writer is wrapped as a `TargetWriter`
@@ -140,11 +137,11 @@ The export pipeline SHALL write files only through a `TargetWriter` that provide
 
 #### Scenario: Pattern and comparison come from the writer
 - **WHEN** a test runs the export with a fake `TargetWriter` whose files are named `FAKE_<from>-<to>_<propertyId>.txt` and whose comparison ignores nothing
-- **THEN** existence, overlap (`E-PERIOD-OVERLAP`), unchanged re-runs and `E-FILE-EXISTS` work for the fake files exactly as for EXTF files, and no EXTF name appears in the output folder
+- **THEN** existence, overlap (`E-PERIOD-OVERLAP`), unchanged re-runs and `E-FILE-EXISTS` work for the fake files exactly as for BMD files, and no BMD name appears in the output folder
 
 #### Scenario: Refusal advice comes from the writer
 - **WHEN** the fake `TargetWriter` refuses a file with `E-PERIOD-OVERLAP` or `E-FILE-EXISTS`
-- **THEN** the message carries the fake target's advice and names neither DATEV nor a `datev.*` config key
+- **THEN** the message carries the fake target's advice and names neither BMD nor a `bmd.*` config key
 
 #### Scenario: Manifest entry of another target
 - **WHEN** `manifest.json` records a current file of the fake target for the period and no file of the default target exists
@@ -164,4 +161,19 @@ The repository SHALL contain recorded real apaleo responses in `test/fixtures/ap
 #### Scenario: Fixture scan
 - **WHEN** the scan runs over `test/fixtures/apaleo/live/`
 - **THEN** it finds no key or value matching token, secret, bearer, password or e-mail patterns, and every account name is an apaleo default name or of the form `… for Reservation|Folio <id>`
+
+### Requirement: Currency of the target
+The export SHALL ask the configured `TargetWriter` for the currency it books in and SHALL refuse with `E-CURRENCY`, per property-month and before writing, a property whose currency differs from it (without reading the ledger) and a month with any ledger line in another currency, naming both currencies and saying that the tool does not convert. The BMD target SHALL answer `EUR`.
+
+#### Scenario: Swiss property with the BMD target
+- **WHEN** the property's currency is CHF and the target is BMD
+- **THEN** `E-CURRENCY` names CHF and EUR, the ledger is not read and no file is written for that property
+
+#### Scenario: Target that books in CHF
+- **WHEN** a test runs the export with a fake `TargetWriter` that books in CHF, for a property whose currency is CHF and whose ledger lines are all in CHF
+- **THEN** no `E-CURRENCY` is raised and the fake file is written
+
+#### Scenario: Line in another currency
+- **WHEN** the fake target books in CHF and one ledger line of the month is in EUR
+- **THEN** `E-CURRENCY` names the number of such lines and both currencies, and no file is written for that property-month
 
