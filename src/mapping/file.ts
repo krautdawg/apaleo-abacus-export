@@ -6,7 +6,7 @@ import { MAPPING_COLUMNS, ROW_FIELDS, rowKey, type MappingColumn, type MappingRo
 /** The comment line on top of a written mapping file: template, account lengths and dialect it was written for. */
 export function mappingHeaderComment(template: Template, { sachkontenlaenge, personenkontenlaenge, dialect }: TemplateSettings): string {
   return (
-    `apaleo-bmd Kontenzuordnung, Vorlage ${template.id}, Sachkontenlänge ${sachkontenlaenge}, Personenkontenlänge ${personenkontenlaenge}, ` +
+    `apaleo-abacus Kontenzuordnung, Vorlage ${template.id}, Sachkontenlänge ${sachkontenlaenge}, Personenkontenlänge ${personenkontenlaenge}, ` +
     `Dialekt ${dialect}. Alle Vorschläge mit der Steuerberatung prüfen. Spalte bmd_account in Excel als Text formatieren.`
   );
 }

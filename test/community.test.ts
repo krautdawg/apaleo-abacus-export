@@ -62,7 +62,7 @@ describe('CHANGELOG.md', () => {
     expect(text).not.toMatch(/^##+ (\[Unreleased\]|Added|Changed|Removed|Fixed)$/m);
   });
 
-  it('starts the history of apaleo-bmd-export and names apaleo-datev-export v0.1.0 as its origin instead of repeating its entries', () => {
+  it('starts the history of apaleo-abacus-export and names apaleo-datev-export v0.1.0 as its origin instead of repeating its entries', () => {
     expect(text).toContain('[apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) v0.1.0');
     expect(text.match(/^## \[0\.1\.0\]/gm)).toHaveLength(1);
     expect(text).not.toContain('apaleo-datev` mit `--help`');

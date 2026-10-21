@@ -36,7 +36,7 @@ const SEPTEMBER = { from: '2026-09-01', to: '2026-09-30' } as const;
 
 async function runWith(setup: ExportSetup, request: Partial<ExportRequest>, target: TargetWriter<PostedBooking>) {
   const { ctx, fake } = setup;
-  const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-bmd.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
+  const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-abacus.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
   const full: ExportRequest = { period: SEPTEMBER, propertyIds: [BSP], dryRun: false, overwrite: false, ...request };
   const [outcome] = await runExport(full, { loaded, source: fake, ctx, target });
   if (!outcome) throw new Error('no outcome');
@@ -60,7 +60,7 @@ interface ContractCase {
 
 const CONTRACT_CASES: [string, ContractCase][] = [
   ['the fake target', { target: fakeTarget, name: (from, to) => `FAKE_${from}-${to}_BSP.txt`, headerLines: 0, protocolTitle: /^FAKE protocol\. No warranty/ }],
-  ['the BMD target', { target: bmdContractTarget, name: (from, to) => `BMD_Buchungsimport_${from}-${to}_BSP.csv`, headerLines: 1, protocolTitle: /^apaleo-bmd export protocol\. No warranty/ }],
+  ['the BMD target', { target: bmdContractTarget, name: (from, to) => `BMD_Buchungsimport_${from}-${to}_BSP.csv`, headerLines: 1, protocolTitle: /^apaleo-abacus export protocol\. No warranty/ }],
 ];
 
 describe.each(CONTRACT_CASES)('the export through a TargetWriter: %s', (_label, { target, name, headerLines, protocolTitle }) => {
@@ -174,15 +174,15 @@ describe('the BMD target through the export', () => {
 
 describe('the checks and the summary do not depend on the target (recorded VIE day 2026-10-21)', () => {
   const MAPPING = VIE_MAPPING;
-  const CONFIG = `${FIXTURE_FILES['apaleo-bmd.config.yaml']}properties:\n  - id: VIE\nchecks:\n  aggregates: true\n`;
+  const CONFIG = `${FIXTURE_FILES['apaleo-abacus.config.yaml']}properties:\n  - id: VIE\nchecks:\n  aggregates: true\n`;
 
   async function exportVie(target: TargetWriter<PostedBooking> | undefined) {
     const ctx = createApaleoContext(
       { live: true },
-      { files: { 'apaleo-bmd.config.yaml': CONFIG, 'mapping-VIE.csv': MAPPING }, now: new Date('2026-10-25T08:00:00Z') },
+      { files: { 'apaleo-abacus.config.yaml': CONFIG, 'mapping-VIE.csv': MAPPING }, now: new Date('2026-10-25T08:00:00Z') },
     );
     const { source } = createFixtureSource({ live: true }, {}, ctx);
-    const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-bmd.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
+    const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-abacus.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
     const request: ExportRequest = { period: { from: '2026-10-21', to: '2026-10-21' }, propertyIds: ['VIE'], dryRun: false, overwrite: false };
     const [outcome] = await runExport(request, { loaded, source, ctx, ...(target ? { target } : {}) });
     if (!outcome) throw new Error('no outcome');

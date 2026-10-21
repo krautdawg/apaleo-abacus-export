@@ -18,8 +18,8 @@ const decodeCp1252 = (bytes: Uint8Array) => new TextDecoder('windows-1252').deco
 /** After the recorded days, so both are closed. */
 const AFTER_THE_DAY = new Date('2026-10-25T08:00:00Z');
 function liveContext(extraConfig = '', files: Record<string, string> = {}) {
-  const config = `${FIXTURE_FILES['apaleo-bmd.config.yaml']}properties:\n  - id: VIE\n  - id: BER\n    buchsymbol: HB\n${extraConfig}`;
-  return createApaleoContext({ live: true }, { files: { 'apaleo-bmd.config.yaml': config, 'mapping-VIE.csv': VIE_MAPPING, ...files }, now: AFTER_THE_DAY });
+  const config = `${FIXTURE_FILES['apaleo-abacus.config.yaml']}properties:\n  - id: VIE\n  - id: BER\n    buchsymbol: HB\n${extraConfig}`;
+  return createApaleoContext({ live: true }, { files: { 'apaleo-abacus.config.yaml': config, 'mapping-VIE.csv': VIE_MAPPING, ...files }, now: AFTER_THE_DAY });
 }
 
 describe('init-mapping and mapping check on the recorded VIE day', () => {

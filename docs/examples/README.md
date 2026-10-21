@@ -43,7 +43,7 @@ Was jedes Feld genau erlaubt und woher die Regeln kommen, steht in [bmd-format.m
 Die BMD-Datei und das Protokoll sind das, was ein normaler Export der Demodaten in `examples/demo/` schreibt; ein Test schlägt fehl, sobald sie von dem abweichen, was der aktuelle Code schreibt, und ein weiterer prüft, dass die Kontenzuordnung der Ausgabe von `init-mapping` bis auf die zwei Entscheidungen gleicht. So erzeugst du die Datei selbst, ohne apaleo:
 
 ```sh
-apaleo-bmd export --month 2026-09 --demo
+apaleo-abacus export --month 2026-09 --demo
 ```
 
 Die Demo schreibt nach `./demo-output/` und markiert ihre Ausgabe mit `DEMO`: im Dateinamen (`…_BSP_DEMO.csv`), am Anfang jedes Buchungstexts und in der ersten Zeile des Protokolls. Sonst ist ihre Datei gleich wie die hier.

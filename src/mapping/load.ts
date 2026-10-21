@@ -44,7 +44,7 @@ export interface LoadMappingOptions {
 
 const REQUIRED_COLUMNS: readonly MappingColumn[] = ['apaleo_account', 'apaleo_type', 'bmd_account'];
 /** How to make a mapping file, named in every error about a missing or foreign one. */
-export const INIT_MAPPING_HINT = 'apaleo-bmd init-mapping --property <id> --template ekr';
+export const INIT_MAPPING_HINT = 'apaleo-abacus init-mapping --property <id> --template ekr';
 
 export async function loadMapping(path: string, options: LoadMappingOptions): Promise<Mapping> {
   let bytes: Uint8Array;
@@ -103,7 +103,7 @@ function readHeader(header: CsvRecord, path: string): Header {
   const foreign = foreignLayout(names);
   if (foreign) {
     throw new MappingError(path, [
-      `this is ${foreign}, not a BMD mapping: apaleo-bmd reads the columns ${MAPPING_COLUMNS.join(';')}. ` +
+      `this is ${foreign}, not a BMD mapping: apaleo-abacus reads the columns ${MAPPING_COLUMNS.join(';')}. ` +
         `Create a BMD mapping with "${INIT_MAPPING_HINT}" and copy the account numbers over (docs/mapping-guide.md)`,
     ]);
   }

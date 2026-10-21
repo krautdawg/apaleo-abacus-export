@@ -183,7 +183,7 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
   if (!inputs.property) {
     findings.push({
       code: 'E-PROPERTY-UNKNOWN',
-      message: `the property ${inputs.id} is not visible to this apaleo custom app. Run "apaleo-bmd properties" to list the ids it can read`,
+      message: `the property ${inputs.id} is not visible to this apaleo custom app. Run "apaleo-abacus properties" to list the ids it can read`,
     });
     return failed();
   }
@@ -382,7 +382,7 @@ function protocolText(title: string, summary: string, path: string, bytes: Uint8
     `File: ${basename(path)}`,
     `SHA-256: ${sha256(bytes)}`,
     `Mapping SHA-256: ${mappingSha256}`,
-    `Tool: apaleo-bmd ${VERSION}`,
+    `Tool: apaleo-abacus ${VERSION}`,
     `Created: ${now.toISOString()}`,
     '',
   ].join('\n');

@@ -23,7 +23,7 @@ Ein Symbol hat in NTCS höchstens 4 Zeichen, in BMD 5.5 höchstens 2 (`bmd.diale
 
 ## Ein Symbol oder ein Mandant pro Hotel
 
-Bucht die Kanzlei mehrere Hotels in einen Mandanten, braucht jedes Hotel ein eigenes Buchungssymbol (`properties[].buchsymbol`), sonst wiederholen sich die Belegnummern: Zwei Dateien desselben Zeitraums beginnen beide mit `MMTT` und dem Zähler `00001`. `apaleo-bmd doctor` und das Protokoll warnen in diesem Fall mit `W-BUCHSYMBOL-SHARED`. Hat jedes Hotel einen eigenen Mandanten, reicht ein Symbol.
+Bucht die Kanzlei mehrere Hotels in einen Mandanten, braucht jedes Hotel ein eigenes Buchungssymbol (`properties[].buchsymbol`), sonst wiederholen sich die Belegnummern: Zwei Dateien desselben Zeitraums beginnen beide mit `MMTT` und dem Zähler `00001`. `apaleo-abacus doctor` und das Protokoll warnen in diesem Fall mit `W-BUCHSYMBOL-SHARED`. Hat jedes Hotel einen eigenen Mandanten, reicht ein Symbol.
 
 ```yaml
 bmd:
@@ -65,8 +65,8 @@ Belegdatum und Buchungsdatum jeder Zeile sind der Geschäftstag in apaleo (`TT.M
 - **Nie zweimal importieren.** BMD erkennt eine schon importierte Datei nicht: Dieselben Buchungen stünden doppelt im Mandanten. Das Tool schreibt einen Monat nur einmal. Kommt später eine Nachbuchung, lehnt es den Monat mit `E-FILE-EXISTS` ab. Hat die Kanzlei die alte Datei importiert, löscht sie zuerst die importierten Buchungen dieser Datei in BMD (Buchungssymbol und Belegnummern stehen im Protokoll der alten Datei); danach schreibt `export --overwrite` die neue Datei.
 
 ```sh
-apaleo-bmd export --month 2026-10 --dry-run      # was hat sich geändert?
-apaleo-bmd export --month 2026-10 --overwrite    # erst nachdem die Buchungen der alten Datei in BMD entfernt sind
+apaleo-abacus export --month 2026-10 --dry-run      # was hat sich geändert?
+apaleo-abacus export --month 2026-10 --overwrite    # erst nachdem die Buchungen der alten Datei in BMD entfernt sind
 ```
 
 ## Erster Import: bitte prüfen

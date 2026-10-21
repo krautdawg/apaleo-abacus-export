@@ -7,11 +7,11 @@ Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples
 ## Ablauf
 
 ```sh
-apaleo-bmd init-mapping --property BSP --template ekr      # schreibt mapping-BSP.csv aus dem apaleo-Kontenplan
+apaleo-abacus init-mapping --property BSP --template ekr      # schreibt mapping-BSP.csv aus dem apaleo-Kontenplan
 # Datei mit der Kanzlei prüfen, leere BMD-Konten ausfüllen
-apaleo-bmd mapping check --property BSP                    # prüft die Datei
-apaleo-bmd mapping check --property BSP --from 2026-09-01 --to 2026-09-30   # ist jedes gebuchte Konto zugeordnet?
-apaleo-bmd init-mapping --property BSP --template ekr --update   # später: neue apaleo-Konten anhängen, bearbeitete Zeilen bleiben
+apaleo-abacus mapping check --property BSP                    # prüft die Datei
+apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30   # ist jedes gebuchte Konto zugeordnet?
+apaleo-abacus init-mapping --property BSP --template ekr --update   # später: neue apaleo-Konten anhängen, bearbeitete Zeilen bleiben
 ```
 
 Der Pfad der Datei kann in der Konfiguration stehen (`properties[].mapping`), sonst heißt sie `mapping-<id>.csv` im Arbeitsverzeichnis. `mapping check --from --to` liest das Buchungsjournal des Zeitraums aus apaleo und meldet jedes gebuchte Konto ohne Zuordnung; die Kanzlei kann die Datei also an einem echten Monat prüfen, bevor ein Export läuft. Die Vorlage richtet sich nach `bmd.sachkontenlaenge`, `bmd.personenkontenlaenge` und `bmd.dialect` aus der Konfiguration.
@@ -198,8 +198,8 @@ Diese Vorlagenzeilen lassen das BMD-Konto leer oder verlangen eine Entscheidung:
 Die Kontenzuordnung eines bezahlten Connectors lässt sich nicht einlesen: Jeder Anbieter hat eigene Spalten und eigene Bildschirme, und eine Zuordnung aus einer deutschen Einrichtung hat keine BMD-Konten und keine Steuercodes. Lege die Datei neu an und übertrag die Kontonummern aus der Zuordnung des alten Connectors mit deiner Kanzlei von Hand:
 
 ```sh
-apaleo-bmd init-mapping --property BSP --template ekr
-apaleo-bmd mapping check --property BSP --from 2026-09-01 --to 2026-09-30
+apaleo-abacus init-mapping --property BSP --template ekr
+apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30
 ```
 
 ## Checkliste zur Freigabe durch die Kanzlei
@@ -214,8 +214,8 @@ Bevor die erste Datei in BMD importiert wird:
 - [ ] Stornogebühren und No-Shows sind geklärt: ohne USt auf 4091 (oder dem Konto der Kanzlei), mit USt nur, wenn apaleos Satz stimmt.
 - [ ] Anzahlungen gehen auf die erhaltenen Anzahlungen mit Steuercode, Zahlungen außer bar auf Schwebende Geldbewegungen, Firmenrechnungen auf den Sammeldebitor, der im Mandanten angelegt ist.
 - [ ] Die Erlöskonten ohne Steuercode haben in BMD keinen fixen Steuercode.
-- [ ] `apaleo-bmd mapping check --property <id> --from <Monatsanfang> --to <Monatsende>` endet ohne Fehler für einen echten Monat.
-- [ ] Ein Probelauf `apaleo-bmd export --month <YYYY-MM> --dry-run` ist ohne `E-` Befund; die Summen pro Konto und USt-Satz stimmen mit den Berichten in apaleo überein.
+- [ ] `apaleo-abacus mapping check --property <id> --from <Monatsanfang> --to <Monatsende>` endet ohne Fehler für einen echten Monat.
+- [ ] Ein Probelauf `apaleo-abacus export --month <YYYY-MM> --dry-run` ist ohne `E-` Befund; die Summen pro Konto und USt-Satz stimmen mit den Berichten in apaleo überein.
 - [ ] Der erste Import läuft in einen Testmandanten, und das Importprotokoll wurde geprüft ([bmd-import.md](bmd-import.md)).
 
 Datum, Name der Kanzlei und die geprüfte Version der Datei (SHA-256 aus dem Protokoll) kannst du in die Spalte `comment` oder in eure Unterlagen schreiben.

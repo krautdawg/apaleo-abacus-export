@@ -35,7 +35,7 @@ export const initMapping: Command = {
   },
   async run(args, ctx) {
     const propertyId = stringOption(args.values, 'property');
-    if (!propertyId) throw new UsageError('init-mapping needs --property <id>. Run "apaleo-bmd properties" to list them.');
+    if (!propertyId) throw new UsageError('init-mapping needs --property <id>. Run "apaleo-abacus properties" to list them.');
     const template = stringOption(args.values, 'template') ?? 'ekr';
     if (!(TEMPLATES as readonly string[]).includes(template)) {
       throw new UsageError(`--template must be ${TEMPLATES.join(' or ')} (the Austrian Einheitskontenrahmen), got "${template}".`);
@@ -67,7 +67,7 @@ export const initMapping: Command = {
       printCounts(ctx, suggestion.rows);
       ctx.stdout.write(
         'Every row is a suggestion (Vorschlag, ungeprüft): have your Steuerberatung check the file, fill in the empty BMD accounts, ' +
-          'then run "apaleo-bmd mapping check".\n',
+          'then run "apaleo-abacus mapping check".\n',
       );
       return EXIT_OK;
     }

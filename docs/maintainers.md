@@ -7,10 +7,10 @@ Das Repository ist privat. README, Beschreibung und Themen sind für Hotels und 
 Beschreibung und Themen sind so gesetzt; die Sichtbarkeit hat dabei niemand geändert:
 
 ```sh
-gh repo edit krautdawg/apaleo-bmd-export \
+gh repo edit krautdawg/apaleo-abacus-export \
   --description "Kostenloser apaleo BMD Export (Open Source): Buchungsimport für BMD NTCS aus apaleo. Selbst gehostet, MIT, kein Abo." \
   --add-topic apaleo,bmd,bmd-ntcs,bmd-export,buchungsimport,ekr,hotel,hospitality,accounting,buchhaltung,steuerberater,austria,oesterreich
-gh repo view krautdawg/apaleo-bmd-export --json description,repositoryTopics,visibility
+gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility
 ```
 
 Keiner der Schritte unter „Vor der Veröffentlichung“ ist bisher erledigt. Jeder einzelne ist die Entscheidung des Maintainers.
@@ -31,7 +31,7 @@ In dieser Reihenfolge:
 2. [ ] Lies das README in einem frischen Klon und führe den Schnellstart und `export --month 2026-09 --demo --dry-run` noch einmal aus.
 3. [ ] Starte `pnpm test` (mit dem Docs-Test) und prüfe, dass die CI auf `main` grün ist.
 4. [ ] Durchsuche die Historie nach allem, was nicht öffentlich werden darf: `git log -p | grep -iE 'secret|password|token'` darf nur Code und Dokumentation zeigen, nie einen Wert. Keine echten Gästedaten in den Testdaten.
-5. [ ] Stelle die Sichtbarkeit um: `gh repo edit krautdawg/apaleo-bmd-export --visibility public --accept-visibility-change-consequences`.
+5. [ ] Stelle die Sichtbarkeit um: `gh repo edit krautdawg/apaleo-abacus-export --visibility public --accept-visibility-change-consequences`.
 6. [ ] Lade ein Vorschaubild (Social Preview) hoch (Settings > General > Social preview).
 7. [ ] Entscheide, ob es GitHub Discussions für Fragen geben soll. Schaltest du sie ein, leg eine `config.yml` in `.github/ISSUE_TEMPLATE/` an, die auf die Discussions verweist; bis dahin sind die Vorlagen für Issues der einzige Weg.
 8. [ ] Schalte die private Meldung von Sicherheitslücken ein (Settings > Code security), auf die `SECURITY.md` verweist.

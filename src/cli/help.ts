@@ -2,14 +2,14 @@ import type { Command, OptionSpec } from './command.js';
 import { COMMON_OPTIONS } from './command.js';
 import { VERSION } from './version.js';
 
-export const BIN = 'apaleo-bmd';
+export const BIN = 'apaleo-abacus';
 const DISCLAIMER_LINE =
   'No warranty, not tax advice: have your Steuerberatung check the mapping and the first imports. See DISCLAIMER.md.';
 
 export function renderHelp(commands: readonly Command[]): string {
   const width = Math.max(15, ...commands.map((c) => c.name.length + 2));
   return [
-    `${BIN} ${VERSION} - export apaleo accounting data to BMD Buchungsimport files`,
+    `${BIN} ${VERSION} - export apaleo accounting data to Abacus Finanzbuchhaltung (FIBU)`,
     '',
     `Usage: ${BIN} <command> [options]`,
     '',

@@ -1,16 +1,16 @@
-# Konfiguration für apaleo-bmd-export
+# Konfiguration für apaleo-abacus-export
 #
-# Kopiere diese Datei nach apaleo-bmd.config.yaml und bearbeite sie. Das Tool
-# sucht die Datei aus --config, sonst aus APALEO_BMD_CONFIG, sonst
-# ./apaleo-bmd.config.yaml. JSON geht auch, wenn der Dateiname auf .json endet.
+# Kopiere diese Datei nach apaleo-abacus.config.yaml und bearbeite sie. Das Tool
+# sucht die Datei aus --config, sonst aus APALEO_ABACUS_CONFIG, sonst
+# ./apaleo-abacus.config.yaml. JSON geht auch, wenn der Dateiname auf .json endet.
 #
 # Secrets kommen nie in diese Datei. Setze sie in der Umgebung (zum Beispiel in .env):
 #   APALEO_CLIENT_SECRET   das Client-Secret deiner apaleo Custom App
 #
 # Diese Einstellungen lassen sich auch aus der Umgebung setzen (nur einzelne Werte):
-#   APALEO_BMD_OUTPUT_DIR   -> output.dir
+#   APALEO_ABACUS_OUTPUT_DIR   -> output.dir
 #   APALEO_CLIENT_ID        -> apaleo.clientId
-#   APALEO_BMD_TIMEZONE     -> schedule.timezone
+#   APALEO_ABACUS_TIMEZONE     -> schedule.timezone
 
 apaleo:
   # Client-ID der Custom App, die du unter Apps > Connected apps angelegt hast.
@@ -55,9 +55,9 @@ output:
 
 # Die apaleo-Hotels, mit denen das Tool arbeitet, jedes mit seiner Kontenzuordnung
 # (CSV, relativ zum Arbeitsverzeichnis; Standard ./mapping-<id>.csv). Leg die
-# Kontenzuordnung mit "apaleo-bmd init-mapping --property BSP --template ekr" an
-# und lass sie von deiner Steuerberatung prüfen. Die IDs listet "apaleo-bmd properties".
-# "apaleo-bmd export --month 2026-10" exportiert jedes hier eingetragene Hotel.
+# Kontenzuordnung mit "apaleo-abacus init-mapping --property BSP --template ekr" an
+# und lass sie von deiner Steuerberatung prüfen. Die IDs listet "apaleo-abacus properties".
+# "apaleo-abacus export --month 2026-10" exportiert jedes hier eingetragene Hotel.
 # Bucht die Kanzlei zwei Hotels in einen Mandanten, braucht jedes ein eigenes
 # Buchungssymbol, sonst wiederholen sich die Belegnummern (W-BUCHSYMBOL-SHARED).
 # properties:
@@ -74,12 +74,12 @@ checks:
   # eine zusätzliche Anfrage pro Tag.
   aggregates: false
 
-# "apaleo-bmd schedule --once" exportiert jeden fälligen Zeitraum, der noch nicht
+# "apaleo-abacus schedule --once" exportiert jeden fälligen Zeitraum, der noch nicht
 # im Ausgabeordner liegt, und endet. Starte es per Cron oder mit der Docker-Compose-
 # Schleife (docs/docker.md); stündlich ist unbedenklich.
 schedule:
   # "Heute" ist das Datum in dieser IANA-Zeitzone (Standard Europe/Vienna).
-  # Auch APALEO_BMD_TIMEZONE.
+  # Auch APALEO_ABACUS_TIMEZONE.
   timezone: Europe/Vienna
   # Ein Rhythmus pro Installation, damit nie tägliche und monatliche Dateien bei
   # BMD ankommen: "monthly" (eine Importdatei pro Monat für die Kanzlei) oder "daily"

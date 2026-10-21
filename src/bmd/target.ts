@@ -45,7 +45,7 @@ export function createBmdTarget(settingsOf: (meta: TargetFileMeta) => BmdTargetS
   });
   return {
     id: 'bmd',
-    protocolTitle: 'apaleo-bmd export protocol',
+    protocolTitle: 'apaleo-abacus export protocol',
     filePattern: BMD_FILE,
     fileName: (meta) => buchungsimportFileName(optionsOf(meta), fileTag(meta)),
     render(bookings, meta) {

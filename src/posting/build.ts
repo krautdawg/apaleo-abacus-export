@@ -116,7 +116,7 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
       return fail(
         'E-VAT-RATE-MISSING',
         `${rowText(side.row)} has the Steuercode "${side.row.steuercode}" but no valid bmd_vat_percent ("${side.row.bmdVatPercent}"), so the rate BMD books is unknown. ` +
-          'Fill in bmd_vat_percent on that line, and run "apaleo-bmd mapping check"',
+          'Fill in bmd_vat_percent on that line, and run "apaleo-abacus mapping check"',
       );
     }
     if (side.kind === 'no-tax-type') {
@@ -124,7 +124,7 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
         'E-STEUERCODE-NOT-ALLOWED',
         `${accountText(side.ref)} uses ${rowText(side.row)}, which has the Steuercode ${side.row.steuercode}, but a ${side.ref.type} account books no tax: ` +
           'BMD would book the tax on it instead of the revenue or deposit account. Leave steuercode and bmd_vat_percent empty on that line, ' +
-          'put the Steuercode on the revenue or deposit row, and run "apaleo-bmd mapping check"',
+          'put the Steuercode on the revenue or deposit row, and run "apaleo-abacus mapping check"',
       );
     }
   }

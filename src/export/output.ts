@@ -201,7 +201,7 @@ export async function writeOutput(ctx: CommandContext, plan: OutputPlan, file: W
   await withFolderLock(ctx, dirname(path), async () => {
     const current = await readIfExists(ctx, path);
     if (!sameBytes(current, plan.action === 'replace' ? plan.previous : undefined)) {
-      throw new UserError(`${path} changed while this run was checking it, probably by another apaleo-bmd run. Nothing was written for it; run again`);
+      throw new UserError(`${path} changed while this run was checking it, probably by another apaleo-abacus run. Nothing was written for it; run again`);
     }
     const protocol = protocolPath(path);
     const manifestPath = join(dirname(path), MANIFEST_FILE);
@@ -250,7 +250,7 @@ export async function repairCompanions(ctx: CommandContext, file: WrittenFile): 
 
   return withFolderLock(ctx, dirname(path), async () => {
     if (!sameBytes(await readIfExists(ctx, path), bytes)) {
-      throw new UserError(`${path} changed while this run was checking it, probably by another apaleo-bmd run. Nothing was written for it; run again`);
+      throw new UserError(`${path} changed while this run was checking it, probably by another apaleo-abacus run. Nothing was written for it; run again`);
     }
     const repaired: string[] = [];
     if (!(await protocolOk())) {
@@ -283,5 +283,5 @@ async function readManifest(ctx: CommandContext, path: string): Promise<Manifest
   } catch {
     // Reported below.
   }
-  throw new UserError(`${path} is not a manifest written by apaleo-bmd. Move it away and run again; nothing was changed.`);
+  throw new UserError(`${path} is not a manifest written by apaleo-abacus. Move it away and run again; nothing was changed.`);
 }

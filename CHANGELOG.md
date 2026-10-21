@@ -1,12 +1,16 @@
 # Änderungsprotokoll
 
-Alle wichtigen Änderungen an apaleo-bmd-export stehen in dieser Datei.
+Alle wichtigen Änderungen an apaleo-abacus-export stehen in dieser Datei.
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), und dieses Projekt hält sich an die [Semantische Versionierung](https://semver.org/lang/de/spec/v2.0.0.html).
 
 Die Geschichte von apaleo-bmd-export beginnt hier. Das Projekt ist eine Kopie von [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) v0.1.0 (apaleo nach DATEV EXTF): Quelle apaleo, Ablauf des Exports, Plausibilitätsprüfungen, Zeitplan und Docker kommen von dort, die Einträge jenes Projekts stehen in seinem eigenen Änderungsprotokoll. Wer mit DATEV bucht, nimmt apaleo-datev-export.
 
 ## [Unveröffentlicht]
+
+### Geändert
+
+- **Neuer Name apaleo-abacus-export** (a01): das Paket `apaleo-abacus-export` (Version 0.0.0), die Kommandozeile `apaleo-abacus`, die Konfigurationsdatei `apaleo-abacus.config.yaml` und die Umgebungsvariablen `APALEO_ABACUS_*`. `APALEO_CLIENT_ID` und `APALEO_CLIENT_SECRET` bleiben, die alten Variablen `APALEO_BMD_*` liest das Tool nicht mehr.
 
 ## [0.1.0] - 2026-10-21
 

@@ -21,7 +21,7 @@ describe('help and version', () => {
       expect(line?.trim().replace(/\s+/, ' ')).toBe(`${command.name} ${command.summary}`);
     }
     expect(ctx.out()).toContain('DISCLAIMER.md');
-    expect(ctx.out()).toContain('Usage: apaleo-bmd <command> [options]');
+    expect(ctx.out()).toContain('Usage: apaleo-abacus <command> [options]');
   });
 
   it('prints the version from package.json', async () => {
@@ -33,7 +33,7 @@ describe('help and version', () => {
   it('prints command help with its options', async () => {
     const ctx = createTestContext();
     expect(await runCli(['doctor', '--help'], ctx)).toBe(0);
-    expect(ctx.out()).toContain('Usage: apaleo-bmd doctor [--config <path>]');
+    expect(ctx.out()).toContain('Usage: apaleo-abacus doctor [--config <path>]');
     expect(ctx.out()).toMatch(/--config <path>\s+Config file/);
     expect(ctx.out()).toMatch(/-h, --help\s+Show help/);
   });
@@ -44,7 +44,7 @@ describe('dispatch and exit codes', () => {
     const ctx = createTestContext();
     expect(await runCli(['frobnicate'], ctx)).toBe(2);
     expect(ctx.err()).toContain('Unknown command "frobnicate"');
-    expect(ctx.err()).toContain('apaleo-bmd --help');
+    expect(ctx.err()).toContain('apaleo-abacus --help');
   });
 
   it('exits 2 for an unknown top-level option', async () => {
@@ -57,7 +57,7 @@ describe('dispatch and exit codes', () => {
     const ctx = createTestContext();
     expect(await runCli(['doctor', '--nope'], ctx)).toBe(2);
     expect(ctx.err()).toContain('--nope');
-    expect(ctx.err()).toContain('apaleo-bmd doctor --help');
+    expect(ctx.err()).toContain('apaleo-abacus doctor --help');
   });
 
   it('exits 2 for an unexpected positional argument', async () => {
@@ -135,7 +135,7 @@ describe('injected context', () => {
 
     expect(await runCli(['doctor'], ctx)).toBe(0);
 
-    expect(ctx.out()).toContain(`${ctx.cwd}/apaleo-bmd.config.yaml`);
+    expect(ctx.out()).toContain(`${ctx.cwd}/apaleo-abacus.config.yaml`);
     expect(ctx.out()).toContain('not found');
     expect(ctx.out()).toContain('Clock:         2026-10-20T08:00:00.000Z');
     expect(ctx.out()).not.toContain('2001');
@@ -144,13 +144,13 @@ describe('injected context', () => {
     fetchSpy.mockRestore();
   });
 
-  it('reads ./apaleo-bmd.config.yaml and ignores the old APALEO_DATEV_CONFIG', async () => {
+  it.each(['APALEO_BMD_CONFIG', 'APALEO_DATEV_CONFIG'])('reads ./apaleo-abacus.config.yaml and ignores the old %s', async (variable) => {
     const ctx = createTestContext({
-      files: { 'apaleo-bmd.config.yaml': 'bmd:\n  buchsymbol: HO\n' },
-      env: { APALEO_DATEV_CONFIG: '/x/old.yaml' },
+      files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n' },
+      env: { [variable]: '/x/old.yaml' },
     });
     expect(await runCli(['doctor'], ctx)).toBe(0);
-    expect(ctx.out()).toContain(`${ctx.cwd}/apaleo-bmd.config.yaml`);
+    expect(ctx.out()).toContain(`${ctx.cwd}/apaleo-abacus.config.yaml`);
     expect(ctx.out()).toContain('Config:        valid');
     expect(ctx.out()).not.toContain('/x/old.yaml');
   });
@@ -180,8 +180,8 @@ describe('injected context', () => {
   });
 
   it('doctor reports the example config valid with its Buchungssymbol HO', async () => {
-    const example = readFileSync(new URL('../../apaleo-bmd.config.example.yaml', import.meta.url), 'utf8');
-    const ctx = createTestContext({ files: { 'apaleo-bmd.config.yaml': example } });
+    const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': example } });
     expect(await runCli(['doctor'], ctx)).toBe(0);
     expect(ctx.out()).toContain('Config:        valid');
     expect(ctx.out()).toContain('BMD:           ntcs, Buchungssymbol HO');
@@ -189,23 +189,23 @@ describe('injected context', () => {
 
   it('doctor warns W-BUCHSYMBOL-SHARED when two properties share the Buchungssymbol, naming both and the symbol', async () => {
     const config = 'bmd:\n  buchsymbol: HO\nproperties:\n  - id: BSP\n  - id: BS2\n';
-    const ctx = createTestContext({ files: { 'apaleo-bmd.config.yaml': config } });
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': config } });
     expect(await runCli(['doctor'], ctx)).toBe(0);
     expect(ctx.out()).toContain('W-BUCHSYMBOL-SHARED');
     expect(ctx.out()).toContain('the properties BSP, BS2 all book under the Buchungssymbol HO');
     expect(ctx.out()).toContain('into one BMD Mandant, their Belegnummern would repeat');
-    const own = createTestContext({ files: { 'apaleo-bmd.config.yaml': `${config}    buchsymbol: HO2\n` } });
+    const own = createTestContext({ files: { 'apaleo-abacus.config.yaml': `${config}    buchsymbol: HO2\n` } });
     expect(await runCli(['doctor'], own)).toBe(0);
     expect(own.out()).not.toContain('W-BUCHSYMBOL-SHARED');
   });
 
   it('doctor exits 1 for an invalid config, and for an old DATEV config naming the bmd section', async () => {
-    const ctx = createTestContext({ files: { 'apaleo-bmd.config.yaml': 'bmd:\n  buchsymbol: HO\n  sachkontenlaenge: 3\n' } });
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n  sachkontenlaenge: 3\n' } });
     expect(await runCli(['doctor'], ctx)).toBe(1);
     expect(ctx.err()).toContain('bmd.sachkontenlaenge');
-    const datev = createTestContext({ files: { 'apaleo-bmd.config.yaml': 'datev:\n  beraternummer: 1234567\n  mandantennummer: 42\n' } });
+    const datev = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'datev:\n  beraternummer: 1234567\n  mandantennummer: 42\n' } });
     expect(await runCli(['doctor'], datev)).toBe(1);
-    expect(datev.err()).toContain('datev is not a section of apaleo-bmd');
+    expect(datev.err()).toContain('datev is not a section of apaleo-abacus');
     expect(datev.err()).toContain('bmd section');
   });
 });

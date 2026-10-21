@@ -12,7 +12,7 @@ export const doctor: Command = {
     const path = resolveConfigPath(stringOption(args.values, 'config'), ctx.env, ctx.cwd);
     const print = (label: string, value: string) => ctx.stdout.write(`${`${label}:`.padEnd(15)}${value}\n`);
 
-    print('apaleo-bmd', VERSION);
+    print('apaleo-abacus', VERSION);
     print('Node.js', process.version);
     print('Clock', ctx.now().toISOString());
     print('Config file', path);

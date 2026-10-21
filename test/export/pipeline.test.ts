@@ -16,7 +16,7 @@ const SEPTEMBER = { from: '2026-09-01', to: '2026-09-30' } as const;
 
 async function run(setup: ExportSetup, request: Partial<ExportRequest> = {}, post?: typeof buildBookings) {
   const { ctx, fake } = setup;
-  const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-bmd.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
+  const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-abacus.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
   const full: ExportRequest = { period: SEPTEMBER, propertyIds: [BSP], dryRun: false, overwrite: false, ...request };
   return runExport(full, { loaded, source: fake, ctx, ...(post ? { post } : {}) });
 }
@@ -186,7 +186,7 @@ describe('the period-part runner', () => {
     expect(outcome?.status).toBe('checked');
     expect(outcome?.plan).toBe('write');
     expect(outcome?.summary).toContain('Totals per BMD account');
-    expect(readdirSync(setup.ctx.cwd).sort()).toEqual(['apaleo-bmd.config.yaml', 'mapping-BSP.csv']);
+    expect(readdirSync(setup.ctx.cwd).sort()).toEqual(['apaleo-abacus.config.yaml', 'mapping-BSP.csv']);
   });
 });
 
@@ -259,12 +259,12 @@ describe('the Austrian fixture month through the export pipeline (b05)', () => {
   /** After an intended change to the output, run `UPDATE_GOLDEN=1 pnpm test` and review the diff. */
   const GOLDEN = new URL('../golden/bmd/at-month.csv', import.meta.url);
   const MAPPING = readFileSync(new URL('../fixtures/mapping/ekr-at-month.csv', import.meta.url), 'utf8');
-  const CONFIG = `${FIXTURE_FILES['apaleo-bmd.config.yaml']}properties:\n  - id: ${AT_MONTH}\n    buchsymbol: AR\n`;
+  const CONFIG = `${FIXTURE_FILES['apaleo-abacus.config.yaml']}properties:\n  - id: ${AT_MONTH}\n    buchsymbol: AR\n`;
 
   it('writes the golden BMD file with no E- finding and the plausibility checks passing', async () => {
     const fake = new FakeSource(await loadAtMonthData());
-    const ctx = createTestContext({ files: { 'apaleo-bmd.config.yaml': CONFIG, [`mapping-${AT_MONTH}.csv`]: MAPPING }, sourceFactory: () => fake });
-    const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-bmd.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': CONFIG, [`mapping-${AT_MONTH}.csv`]: MAPPING }, sourceFactory: () => fake });
+    const loaded = await loadConfig({ path: join(ctx.cwd, 'apaleo-abacus.config.yaml'), env: ctx.env, readFile: ctx.fs.readFile });
     const request: ExportRequest = { period: { from: '2026-08-01', to: '2026-08-31' }, propertyIds: [AT_MONTH], dryRun: false, overwrite: false };
     const [outcome] = await runExport(request, { loaded, source: fake, ctx });
     expect(outcome?.status).toBe('written');
