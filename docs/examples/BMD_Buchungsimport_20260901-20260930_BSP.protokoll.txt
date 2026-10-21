@@ -1,0 +1,64 @@
+apaleo-bmd export protocol. No warranty, not tax advice: have your Steuerberater check the bookings.
+
+Property BSP, 2026-09-01 to 2026-09-30: 31 apaleo lines, 26 BMD bookings
+
+Import into BMD (compare with the Mandant before importing, see docs/bmd-import.md):
+  File: BMD_Buchungsimport_20260901-20260930_BSP.csv
+  Lines: 26 bookings (Satzart 0) after the header line
+  Dialect: ntcs (BMD NTCS)
+  Buchungssymbole: HO
+  Belegnummern: 090100001 to 090100026
+  verbuchkz A, gegenbuchkz E: BMD creates the Gegenbuchung and the tax posting itself
+  Steuercodes: 1 (10 %, 20 %)
+  Account lengths: Sachkonten 4, Personenkonten 6
+
+Totals per BMD account (Konto with Betrag, Gegenkonto with Betrag plus Steuer):
+  account    Soll   Haben  balance
+  2390     771.70  771.70     0.00
+  2700      24.00    0.00    24.00
+  2890     566.70   10.00   556.70
+  3200     350.00  350.00     0.00
+  3209      10.00   10.00     0.00
+  3580       0.00    6.40    -6.40
+  4000      10.00  578.18  -568.18
+  4010       0.00   66.64   -66.64
+  4020       0.00   38.33   -38.33
+  7800      50.00    0.00    50.00
+  200000   115.00    0.00   115.00
+
+Revenue and VAT per rate:
+  10 %: net 634.82, tax 63.48, gross 698.30, apaleo VAT 63.48, difference 0.00 (apaleo precise 63.48181818)
+  20 %: net 38.33, tax 7.67, gross 46.00, apaleo VAT 7.67, difference 0.00 (apaleo precise 7.66666667)
+
+Deposits and their VAT per rate (received minus released):
+  0 %: net 0.00, tax 0.00, gross 0.00, apaleo VAT 0.00, difference 0.00 (apaleo precise 0)
+  10 %: net 0.00, tax 0.00, gross 0.00, apaleo VAT 0.00, difference 0.00 (apaleo precise 0)
+
+Written-off receivables (Forderungsverluste) and the VAT correction per rate:
+  10 %: net 50.00, tax 5.00, gross 55.00, apaleo VAT 5.00, difference 0.00 (apaleo precise 5)
+
+Each booking carries apaleo's tax of its line, rounded to the cent, while apaleo rounds only the precise total of its lines, so a difference (apaleo VAT minus tax) of a few cents is this rounding, not an error.
+
+Ortstaxe and other guest levies (apaleo city tax): 6.40
+
+Payments per clearing account:
+  account  amount
+  2700      24.00
+  2890     556.70
+
+Deposits: received 395.00, released 395.00, of it refunded 10.00
+Accounts receivable (Sammeldebitor, Soll positive): 115.00
+VAT rounding differences: 0.00
+
+Skipped lines:
+  reason                              lines  gross (unsigned)
+  both sides on the same BMD account      5            325.70
+
+Findings:
+  none
+
+File: BMD_Buchungsimport_20260901-20260930_BSP.csv
+SHA-256: 0e188ce4c3de4ea8248059587776f9ea07b3d06e230800a75f2a50c401d3c115
+Mapping SHA-256: 7d8b88981d7c3d52ac97c3f4615d2c92e5ba4d6ebd21aa1b957dc864e690a219
+Tool: apaleo-bmd 0.1.0
+Created: 2026-10-05T08:00:00.000Z

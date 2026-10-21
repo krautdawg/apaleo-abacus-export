@@ -1,0 +1,11 @@
+# Config of "apaleo-bmd export --demo". The demo reads only this file, never
+# your own config or environment. The hotel is made up: never import a demo
+# file into a real BMD Mandant.
+bmd:
+  buchsymbol: HO
+  sachkontenlaenge: 4
+  personenkontenlaenge: 6
+properties:
+  - id: BSP
+    # Relative to this folder (examples/demo/).
+    mapping: mapping-BSP.csv
