@@ -32,11 +32,11 @@ function chargeOn(day: LocalDate) {
 
 const ledgerCalls = (setup: ExportSetup) => setup.fake.calls.filter((call) => call.startsWith('getLedger'));
 
-describe('apaleo-bmd schedule', () => {
+describe('apaleo-abacus schedule', () => {
   it('exits 2 with the cron hint when --once is missing, before reading any config', async () => {
     const ctx = createTestContext();
     expect(await runCli(['schedule'], ctx)).toBe(2);
-    expect(ctx.err()).toContain('use "apaleo-bmd schedule --once" from cron or the compose loop');
+    expect(ctx.err()).toContain('use "apaleo-abacus schedule --once" from cron or the compose loop');
     expect(ctx.err()).not.toContain('config');
   });
 
@@ -119,7 +119,7 @@ describe('skipping what is already exported', () => {
   /** The real apaleo adapter against the fixture server: every request shows up in `ctx.fetchCalls`. */
   function apaleoSetup(env: Record<string, string> = FIXTURE_ENV): TestContext {
     return createTestContext({
-      files: { 'config/apaleo-bmd.config.yaml': exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING },
+      files: { 'config/apaleo-abacus.config.yaml': exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING },
       env,
       fetchHandler: apaleoFixtureHandler(),
     });
@@ -127,7 +127,7 @@ describe('skipping what is already exported', () => {
 
   it('sends no request to apaleo an hour after it wrote the month, with config path, output folder and secret from the environment', async () => {
     const ctx = apaleoSetup();
-    ctx.env = { ...FIXTURE_ENV, APALEO_BMD_CONFIG: join(ctx.cwd, 'config/apaleo-bmd.config.yaml'), APALEO_BMD_OUTPUT_DIR: join(ctx.cwd, 'data') };
+    ctx.env = { ...FIXTURE_ENV, APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml'), APALEO_ABACUS_OUTPUT_DIR: join(ctx.cwd, 'data') };
     expect(await runCli(ONCE, ctx)).toBe(0);
     expect(ctx.fetchCalls.length).toBeGreaterThan(0);
     expect(readdirSync(join(ctx.cwd, 'data', BSP, '2026-09'))).toContain(SEPTEMBER_FILE);
@@ -142,7 +142,7 @@ describe('skipping what is already exported', () => {
 
   it('counts a period recorded in manifest.json as exported even after its file was moved away', async () => {
     const ctx = apaleoSetup();
-    ctx.env = { ...FIXTURE_ENV, APALEO_BMD_CONFIG: join(ctx.cwd, 'config/apaleo-bmd.config.yaml') };
+    ctx.env = { ...FIXTURE_ENV, APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml') };
     expect(await runCli(ONCE, ctx)).toBe(0);
     rmSync(join(ctx.cwd, 'exports', BSP, '2026-09', SEPTEMBER_FILE));
     ctx.fetchCalls.length = 0;
@@ -153,7 +153,7 @@ describe('skipping what is already exported', () => {
 
   it('counts a BMD file of the period on disk as exported when there is no manifest', async () => {
     const ctx = apaleoSetup();
-    ctx.env = { ...FIXTURE_ENV, APALEO_BMD_CONFIG: join(ctx.cwd, 'config/apaleo-bmd.config.yaml') };
+    ctx.env = { ...FIXTURE_ENV, APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml') };
     expect(await runCli(ONCE, ctx)).toBe(0);
     rmSync(join(ctx.cwd, 'exports', BSP, '2026-09', 'manifest.json'));
     ctx.fetchCalls.length = 0;
@@ -163,7 +163,7 @@ describe('skipping what is already exported', () => {
 
   it('reports every pending property as failed with the reason when the source cannot be built', async () => {
     const ctx = apaleoSetup({});
-    ctx.env = { APALEO_BMD_CONFIG: join(ctx.cwd, 'config/apaleo-bmd.config.yaml') };
+    ctx.env = { APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml') };
     expect(await runCli(ONCE, ctx)).toBe(1);
     expect(lines(ctx)).toEqual([
       '2026-10-20T10:00:00+02:00 BSP 2026-09 failed E-EXPORT',
@@ -174,7 +174,7 @@ describe('skipping what is already exported', () => {
 
   it('fails with the config-file message when properties are set through the environment', async () => {
     const ctx = apaleoSetup();
-    ctx.env = { ...FIXTURE_ENV, APALEO_BMD_CONFIG: join(ctx.cwd, 'config/apaleo-bmd.config.yaml'), APALEO_BMD_PROPERTIES: BSP };
+    ctx.env = { ...FIXTURE_ENV, APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml'), APALEO_ABACUS_PROPERTIES: BSP };
     expect(await runCli(ONCE, ctx)).toBe(1);
     expect(ctx.err()).toContain('"properties" is an array and can only be set in the config file');
   });

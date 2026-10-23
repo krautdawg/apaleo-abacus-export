@@ -1,15 +1,15 @@
 # Der Befehl export
 
-`apaleo-bmd export` liest das apaleo-Buchungsjournal eines Zeitraums, bucht es mit deiner Kontenzuordnung und schreibt pro Hotel und Kalendermonat eine BMD-Datei (Buchungsimport) in den Ausgabeordner. Deine Kanzlei holt die Dateien dort ab (ein gemeinsamer Ordner, ein Cloud-Ordner, oder du schickst sie). Nichts wird irgendwohin hochgeladen.
+`apaleo-abacus export` liest das apaleo-Buchungsjournal eines Zeitraums, bucht es mit deiner Kontenzuordnung und schreibt pro Hotel und Kalendermonat eine BMD-Datei (Buchungsimport) in den Ausgabeordner. Deine Kanzlei holt die Dateien dort ab (ein gemeinsamer Ordner, ein Cloud-Ordner, oder du schickst sie). Nichts wird irgendwohin hochgeladen.
 
 Keine Gewähr, keine Steuerberatung: Lass deine Steuerberatung die Kontenzuordnung und die ersten Importe prüfen.
 
 ```sh
-apaleo-bmd export --month 2026-10 --dry-run          # alles prüfen, Übersicht zeigen, nichts schreiben
-apaleo-bmd export --month 2026-10                    # jedes Hotel aus der Konfiguration
-apaleo-bmd export --month 2026-10 --property BSP     # ein Hotel
-apaleo-bmd export --from 2026-09-25 --to 2026-10-05  # beide Tage eingeschlossen; zwei Dateien, eine pro Monat
-apaleo-bmd export --month 2026-10 --overwrite        # nach einer Nachbuchung, siehe „Noch einmal exportieren“
+apaleo-abacus export --month 2026-10 --dry-run          # alles prüfen, Übersicht zeigen, nichts schreiben
+apaleo-abacus export --month 2026-10                    # jedes Hotel aus der Konfiguration
+apaleo-abacus export --month 2026-10 --property BSP     # ein Hotel
+apaleo-abacus export --from 2026-09-25 --to 2026-10-05  # beide Tage eingeschlossen; zwei Dateien, eine pro Monat
+apaleo-abacus export --month 2026-10 --overwrite        # nach einer Nachbuchung, siehe „Noch einmal exportieren“
 ```
 
 Der Exit-Code ist 0, wenn jedes Hotel und jeder Monat geschrieben wurde oder schon aktuell war, 1, wenn einer davon fehlgeschlagen ist, und 2 bei falschem Aufruf (zum Beispiel ohne Zeitraum).
@@ -17,8 +17,8 @@ Der Exit-Code ist 0, wenn jedes Hotel und jeder Monat geschrieben wurde oder sch
 ## Demo ohne apaleo
 
 ```sh
-apaleo-bmd export --month 2026-09 --demo --dry-run   # die Übersicht für das erfundene Hotel Beispiel
-apaleo-bmd export --month 2026-09 --demo             # die Datei, nur nach ./demo-output/
+apaleo-abacus export --month 2026-09 --demo --dry-run   # die Übersicht für das erfundene Hotel Beispiel
+apaleo-abacus export --month 2026-09 --demo             # die Datei, nur nach ./demo-output/
 ```
 
 `--demo` lässt genau diese Verarbeitung auf den aufgezeichneten apaleo-Antworten in `examples/demo/` laufen: keine Konfigurationsdatei, kein Secret, kein Netz. Die Demodaten sind ein erfundenes „Hotel Beispiel“ in Wien mit Beherbergung zu 10 %, Getränken zu 20 %, Ortstaxe, Anzahlungen, einer Rechnung an eine Firma und einem Forderungsverlust, sodass jeder Abschnitt des Protokolls etwas zeigt. Die Uhr der Demo steht auf 2026-10-05, der September 2026 ist also abgeschlossen. Die Demo markiert ihre Ausgabe dreifach, denn eine BMD-Datei hat keine Bezeichnung: Der Dateiname endet auf `_DEMO` (`BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv`), jeder Buchungstext beginnt mit `DEMO ` (der Buchungstext bleibt samt `DEMO ` bei 40 Zeichen, vom eigentlichen Text bleiben 35), und die erste Zeile des Protokolls ist `DEMO`. Eine versehentlich importierte Demobuchung erkennst du in BMD also am Text. Importiere sie nie in einen echten Mandanten. Die Demo schreibt unterhalb des Arbeitsverzeichnisses; im Docker-Image ist das das nur lesbare `/config`, siehe deshalb [docker.md](docker.md#die-demo-im-image). `--config` lässt sich nicht mit `--demo` kombinieren, und die Umgebung ändert nicht, wohin die Demo schreibt.
@@ -116,4 +116,4 @@ BMD erkennt eine schon importierte Datei nicht wieder: Dieselben Buchungen zweim
 
 Der Vergleich liest die Datei selbst, er funktioniert also auch, wenn `manifest.json` gelöscht wurde. Ist die Datei unverändert, aber ihr Protokoll oder ihr Eintrag im Manifest fehlt oder beschreibt eine andere Datei (zum Beispiel weil `manifest.json` gelöscht oder ein Lauf nach dem Schreiben der CSV-Datei unterbrochen wurde), schreibt der Lauf beides neu und meldet den Hinweis `N-COMPANIONS-REPAIRED`; die CSV-Datei selbst bleibt unberührt.
 
-Während ein Lauf in einen Ordner für Hotel und Monat schreibt, hält er dort die Sperrdatei `.apaleo-bmd.lock` und prüft noch einmal, dass die Datei auf der Festplatte noch die ist, die er verglichen hat. Ein zweiter Lauf, der gleichzeitig startet, scheitert für diesen Monat mit `E-EXPORT` und schreibt nichts; starte ihn noch einmal, wenn der erste fertig ist. Wurde ein Lauf beim Schreiben abgebrochen, kann die Sperrdatei übrig bleiben: Wenn kein anderer Lauf aktiv ist, lösch sie und starte noch einmal.
+Während ein Lauf in einen Ordner für Hotel und Monat schreibt, hält er dort die Sperrdatei `.apaleo-abacus.lock` und prüft noch einmal, dass die Datei auf der Festplatte noch die ist, die er verglichen hat. Ein zweiter Lauf, der gleichzeitig startet, scheitert für diesen Monat mit `E-EXPORT` und schreibt nichts; starte ihn noch einmal, wenn der erste fertig ist. Wurde ein Lauf beim Schreiben abgebrochen, kann die Sperrdatei übrig bleiben: Wenn kein anderer Lauf aktiv ist, lösch sie und starte noch einmal.

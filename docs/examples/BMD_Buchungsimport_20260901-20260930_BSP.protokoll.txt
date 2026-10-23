@@ -1,4 +1,4 @@
-apaleo-bmd export protocol. No warranty, not tax advice: have your Steuerberater check the bookings.
+apaleo-abacus export protocol. No warranty, not tax advice: have your Steuerberater check the bookings.
 
 Property BSP, 2026-09-01 to 2026-09-30: 31 apaleo lines, 26 BMD bookings
 
@@ -59,6 +59,6 @@ Findings:
 
 File: BMD_Buchungsimport_20260901-20260930_BSP.csv
 SHA-256: 0e188ce4c3de4ea8248059587776f9ea07b3d06e230800a75f2a50c401d3c115
-Mapping SHA-256: 7d8b88981d7c3d52ac97c3f4615d2c92e5ba4d6ebd21aa1b957dc864e690a219
-Tool: apaleo-bmd 0.1.0
+Mapping SHA-256: f194b052d2e03d00e3f7cd7fa15b4f9d17e8fffaeef41830dc55708417e77093
+Tool: apaleo-abacus 0.0.0
 Created: 2026-10-05T08:00:00.000Z

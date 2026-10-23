@@ -2,7 +2,7 @@ import { basename, join, resolve } from 'node:path';
 import type { CommandContext } from '../cli/context.js';
 import { VERSION } from '../cli/version.js';
 import { ChartIndex } from '../core/chart.js';
-import { buchsymboleOf, sharedBuchsymbolFindings, type LoadedConfig } from '../core/config.js';
+import { buchsymboleOf, sharedBuchsymbolFindings, type Config, type LoadedConfig } from '../core/config.js';
 import { localDateIn, nextDay } from '../core/date.js';
 import { FindingsError, UserError } from '../core/errors.js';
 import { isErrorFinding, type Finding } from '../core/findings.js';
@@ -183,11 +183,12 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
   if (!inputs.property) {
     findings.push({
       code: 'E-PROPERTY-UNKNOWN',
-      message: `the property ${inputs.id} is not visible to this apaleo custom app. Run "apaleo-bmd properties" to list the ids it can read`,
+      message: `the property ${inputs.id} is not visible to this apaleo custom app. Run "apaleo-abacus properties" to list the ids it can read`,
     });
     return failed();
   }
-  findings.push(...currencyFindings(inputs.property));
+  const target = deps.target ?? DEFAULT_TARGET;
+  findings.push(...currencyFindings(target, deps.loaded.config, inputs.property));
   const { timeZone } = inputs.property;
   const hold = request.holdUntilFinal;
   if (hold && part.to > lastFinalDay(deps.ctx.now(), timeZone, hold.finalAfter)) {
@@ -203,7 +204,7 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     findings.push(...mapping.findings);
     const [chart, ledger] = await Promise.all([inputs.loadChart(), deps.source.getLedger(inputs.id, part.from, nextDay(part.to))]);
     lines = ledger;
-    findings.push(...currencyFindings(inputs.property, lines));
+    findings.push(...currencyFindings(target, deps.loaded.config, inputs.property, lines));
     if (hasError(findings)) return failed();
     const { bmd, posting } = deps.loaded.config;
     const { sachkontenlaenge, personenkontenlaenge, dialect } = bmd;
@@ -222,7 +223,6 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
       return outcome('empty');
     }
 
-    const target = deps.target ?? DEFAULT_TARGET;
     const meta: TargetFileMeta = { config: deps.loaded.config, propertyId: inputs.id, part, demo: request.demo === true, createdAt: deps.ctx.now() };
     const { bytes, findings: renderFindings } = target.render(result.bookings, meta);
     findings.push(...renderFindings);
@@ -272,38 +272,34 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
   }
 }
 
-/** The only currency the BMD writer supports: the bookings carry no currency of their own, and BMD reads them as euros. */
-export const EXPORT_CURRENCY = 'EUR';
-
-/** Why another currency cannot be exported, in every `E-CURRENCY`. The tool does not convert. */
-const NO_CURRENCY_FIELD =
-  "A BMD Buchungsimport line has no currency field: BMD books every amount in the Mandant's Grundwährung (EUR), and this tool does not convert.";
-
 /**
- * `E-CURRENCY` when the property or a ledger line is not in EUR. BMD would
- * book the amounts as euros without converting them, so the part stops.
+ * `E-CURRENCY` when the property, or else a ledger line, is not in the currency
+ * the target books in (`TargetWriter.currency`). The target would book the
+ * amounts without converting them, so the part stops.
  */
-function currencyFindings(property: SourceProperty, lines: readonly LedgerLine[] = []): Finding[] {
-  if (property.currency !== EXPORT_CURRENCY) {
+function currencyFindings(target: TargetWriter<PostedBooking>, config: Config, property: SourceProperty, lines: readonly LedgerLine[] = []): Finding[] {
+  const currency = target.currency(config);
+  const why = `${target.advice.currency} This tool does not convert.`;
+  if (property.currency !== currency) {
     return [
       {
         code: 'E-CURRENCY',
         message:
-          `the property ${property.id} keeps its books in ${property.currency || 'an unknown currency'}, but this tool writes BMD files in ${EXPORT_CURRENCY} only. ` +
-          `${NO_CURRENCY_FIELD} No apaleo lines were read and no file was written`,
+          `the property ${property.id} keeps its books in ${property.currency || 'an unknown currency'}, but the export file books in ${currency} only. ` +
+          `${why} No apaleo lines were read and no file was written`,
         value: property.currency,
       },
     ];
   }
-  const others = [...new Set(lines.map((line) => line.currency).filter((currency) => currency !== EXPORT_CURRENCY))].sort();
-  if (others.length === 0) return [];
-  const count = lines.filter((line) => line.currency !== EXPORT_CURRENCY).length;
+  const foreign = lines.filter((line) => line.currency !== currency);
+  if (foreign.length === 0) return [];
+  const others = [...new Set(foreign.map((line) => line.currency))].sort();
   return [
     {
       code: 'E-CURRENCY',
       message:
-        `${count} apaleo line(s) of ${property.id} are in ${others.map((c) => c || 'an unknown currency').join(', ')}, but this tool writes BMD files in ${EXPORT_CURRENCY} only. ` +
-        `${NO_CURRENCY_FIELD} No file was written`,
+        `${foreign.length} apaleo line(s) of ${property.id} are in ${others.map((c) => c || 'an unknown currency').join(', ')}, but the export file books in ${currency} only. ` +
+        `${why} No file was written`,
       value: others.join(','),
     },
   ];
@@ -382,7 +378,7 @@ function protocolText(title: string, summary: string, path: string, bytes: Uint8
     `File: ${basename(path)}`,
     `SHA-256: ${sha256(bytes)}`,
     `Mapping SHA-256: ${mappingSha256}`,
-    `Tool: apaleo-bmd ${VERSION}`,
+    `Tool: apaleo-abacus ${VERSION}`,
     `Created: ${now.toISOString()}`,
     '',
   ].join('\n');

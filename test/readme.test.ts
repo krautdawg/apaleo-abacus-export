@@ -15,12 +15,12 @@ const PRICE = '18-51 EUR pro Monat (je nach Anbieter und Anzahl der Betriebe), l
 const PENDING_IMPORT = 'Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A); ein erster Testimport mit einer Kanzlei steht noch aus.';
 /** The install block of the German quick start (s09 design decision 3), which CI runs. */
 const INSTALL_BLOCK = [
-  'git clone https://github.com/krautdawg/apaleo-bmd-export.git',
-  'cd apaleo-bmd-export',
+  'git clone https://github.com/krautdawg/apaleo-abacus-export.git',
+  'cd apaleo-abacus-export',
   'corepack enable',
   'pnpm install --frozen-lockfile',
   'pnpm build',
-  'node dist/cli/main.js --help        # oder: pnpm link --global, dann apaleo-bmd --help',
+  'node dist/cli/main.js --help        # oder: pnpm link --global, dann apaleo-abacus --help',
 ];
 
 /** The text from the start up to the first `## ` heading. */
@@ -51,7 +51,7 @@ describe('README first screen', () => {
     expect(rest.find((line) => line.trim() !== '')).toContain('](README.en.md)');
     expect(firstScreen).toContain(GERMAN_TAGLINE);
     for (const badge of ['actions/workflows/ci.yml/badge.svg', 'licence-MIT', 'node.js-24']) expect(firstScreen).toContain(badge);
-    expect(firstScreen).toMatch(/apaleo-bmd-export ist .*Hotels in Österreich.*Kanzlei/);
+    expect(firstScreen).toMatch(/apaleo-abacus-export ist .*Hotels in Österreich.*Kanzlei/);
     expect(firstScreen).toContain('Keine Gewähr, keine Steuerberatung');
     expect(firstScreen).toContain('Lass deine Kontenzuordnung von deiner Steuerberatung prüfen');
     expect(firstScreen).toContain('](DISCLAIMER.md)');
@@ -118,7 +118,7 @@ describe('README quick start', () => {
     expect(section(README, '## Schnellstart mit Docker')).toContain('docker compose -f docker-compose.example.yml build');
     expect(README).toContain('Es gibt noch kein npm-Paket und kein Container-Image zum Herunterladen. Du installierst aus dem Quellcode.');
     for (const text of [README, ENGLISH_README]) {
-      expect(text).not.toMatch(/npx\s+apaleo-bmd/);
+      expect(text).not.toMatch(/npx\s+apaleo-abacus/);
       expect(text).not.toContain('docker pull');
     }
   });
@@ -184,7 +184,7 @@ describe('README scope and comparison', () => {
 describe('README.en.md', () => {
   it('is a short English README that links the German one, the disclaimer and the licence', () => {
     expect(ENGLISH_README.split('\n').length).toBeLessThanOrEqual(80);
-    expect(ENGLISH_README.startsWith('# apaleo-bmd-export\n')).toBe(true);
+    expect(ENGLISH_README.startsWith('# apaleo-abacus-export\n')).toBe(true);
     for (const phrase of ['BMD Buchungsimport', 'BMD NTCS', 'a first test import with a Kanzlei is still pending']) expect(ENGLISH_README).toContain(phrase);
     for (const link of ['](README.md)', '](DISCLAIMER.md)', '](LICENSE)']) expect(ENGLISH_README).toContain(link);
     expect(ENGLISH_README).toContain('There is no npm package or container image release yet. You install from source.');
@@ -257,7 +257,7 @@ describe('docs folder', () => {
     const text = readRepoFile('docs/configuration.md');
     for (const path of configPaths()) expect(text, path).toContain(`\`${path}\``);
     for (const { variable } of [...ENV_OVERRIDES, ...SECRET_KEYS]) expect(text, variable).toContain(`\`${variable}\``);
-    expect(text).toContain('`APALEO_BMD_CONFIG`');
+    expect(text).toContain('`APALEO_ABACUS_CONFIG`');
   });
 
   it('has the Austrian rates, every account of the EKR template and a sign-off checklist in the mapping guide, and no English summary', () => {
@@ -311,19 +311,22 @@ describe('docs folder', () => {
     expect(section(MAINTAINERS, '## Testimporte')).toContain('| Datum | BMD-Version | Dialekt | Ergebnis |');
   });
 
-  it('plans later only items inside this product, no other target formats', () => {
+  it('plans later only items inside this product, no other target formats and no BMD-only items', () => {
     const backlog = section(MAINTAINERS, '## Später geplant');
-    for (const item of ['Personenkonten-Datei', 'Summendatei', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
+    for (const item of ['Summendatei', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
       expect(backlog).toContain(item);
     }
     expect(backlog).not.toMatch(/DATEV|RZL|lexoffice|Mews|Smoobu|Zielformat/);
+    expect(backlog).not.toMatch(/\bBMD\b|Personenkonten-Datei|BMD Com/);
   });
 
-  it('Metadata applied: lists the German description and every topic for discoverability', () => {
-    const topics = ['apaleo', 'bmd', 'bmd-ntcs', 'bmd-export', 'buchungsimport', 'ekr', 'hotel', 'hospitality', 'accounting', 'buchhaltung', 'steuerberater', 'austria', 'oesterreich'];
-    expect(MAINTAINERS).toContain(`--add-topic ${topics.join(',')}`);
-    expect(MAINTAINERS).toMatch(/--description "Kostenloser apaleo BMD Export.*BMD NTCS/);
-    expect(section(MAINTAINERS, '## Das Repository ist vorerst privat')).not.toContain('--visibility');
+  it('Metadata applied: lists the Swiss Abacus description and interim topics, no BMD metadata, until a08 sets the final ones', () => {
+    const topics = ['apaleo', 'abacus', 'abaconnect', 'hotel', 'buchhaltung', 'treuhand', 'schweiz', 'switzerland'];
+    const privateSection = section(MAINTAINERS, '## Das Repository ist vorerst privat');
+    expect(privateSection).toContain(`--add-topic ${topics.join(',')}`);
+    expect(privateSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*für Hotels in der Schweiz/);
+    expect(privateSection).not.toMatch(/--description "[^"]*\bBMD\b|--add-topic [^\n]*\b(bmd|ekr|austria|oesterreich)\b/);
+    expect(privateSection).not.toContain('--visibility');
   });
 });
 

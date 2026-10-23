@@ -1,4 +1,4 @@
-# apaleo-bmd-export
+# apaleo-abacus-export
 
 **Deutsch:** [README.md](README.md)
 
@@ -16,23 +16,23 @@ There is no npm package or container image release yet. You install from source.
 2. Install (needs Node.js 24 and git):
 
    ```sh
-   git clone https://github.com/krautdawg/apaleo-bmd-export.git
-   cd apaleo-bmd-export
+   git clone https://github.com/krautdawg/apaleo-abacus-export.git
+   cd apaleo-abacus-export
    corepack enable
    pnpm install --frozen-lockfile
    pnpm build
    node dist/cli/main.js --help
    ```
 
-   The commands below use `apaleo-bmd` (after `pnpm link --global`). Without it, type `node dist/cli/main.js` instead.
+   The commands below use `apaleo-abacus` (after `pnpm link --global`). Without it, type `node dist/cli/main.js` instead.
 
 3. Try it on the bundled demo data, without apaleo: `node dist/cli/main.js export --month 2026-09 --demo --dry-run`.
-4. Copy `apaleo-bmd.config.example.yaml` to `apaleo-bmd.config.yaml`, fill in the client id, the Buchungssymbol your Kanzlei created in BMD and your property under `properties` (`apaleo-bmd properties` lists the ids; `export` exports every property listed there), and set the secret in the environment (`APALEO_CLIENT_SECRET`), never in the file. Then create the mapping, have your Steuerberater check it, and export:
+4. Copy `apaleo-abacus.config.example.yaml` to `apaleo-abacus.config.yaml`, fill in the client id, the Buchungssymbol your Kanzlei created in BMD and your property under `properties` (`apaleo-abacus properties` lists the ids; `export` exports every property listed there), and set the secret in the environment (`APALEO_CLIENT_SECRET`), never in the file. Then create the mapping, have your Steuerberater check it, and export:
 
    ```sh
-   apaleo-bmd init-mapping --property BSP --template ekr
-   apaleo-bmd export --month 2026-09 --dry-run
-   apaleo-bmd export --month 2026-09
+   apaleo-abacus init-mapping --property BSP --template ekr
+   apaleo-abacus export --month 2026-09 --dry-run
+   apaleo-abacus export --month 2026-09
    ```
 
 ## Documentation (German)

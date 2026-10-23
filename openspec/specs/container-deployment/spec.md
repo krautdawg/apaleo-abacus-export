@@ -4,7 +4,7 @@
 Running the tool in a locally built container: the multi-stage, non-root Node.js 24 image with `/config` and `/data` volumes, the compose and `.env` examples that run `schedule --once` in a loop with secrets from the environment only, and the CI check that builds and runs the image without publishing it.
 ## Requirements
 ### Requirement: Container image
-The repository SHALL contain a multi-stage `Dockerfile` on Node.js 24 slim that runs as a non-root user, reads its config from `/config/apaleo-bmd.config.yaml`, writes exports to `/data`, and uses `apaleo-bmd` as entry point with `schedule --once` as default command.
+The repository SHALL contain a multi-stage `Dockerfile` on Node.js 24 slim that runs as a non-root user, reads its config from `/config/apaleo-abacus.config.yaml`, writes exports to `/data`, and uses `apaleo-abacus` as entry point with `schedule --once` as default command.
 
 #### Scenario: Run a one-off export in the container
 - **WHEN** the user runs the locally built image with the config and mapping mounted at `/config`, a volume at `/data`, `APALEO_CLIENT_SECRET` set, and the arguments `export --month 2026-10`
@@ -15,18 +15,18 @@ The repository SHALL contain a multi-stage `Dockerfile` on Node.js 24 slim that 
 - **THEN** the process runs as user `node`, not root
 
 ### Requirement: Secrets from the environment only
-The container SHALL need no secret in the mounted config: `APALEO_CLIENT_SECRET` SHALL come from the environment, and other overrides SHALL be limited to the documented allow-list of scalar keys from the `cli` capability plus `APALEO_BMD_TIMEZONE`.
+The container SHALL need no secret in the mounted config: `APALEO_CLIENT_SECRET` SHALL come from the environment, and other overrides SHALL be limited to the documented allow-list of scalar keys from the `cli` capability plus `APALEO_ABACUS_TIMEZONE`.
 
 #### Scenario: Compose with env file
 - **WHEN** the user copies `.env.example` to `.env`, fills in the secret and runs `docker compose -f docker-compose.example.yml up -d --build`
 - **THEN** the loop runs `schedule --once` with the secret from `.env` and the config from the mounted file
 
 #### Scenario: Array key through the environment
-- **WHEN** the compose file sets `APALEO_BMD_PROPERTIES=BSP`
+- **WHEN** the compose file sets `APALEO_ABACUS_PROPERTIES=BSP`
 - **THEN** the run fails with the message that `properties` can only be set in the config file
 
 ### Requirement: Compose and env examples
-The repository SHALL contain `docker-compose.example.yml` (one locally built service `apaleo-bmd` with the image name `apaleo-bmd-export:local`, restart policy, config and data volumes, env file, a `while sleep` loop around `schedule --once`) and `.env.example` listing the secret variable names with empty values, and `docs/docker.md` SHALL document in German the loop, the host-cron alternative and where the Kanzlei finds the BMD files.
+The repository SHALL contain `docker-compose.example.yml` (one locally built service `apaleo-abacus` with the image name `apaleo-abacus-export:local`, restart policy, config and data volumes, env file, a `while sleep` loop around `schedule --once`) and `.env.example` listing the secret variable names with empty values, and `docs/docker.md` SHALL document in German the loop, the host-cron alternative and where the Kanzlei finds the BMD files.
 
 #### Scenario: No secret values committed
 - **WHEN** the repository is inspected
@@ -34,20 +34,20 @@ The repository SHALL contain `docker-compose.example.yml` (one locally built ser
 
 #### Scenario: No customer data committed
 - **WHEN** the documented compose or host-cron setup creates `config/`, `data/` and `schedule.log` inside the clone
-- **THEN** git ignores all three, as well as a root `mapping-*.csv`, so `git add -A` cannot commit account numbers, the mapping or exported bookings
+- **THEN** git ignores all three, as well as a root `mapping-*.csv` and `apaleo-abacus.config.yaml`, so `git add -A` cannot commit account numbers, the mapping or exported bookings
 
 #### Scenario: Image name is local
 - **WHEN** `docker-compose.example.yml` is inspected
-- **THEN** the service has both `build:` and `image: apaleo-bmd-export:local`, and no registry host appears
+- **THEN** the service has both `build:` and `image: apaleo-abacus-export:local`, and no registry host appears
 
 ### Requirement: Image build check without publishing
-CI SHALL build the image and run it with `--help` and `--version` and the real demo (`export --month 2026-09 --demo` with `-w /data` on a data folder owned by uid 1000) on every pull request, SHALL check that the demo file `demo-output/BSP/2026-09/BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv` exists, and SHALL NOT log in to or push to any container registry. The image SHALL carry OCI labels for title `apaleo-bmd-export`, description, source and licence `MIT`.
+CI SHALL build the image and run it with `--help` and `--version` and the real demo (`export --month 2026-09 --demo` with `-w /data` on a data folder owned by uid 1000) on every pull request, SHALL check that the default target's demo file for property BSP and 2026-09 exists below `demo-output/BSP/2026-09/` (the BMD file `BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv` while BMD is the default target), and SHALL NOT log in to or push to any container registry. The image SHALL carry OCI labels for title `apaleo-abacus-export`, description, source and licence `MIT`.
 
 #### Scenario: Pull request
 - **WHEN** a pull request changes the Dockerfile
-- **THEN** the `docker` job builds the image, runs the three commands, finds the demo file, and pushes nothing
+- **THEN** the `docker` job builds the image tagged `apaleo-abacus-export:ci`, runs the three commands, finds the demo file, and pushes nothing
 
 #### Scenario: Labels
 - **WHEN** `docker inspect` reads the built image
-- **THEN** `org.opencontainers.image.title` is `apaleo-bmd-export` and `org.opencontainers.image.licenses` is `MIT`
+- **THEN** `org.opencontainers.image.title` is `apaleo-abacus-export` and `org.opencontainers.image.licenses` is `MIT`
 

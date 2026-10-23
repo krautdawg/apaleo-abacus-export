@@ -1,4 +1,4 @@
-﻿# apaleo-bmd Kontenzuordnung, Vorlage ekr-hotel@1, Sachkontenlänge 4, Personenkontenlänge 6, Dialekt ntcs. Alle Vorschläge mit der Steuerberatung prüfen. Spalte bmd_account in Excel als Text formatieren.
+﻿# apaleo-abacus Kontenzuordnung, Vorlage ekr-hotel@1, Sachkontenlänge 4, Personenkontenlänge 6, Dialekt ntcs. Alle Vorschläge mit der Steuerberatung prüfen. Spalte bmd_account in Excel als Text formatieren.
 apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;bmd_account;steuercode;bmd_vat_percent;kost;comment
 RevenueAccommodation_Normal:20.00;Revenues;Revenues Accommodation (20%);20;4030;1;20;;Vorschlag (ungeprüft): sonstige Erlöse 20 % USt (zum Beispiel Parken, Spa-Behandlungen). EKR Klasse 4.
 RevenueAccommodation_Null:0.00;Revenues;Revenues Accommodation (0%);0;4090;;0;;Vorschlag (ungeprüft): sonstige Erlöse ohne USt (Stornogebühren und No-Show ohne USt gehen auf 4091). Ohne Steuercode trägt BMD einen am Konto fix hinterlegten Steuercode ein: prüfe, dass 4090 in BMD keinen fixen Steuercode hat, oder trag den Steuercode der Kanzlei für nicht steuerbare Umsätze ein (W-UNTAXED-REVENUE).

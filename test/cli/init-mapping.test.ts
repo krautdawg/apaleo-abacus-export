@@ -10,14 +10,14 @@ import { BSP, CLIENT_ID, FIXTURE_FILES, createApaleoContext, loadBeispielData } 
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FakeSource, type FakeSourceData } from '../helpers/fake-source.js';
 
-const CONFIG = FIXTURE_FILES['apaleo-bmd.config.yaml'];
+const CONFIG = FIXTURE_FILES['apaleo-abacus.config.yaml'];
 
 async function fakeContext(options: { config?: string; files?: Record<string, string>; extraAccounts?: SourceAccount[] } = {}) {
   const data: FakeSourceData = await loadBeispielData();
   data.charts[BSP] = [...(data.charts[BSP] ?? []), ...(options.extraAccounts ?? [])];
   const fake = new FakeSource(data);
   const ctx = createTestContext({
-    files: { 'apaleo-bmd.config.yaml': options.config ?? CONFIG, ...options.files },
+    files: { 'apaleo-abacus.config.yaml': options.config ?? CONFIG, ...options.files },
     sourceFactory: () => fake,
   });
   return { ctx, fake };
@@ -44,7 +44,7 @@ const SPA_ROW = 'RevenueSpa_Normal:20.00;Revenues;Spa (20%);20;4030;1;20;;Vorsch
 const ACC10 = 'RevenueAccommodation_VeryReduced:10.00';
 const withBmd = (lines: string) => CONFIG.replace('  buchsymbol: HO\n', `  buchsymbol: HO\n${lines}`);
 
-describe('apaleo-bmd init-mapping', () => {
+describe('apaleo-abacus init-mapping', () => {
   it('writes mapping-BSP.csv with every leaf account from the EKR template and prints mapped and unmapped counts', async () => {
     const { ctx, fake } = await fakeContext();
     expect(await runCli(['init-mapping', '--property', BSP, '--template', 'ekr'], ctx)).toBe(0);
@@ -53,7 +53,7 @@ describe('apaleo-bmd init-mapping', () => {
     const bytes = read(ctx);
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(text(ctx).split('\r\n')[0]).toBe(
-      '# apaleo-bmd Kontenzuordnung, Vorlage ekr-hotel@1, Sachkontenlänge 4, Personenkontenlänge 6, Dialekt ntcs. ' +
+      '# apaleo-abacus Kontenzuordnung, Vorlage ekr-hotel@1, Sachkontenlänge 4, Personenkontenlänge 6, Dialekt ntcs. ' +
         'Alle Vorschläge mit der Steuerberatung prüfen. Spalte bmd_account in Excel als Text formatieren.',
     );
     const mapping = parseMapping(bytes, { path: 'x', sachkontenlaenge: 4 });

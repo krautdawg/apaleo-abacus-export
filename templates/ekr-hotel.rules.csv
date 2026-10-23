@@ -1,4 +1,4 @@
-# ekr-hotel@1: Vorlage für die Kontenzuordnung eines österreichischen Hotels nach dem Einheitskontenrahmen (EKR, KFS/BW 6), gelesen von apaleo-bmd init-mapping.
+# ekr-hotel@1: Vorlage für die Kontenzuordnung eines österreichischen Hotels nach dem Einheitskontenrahmen (EKR, KFS/BW 6), gelesen von apaleo-abacus init-mapping.
 # Jede Zeile ist ein Vorschlag (ungeprüft), den deine Steuerberatung bestätigt. Keine Gewähr, keine Steuerberatung. Die Kontonummern wählt die Kanzlei; viele führen einen eigenen, vom EKR abgeleiteten Kontenplan.
 # Spalten: apaleo-Kontotyp, name_pattern (regulärer Ausdruck ohne Groß-/Kleinschreibung; er prüft die apaleo-Kontonummer, zum Beispiel RevenueNoShow_VeryReduced:10.00, ebenso wie Kontoname und Elternkonten,
 # leer = jeder Name, * = jeder Name und zusätzlich eine Platzhalterzeile), apaleo-USt-Satz (leer = jeder),

@@ -7,7 +7,7 @@ import { createTestContext } from '../helpers/context.js';
 import { FakeSource } from '../helpers/fake-source.js';
 import { ledgerLine, tax } from '../helpers/ledger.js';
 
-const CONFIG = FIXTURE_FILES['apaleo-bmd.config.yaml'];
+const CONFIG = FIXTURE_FILES['apaleo-abacus.config.yaml'];
 const HEADER = 'apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;bmd_account;steuercode;bmd_vat_percent;kost;comment';
 const csv = (...lines: string[]) => [HEADER, ...lines].map((l) => `${l}\r\n`).join('');
 const withBmd = (lines: string) => CONFIG.replace('  buchsymbol: HO\n', `  buchsymbol: HO\n${lines}`);
@@ -28,11 +28,11 @@ function context(files: Record<string, string>, ledger?: LedgerLine[], config = 
   const data = structuredClone(BEISPIEL);
   if (ledger) data.ledger[BSP] = ledger;
   const fake = new FakeSource(data);
-  const ctx = createTestContext({ files: { 'apaleo-bmd.config.yaml': config, ...files }, sourceFactory: () => fake });
+  const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': config, ...files }, sourceFactory: () => fake });
   return { ctx, fake };
 }
 
-describe('apaleo-bmd mapping check (offline)', () => {
+describe('apaleo-abacus mapping check (offline)', () => {
   it('prints a summary of rows by type and exits 0 for a valid mapping', async () => {
     const { ctx, fake } = context({ 'mapping-BSP.csv': VALID });
     expect(await runCli(['mapping', 'check', '--property', BSP], ctx)).toBe(0);
@@ -142,7 +142,7 @@ describe('apaleo-bmd mapping check (offline)', () => {
   });
 });
 
-describe('apaleo-bmd mapping check --from --to', () => {
+describe('apaleo-abacus mapping check --from --to', () => {
   it('fails with E-UNMAPPED for a new revenue account 5010, naming type, name, line count and gross total', async () => {
     const credit = { number: '5010', name: 'Spa', type: 'Revenues' };
     const ledger = [
@@ -168,7 +168,7 @@ describe('apaleo-bmd mapping check --from --to', () => {
 
     const path = join(ctx.cwd, 'mapping-BSP.csv');
     const text = (await ctx.fs.readFile(path, 'utf8')).replace(/^3501;CityTaxes;City Tax \(no VAT\);0;;/m, '3501;CityTaxes;City Tax (no VAT);0;3580;');
-    const after = createTestContext({ files: { 'apaleo-bmd.config.yaml': CONFIG, 'mapping-BSP.csv': text }, sourceFactory: () => new FakeSource(BEISPIEL) });
+    const after = createTestContext({ files: { 'apaleo-abacus.config.yaml': CONFIG, 'mapping-BSP.csv': text }, sourceFactory: () => new FakeSource(BEISPIEL) });
     expect(await runCli(period, after)).toBe(0);
     expect(after.out()).not.toMatch(/^E-/m);
     expect(after.out()).toContain('every booked account is mapped.');
@@ -234,10 +234,10 @@ describe('apaleo-bmd mapping check --from --to', () => {
   });
 });
 
-describe('apaleo-bmd mapping usage', () => {
+describe('apaleo-abacus mapping usage', () => {
   it.each([
-    [['mapping'], 'Usage: apaleo-bmd mapping check'],
-    [['mapping', 'lint'], 'Usage: apaleo-bmd mapping check'],
+    [['mapping'], 'Usage: apaleo-abacus mapping check'],
+    [['mapping', 'lint'], 'Usage: apaleo-abacus mapping check'],
     [['mapping', 'check', '--from', '2026-09-01'], '--from and --to go together'],
     [['mapping', 'check', '--from', '2026-09-31', '--to', '2026-10-01'], '--from must be a date'],
     [['mapping', 'check', '--from', '2026-09-02', '--to', '2026-09-01'], 'lies before'],

@@ -2,15 +2,15 @@
 
 ## Das Repository ist vorerst privat
 
-Das Repository ist privat. README, Beschreibung und Themen sind für Hotels und Kanzleien in Österreich geschrieben, die auf GitHub nach „apaleo BMD Export“, „BMD NTCS Import“ oder „apaleo Buchhaltung Österreich“ suchen, aber **niemand außerhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**. Bis dahin bringen sie für die Auffindbarkeit nichts.
+Das Repository ist privat. Beschreibung und Themen sollen Hotels und Treuhänder in der Schweiz finden, die auf GitHub nach „apaleo Abacus Export“, „AbaConnect Import“ oder „apaleo Buchhaltung Schweiz“ suchen, aber **niemand außerhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**. Bis dahin bringen sie für die Auffindbarkeit nichts. README und Anleitungen beschreiben noch das BMD-Produkt; die OpenSpec-Änderung a08 stellt sie auf Abacus um.
 
-Beschreibung und Themen sind so gesetzt; die Sichtbarkeit hat dabei niemand geändert:
+Gesetzt ist bisher nur die Beschreibung; Themen sind noch keine gesetzt, und die Sichtbarkeit hat niemand geändert. Die OpenSpec-Änderung a08 setzt die endgültigen Themen. Bis dahin setzt dieser Befehl Beschreibung und Themen, ohne die Sichtbarkeit zu ändern:
 
 ```sh
-gh repo edit krautdawg/apaleo-bmd-export \
-  --description "Kostenloser apaleo BMD Export (Open Source): Buchungsimport für BMD NTCS aus apaleo. Selbst gehostet, MIT, kein Abo." \
-  --add-topic apaleo,bmd,bmd-ntcs,bmd-export,buchungsimport,ekr,hotel,hospitality,accounting,buchhaltung,steuerberater,austria,oesterreich
-gh repo view krautdawg/apaleo-bmd-export --json description,repositoryTopics,visibility
+gh repo edit krautdawg/apaleo-abacus-export \
+  --description "Kostenloser apaleo Abacus Export (Open Source): Buchungsimport für Abacus aus apaleo, für Hotels in der Schweiz. Selbst gehostet, MIT, kein Abo." \
+  --add-topic apaleo,abacus,abaconnect,hotel,buchhaltung,treuhand,schweiz,switzerland
+gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility
 ```
 
 Keiner der Schritte unter „Vor der Veröffentlichung“ ist bisher erledigt. Jeder einzelne ist die Entscheidung des Maintainers.
@@ -25,13 +25,15 @@ gh pr checks <number> --watch --fail-fast && gh pr merge <number> --squash
 
 ## Vor der Veröffentlichung
 
+Das Tool wird gerade von BMD auf Abacus umgestellt. Bis README und Anleitungen das Abacus-Produkt beschreiben (OpenSpec-Änderung a08), bleibt das Repository privat.
+
 In dieser Reihenfolge:
 
 1. [ ] Mach mit einer Kanzlei einen ersten echten Testimport in BMD NTCS (Testmandant, Checkliste in [bmd-import.md](bmd-import.md#erster-import-bitte-prüfen)) und trag ihn unten unter [Testimporte](#testimporte) ein: Datum, BMD-Version, Dialekt und Ergebnis. Erst wenn der Import ohne Nacharbeit ging, darf das README mehr sagen als „folgt dem dokumentierten BMD-Importformat“.
 2. [ ] Lies das README in einem frischen Klon und führe den Schnellstart und `export --month 2026-09 --demo --dry-run` noch einmal aus.
 3. [ ] Starte `pnpm test` (mit dem Docs-Test) und prüfe, dass die CI auf `main` grün ist.
 4. [ ] Durchsuche die Historie nach allem, was nicht öffentlich werden darf: `git log -p | grep -iE 'secret|password|token'` darf nur Code und Dokumentation zeigen, nie einen Wert. Keine echten Gästedaten in den Testdaten.
-5. [ ] Stelle die Sichtbarkeit um: `gh repo edit krautdawg/apaleo-bmd-export --visibility public --accept-visibility-change-consequences`.
+5. [ ] Stelle die Sichtbarkeit um: `gh repo edit krautdawg/apaleo-abacus-export --visibility public --accept-visibility-change-consequences`.
 6. [ ] Lade ein Vorschaubild (Social Preview) hoch (Settings > General > Social preview).
 7. [ ] Entscheide, ob es GitHub Discussions für Fragen geben soll. Schaltest du sie ein, leg eine `config.yml` in `.github/ISSUE_TEMPLATE/` an, die auf die Discussions verweist; bis dahin sind die Vorlagen für Issues der einzige Weg.
 8. [ ] Schalte die private Meldung von Sicherheitslücken ein (Settings > Code security), auf die `SECURITY.md` verweist.
@@ -52,7 +54,6 @@ Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beisp
 
 Nicht Teil von Version 1, in keiner bestimmten Reihenfolge, und alles innerhalb dieses Tools. Jeder Punkt braucht eine eigene OpenSpec-Änderung.
 
-- **Personenkonten-Datei**: die Stammdaten der Debitoren (Firmen mit Name, Adresse und UID) als eigene Importdatei für BMD, damit Rechnungen an Firmen nicht nur auf den Sammeldebitor gehen.
 - **Summendatei**: neben der Datei mit einer Buchung pro apaleo-Zeile eine verdichtete Datei mit einer Buchung pro Tag, Konto und Steuersatz, für sehr große Hotels.
 - **Gebühren aus Abrechnungsdateien**: die Gebühren und Rückbuchungen (Chargebacks) der Zahlungsdienstleister aus ihren Abrechnungen buchen.
 - **E-Mail-Versand**: die Dateien per SMTP an die Kanzlei schicken statt über einen gemeinsamen Ordner.

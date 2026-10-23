@@ -38,17 +38,17 @@ describe('licence and disclaimer', () => {
 describe('package', () => {
   const pkg = JSON.parse(read('package.json')) as Record<string, unknown>;
 
-  it('is apaleo-bmd-export with exactly one binary, apaleo-bmd, and no apaleo-datev binary', () => {
-    expect(pkg.name).toBe('apaleo-bmd-export');
-    expect(Object.keys(pkg.bin as object)).toEqual(['apaleo-bmd']);
+  it('is apaleo-abacus-export with exactly one binary, apaleo-abacus, and no apaleo-bmd or apaleo-datev binary', () => {
+    expect(pkg.name).toBe('apaleo-abacus-export');
+    expect(Object.keys(pkg.bin as object)).toEqual(['apaleo-abacus']);
   });
 
   it('is private so pnpm publish refuses', () => {
     expect(pkg.private).toBe(true);
   });
 
-  it('installs the apaleo-bmd binary and the four quality scripts', () => {
-    expect(pkg.bin).toEqual({ 'apaleo-bmd': 'dist/cli/main.js' });
+  it('installs the apaleo-abacus binary and the four quality scripts', () => {
+    expect(pkg.bin).toEqual({ 'apaleo-abacus': 'dist/cli/main.js' });
     expect(Object.keys(pkg.scripts as object)).toEqual(expect.arrayContaining(['build', 'test', 'lint', 'typecheck']));
   });
 });
@@ -83,12 +83,12 @@ describe('CI workflow', () => {
 
   it('builds the image and runs --help and --version in a docker job, without registry login or push', () => {
     const docker = workflow.jobs.docker?.steps.map((s) => s.run ?? '') ?? [];
-    expect(docker).toContain('docker build -t apaleo-bmd-export:ci .');
-    expect(docker).toContain('docker run --rm apaleo-bmd-export:ci --help');
-    expect(docker).toContain('docker run --rm apaleo-bmd-export:ci --version');
-    expect(docker).toContain('docker run --rm apaleo-bmd-export:ci export --month 2026-09 --demo --dry-run');
+    expect(docker).toContain('docker build -t apaleo-abacus-export:ci .');
+    expect(docker).toContain('docker run --rm apaleo-abacus-export:ci --help');
+    expect(docker).toContain('docker run --rm apaleo-abacus-export:ci --version');
+    expect(docker).toContain('docker run --rm apaleo-abacus-export:ci export --month 2026-09 --demo --dry-run');
     const text = read('.github/workflows/ci.yml');
-    expect(text).toContain('docker run --rm -w /data -v "$RUNNER_TEMP/demo-data:/data" apaleo-bmd-export:ci export --month 2026-09 --demo\n');
+    expect(text).toContain('docker run --rm -w /data -v "$RUNNER_TEMP/demo-data:/data" apaleo-abacus-export:ci export --month 2026-09 --demo\n');
     expect(text).toContain('sudo chown 1000:1000 "$RUNNER_TEMP/demo-data"');
     expect(text).toContain('test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv"');
     for (const forbidden of ['docker login', 'docker push', 'docker/login-action', 'docker/build-push-action', 'ghcr.io', 'packages: write']) {
@@ -110,8 +110,8 @@ describe('container image', () => {
   it('runs as user node with the config in /config, the exports in /data and schedule --once as default command', () => {
     const runtime = instructions.slice(instructions.indexOf('FROM node:24-bookworm-slim'));
     expect(runtime).toContain('USER node');
-    expect(dockerfile).toContain('APALEO_BMD_CONFIG=/config/apaleo-bmd.config.yaml');
-    expect(dockerfile).toContain('APALEO_BMD_OUTPUT_DIR=/data');
+    expect(dockerfile).toContain('APALEO_ABACUS_CONFIG=/config/apaleo-abacus.config.yaml');
+    expect(dockerfile).toContain('APALEO_ABACUS_OUTPUT_DIR=/data');
     expect(runtime).toContain('VOLUME ["/config", "/data"]');
     expect(runtime).toContain('ENTRYPOINT ["node", "/app/dist/cli/main.js"]');
     expect(runtime.at(-1)).toBe('CMD ["schedule", "--once"]');
@@ -123,9 +123,9 @@ describe('container image', () => {
       [...dockerfile.matchAll(/(org\.opencontainers\.image\.[a-z]+)="([^"]*)"/g)].map(([, key = '', value = '']) => [key.replace('org.opencontainers.image.', ''), value]),
     );
     expect(labels).toEqual({
-      title: 'apaleo-bmd-export',
+      title: 'apaleo-abacus-export',
       description: expect.stringContaining('BMD Buchungsimport'),
-      source: 'https://github.com/krautdawg/apaleo-bmd-export',
+      source: 'https://github.com/krautdawg/apaleo-abacus-export',
       licenses: 'MIT',
     });
     expect(dockerfile).not.toMatch(/datev/i);
@@ -154,10 +154,10 @@ describe('compose and env examples', () => {
     expect(service?.volumes).toEqual(['./config:/config:ro', './data:/data']);
   });
 
-  it('names the service apaleo-bmd and the image apaleo-bmd-export:local, with no registry host', () => {
-    expect(Object.keys(compose.services)).toEqual(['apaleo-bmd']);
-    expect(compose.services['apaleo-bmd']?.build).toBe('.');
-    expect(compose.services['apaleo-bmd']?.image).toBe('apaleo-bmd-export:local');
+  it('names the service apaleo-abacus and the image apaleo-abacus-export:local, with no registry host', () => {
+    expect(Object.keys(compose.services)).toEqual(['apaleo-abacus']);
+    expect(compose.services['apaleo-abacus']?.build).toBe('.');
+    expect(compose.services['apaleo-abacus']?.image).toBe('apaleo-abacus-export:local');
     const text = read('docker-compose.example.yml');
     for (const registry of ['ghcr.io', 'docker.io', 'quay.io', 'docker pull']) expect(text).not.toContain(registry);
   });
@@ -175,12 +175,12 @@ describe('compose and env examples', () => {
 
   it('git-ignores the folders and the log the documented setup creates inside the clone', () => {
     const paths = [
-      'config/apaleo-bmd.config.yaml',
+      'config/apaleo-abacus.config.yaml',
       'config/mapping-BSP.csv',
       'data/BSP/2026-10/BMD_Buchungsimport_20261001-20261031_BSP.csv',
       'data/BSP/2026-10/manifest.json',
       'schedule.log',
-      'apaleo-bmd.config.yaml',
+      'apaleo-abacus.config.yaml',
       'mapping-BSP.csv',
       'exports/BSP/2026-10/manifest.json',
       'demo-output/BSP/2026-09/manifest.json',
@@ -194,7 +194,7 @@ describe('compose and env examples', () => {
 
   it('still tracks the examples and templates next to those ignored paths', () => {
     const root = fileURLToPath(new URL('..', import.meta.url));
-    const tracked = ['apaleo-bmd.config.example.yaml', 'docker-compose.example.yml', '.env.example', 'test/fixtures/mapping/ekr-beispiel.csv', 'templates/ekr-hotel.rules.csv'];
+    const tracked = ['apaleo-abacus.config.example.yaml', 'docker-compose.example.yml', '.env.example', 'test/fixtures/mapping/ekr-beispiel.csv', 'templates/ekr-hotel.rules.csv'];
     let ignored = '';
     try {
       ignored = execFileSync('git', ['check-ignore', '--no-index', ...tracked], { cwd: root, encoding: 'utf8' });
