@@ -10,7 +10,7 @@ Kostenloser apaleo BMD Export: Buchungsimport für BMD NTCS aus apaleo, Open Sou
 
 apaleo-abacus-export ist ein kostenloser BMD-Export für Hotels in Österreich, die mit apaleo arbeiten, und für ihre Kanzlei. Er liest das apaleo-Buchungsjournal eines Monats und schreibt pro Hotel eine Datei im BMD Buchungsimport, die deine Steuerberaterin, dein Steuerberater oder deine Buchhaltung in BMD NTCS einliest, mit einer Vorlage für die Kontenzuordnung nach dem Einheitskontenrahmen (EKR). Das Tool ist Open Source (MIT-Lizenz) und läuft auf deinem eigenen Rechner mit deinem eigenen apaleo-Konto. Kein Abo, kein gehosteter Dienst, kein Konto bei uns.
 
-**Stand:** Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A); ein erster Testimport mit einer Kanzlei steht noch aus. Was die Kanzlei dabei prüft, steht in [docs/bmd-import.md](docs/bmd-import.md).
+**Stand:** Die Datei folgt der dokumentierten AbaConnect-Schnittstelle „XML Buchungen“; ein erster Testimport mit einem Treuhänder steht noch aus. Was der Treuhänder dabei prüft, steht in [docs/abacus-import.md](docs/abacus-import.md).
 
 > **Keine Gewähr, keine Steuerberatung.** Lass deine Kontenzuordnung von deiner Steuerberatung prüfen, ebenso die ersten Importe in BMD. Lies den [Haftungsausschluss](DISCLAIMER.md).
 
@@ -86,7 +86,7 @@ Es gibt noch kein npm-Paket und kein Container-Image zum Herunterladen. Du insta
    apaleo-abacus export --month 2026-09 --dry-run
    ```
 
-5. **Export**: eine Abacus-Datei pro Hotel nach `exports/<Hotel>/<JJJJ-MM>/`. Gib sie deinem Treuhänder für den Import in Abacus ([abacus-format.md](docs/abacus-format.md)).
+5. **Export**: eine Abacus-Datei pro Hotel nach `exports/<Hotel>/<JJJJ-MM>/`. Gib sie deinem Treuhänder für den Import in Abacus ([abacus-import.md](docs/abacus-import.md), die Felder der Datei in [abacus-format.md](docs/abacus-format.md)).
 
    ```sh
    apaleo-abacus export --month 2026-09
@@ -157,9 +157,9 @@ Selbst betreiben heißt: Du behältst die Daten und zahlst nichts, aber du spiel
 
 **Wohin gehen meine Daten?** Nur auf deine eigene Festplatte. Das Tool liest apaleo mit deiner Custom App und schreibt Dateien in einen lokalen Ordner. Es schickt nichts an uns oder an andere. Die Datei enthält keine Gästenamen: Buchungstexte nutzen Kontobezeichnungen, nie die Namen von Gastfolios.
 
-**Kann es direkt an BMD übertragen, etwa über BMD Com?** Nein. Die Kanzlei importiert die Datei in BMD NTCS; siehe [docs/bmd-import.md](docs/bmd-import.md).
+**Kann es direkt an Abacus übertragen, etwa über AbaConnect-Webservices?** Nein. Dein Treuhänder importiert die Abacus-Datei in Abacus; siehe [docs/abacus-import.md](docs/abacus-import.md).
 
-**Hat eine Kanzlei die Datei schon importiert?** Noch nicht. Die Datei folgt den veröffentlichten Beschreibungen des BMD-Imports (PR08/PR08A, dvo); die Quellen stehen in [docs/bmd-format.md](docs/bmd-format.md). Der erste Testimport wird mit Datum, BMD-Version und Ergebnis in [docs/maintainers.md](docs/maintainers.md#testimporte) festgehalten.
+**Hat ein Treuhänder die Datei schon importiert?** Noch nicht. Die Datei folgt der veröffentlichten Beschreibung der AbaConnect-Schnittstelle „XML Buchungen“; die Quellen stehen in [docs/abacus-format.md](docs/abacus-format.md). Der erste Testimport wird mit Datum und Ergebnis in [docs/maintainers.md](docs/maintainers.md#testimporte) festgehalten.
 
 **Kann ich einen Import rückgängig machen?** Die Buchungen kommen in den Abacus-Mandanten aus `abacus.mandant`; eine falsch importierte Datei löscht dein Treuhänder im Nebenjournal oder storniert sie. Importiere nie eine Datei aus `--overwrite`, bevor die Buchungen der alten Datei entfernt sind; siehe [docs/export.md](docs/export.md#noch-einmal-exportieren).
 
@@ -167,7 +167,7 @@ Selbst betreiben heißt: Du behältst die Daten und zahlst nichts, aber du spiel
 
 **Ich nutze heute einen bezahlten Connector. Kann ich wechseln?** Ja. Exportiere die Kontenzuordnung des Connectors als CSV und leg die Zuordnung mit `init-mapping --template kmu-hotel --accounts-from <Datei>` an: Das Tool übernimmt Konten und Kostenstellen, die MWST-Codes kommen aus der Vorlage; prüf das Ergebnis mit deinem Treuhänder. Fang mit dem ersten Monat an, den der alte Connector nicht mehr geliefert hat, damit nichts doppelt importiert wird; siehe [docs/docker.md](docs/docker.md#der-erste-lauf).
 
-**Und BMD 5.5?** Dieses Tool schreibt Abacus-Dateien. Für BMD NTCS und BMD 5.5 nimm apaleo-bmd-export; die frühere BMD-Fassung ist in [docs/bmd-format.md](docs/bmd-format.md) beschrieben.
+**Und BMD 5.5?** Dieses Tool schreibt Abacus-Dateien. Für BMD NTCS und BMD 5.5 nimm apaleo-bmd-export.
 
 **Gibt es das auch für DATEV?** Dieses Tool baut auf [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) auf, und wer in Deutschland mit DATEV bucht, nimmt dieses Projekt.
 

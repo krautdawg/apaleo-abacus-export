@@ -38,7 +38,7 @@ Hat ein früheres Tool (zum Beispiel ein bezahlter Connector) einige dieser Zeit
 - Ein Hotel und Zeitraum, dessen BMD-Datei im Ausgabeordner liegt oder in der `manifest.json` dieses Monats als aktuell vermerkt ist (auch nachdem du die Datei verschoben hast), meldet das Tool als `already exported`, ohne apaleo zu fragen.
 - Ein fehlgeschlagener Zeitraum (zum Beispiel `E-UNMAPPED`) wird bei jedem Lauf erneut versucht, bis er klappt oder das Nachholfenster verlässt.
 - Ein Zeitraum ohne Buchungen schreibt keine Datei und wird deshalb bei jedem Lauf im Fenster erneut abgefragt.
-- Nachbuchungen, nachdem eine Datei geschrieben wurde, holt das Tool nicht automatisch ab. Dafür gibt es den Ablauf mit `export --overwrite` in [export.md](export.md), den du von Hand startest, nachdem die Kanzlei die importierten Buchungen in BMD storniert hat ([bmd-import.md](bmd-import.md)).
+- Nachbuchungen, nachdem eine Datei geschrieben wurde, holt das Tool nicht automatisch ab. Dafür gibt es den Ablauf mit `export --overwrite` in [export.md](export.md), den du von Hand startest, nachdem dein Treuhänder die importierten Buchungen in Abacus gelöscht oder storniert hat ([abacus-import.md](abacus-import.md#rückgängig-machen)).
 
 ### Ausgabe und Exit-Codes
 
@@ -114,7 +114,7 @@ data/
       manifest.json                                           Prüfsummen; daran erkennt der nächste Lauf, was schon exportiert ist
 ```
 
-Das Tool verschickt nichts: Es gibt in dieser Version weder Mail noch Upload. Gib der Kanzlei die `.csv` und das Protokoll so, wie ihr es vereinbart habt, zum Beispiel über einen freigegebenen Ordner, auf den `./data` zeigt, oder über euren üblichen Datenaustausch. Ändere die Datei dabei nicht; schon ein Speichern in Excel kann Trennzeichen und Umlaute zerstören. Wie die Kanzlei sie in BMD NTCS einliest, steht in [bmd-import.md](bmd-import.md).
+Das Tool verschickt nichts: Es gibt in dieser Version weder Mail noch Upload. Gib der Kanzlei die `.csv` und das Protokoll so, wie ihr es vereinbart habt, zum Beispiel über einen freigegebenen Ordner, auf den `./data` zeigt, oder über euren üblichen Datenaustausch. Ändere die Datei dabei nicht; schon ein Speichern in Excel kann Trennzeichen und Umlaute zerstören. Wie dein Treuhänder sie in Abacus importiert, steht in [abacus-import.md](abacus-import.md).
 
 Lösche oder verschiebe nach der Übergabe nicht den ganzen Monatsordner, und nie die `manifest.json`: Solange der Zeitraum im Nachholfenster liegt, würde der nächste Lauf ihn sonst noch einmal exportieren, und BMD würde ihn doppelt buchen. Die `.csv` allein darfst du verschieben; der Eintrag in `manifest.json` genügt.
 

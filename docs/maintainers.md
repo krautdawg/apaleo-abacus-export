@@ -29,7 +29,7 @@ Das Tool wird gerade von BMD auf Abacus umgestellt. Bis README und Anleitungen d
 
 In dieser Reihenfolge:
 
-1. [ ] Mach mit einer Kanzlei einen ersten echten Testimport in BMD NTCS (Testmandant, Checkliste in [bmd-import.md](bmd-import.md#erster-import-bitte-prüfen)) und trag ihn unten unter [Testimporte](#testimporte) ein: Datum, BMD-Version, Dialekt und Ergebnis. Erst wenn der Import ohne Nacharbeit ging, darf das README mehr sagen als „folgt dem dokumentierten BMD-Importformat“.
+1. [ ] Mach mit einem Treuhänder einen ersten echten Testimport in Abacus FIBU (Testmandant, Checkliste in [abacus-import.md](abacus-import.md#erster-testimport-offene-fragen)) und trag ihn unten unter [Testimporte](#testimporte) ein: Datum, Version, Programm und Ergebnis. Erst wenn der Import ohne Nacharbeit ging, darf das README mehr sagen als „folgt der dokumentierten Schnittstelle XML Buchungen“.
 2. [ ] Lies das README in einem frischen Klon und führe den Schnellstart und `export --month 2026-09 --demo --dry-run` noch einmal aus.
 3. [ ] Starte `pnpm test` (mit dem Docs-Test) und prüfe, dass die CI auf `main` grün ist.
 4. [ ] Durchsuche die Historie nach allem, was nicht öffentlich werden darf: `git log -p | grep -iE 'secret|password|token'` darf nur Code und Dokumentation zeigen, nie einen Wert. Keine echten Gästedaten in den Testdaten.
@@ -48,7 +48,7 @@ Jeder echte Import einer Datei des Tools in BMD, den eine Kanzlei gemacht hat. S
 | Datum | BMD-Version | Dialekt | Ergebnis |
 |---|---|---|---|
 
-Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beispiel Zeichensatz, Steuercodes in der UVA-Vorschau, Belegnummern), ohne Namen der Kanzlei oder des Hotels, wenn sie das nicht möchten. Jede offene Frage aus [bmd-format.md](bmd-format.md#offene-fragen), die der Import beantwortet, kommt als Einstellung oder Korrektur in eine eigene OpenSpec-Änderung.
+Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beispiel Zeichensatz, MWST-Codes im MWST-Journal, Belegnummern), ohne Namen der Kanzlei oder des Hotels, wenn sie das nicht möchten. Jede offene Frage aus [abacus-format.md](abacus-format.md#offene-fragen), die der Import beantwortet, kommt als Einstellung oder Korrektur in eine eigene OpenSpec-Änderung.
 
 ## Später geplant
 

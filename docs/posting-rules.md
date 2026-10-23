@@ -68,7 +68,7 @@ Eine erhaltene oder erstattete Anzahlung ohne `taxes[]` nimmt den Satz einer `Po
 
 ## Österreichische Sonderfälle
 
-Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispielzeilen stammen aus dem früheren österreichischen Testmonat der BMD-Fassung (Hotel Beispiel Tirol, August 2026, unter dem Symbol `AR`; [bmd-import.md](bmd-import.md#buchungssymbol-anlegen)) (Spalten `satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;steuercode;betrag;steuer;text;kost;extbelegnr;gegenbuchkz;verbuchkz`).
+Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispielzeilen stammen aus dem früheren österreichischen Testmonat der BMD-Fassung (Hotel Beispiel Tirol, August 2026, unter dem Symbol `AR`) (Spalten `satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;steuercode;betrag;steuer;text;kost;extbelegnr;gegenbuchkz;verbuchkz`).
 
 **Anzahlung, erhalten, aufgelöst und erstattet.** Die erhaltene Anzahlung trägt die USt bei Erhalt (Mindest-Istbesteuerung) mit dem normalen Umsatzsteuer-Code; Auflösung und Erstattung buchen sie zurück, mit positivem Betrag und positiver Steuer auf dem Anzahlungskonto:
 

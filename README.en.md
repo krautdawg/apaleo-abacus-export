@@ -42,8 +42,8 @@ The documentation is written in German for hotels and their Kanzlei in Austria:
 - [README.md](README.md): overview, quick start, Docker, comparison, FAQ
 - [docs/setup-apaleo.md](docs/setup-apaleo.md): the apaleo custom app and its permissions
 - [docs/mapping-guide.md](docs/mapping-guide.md): the account mapping (EKR, Steuercodes, Ortstaxe, Anzahlungen), for the Steuerberater
-- [docs/bmd-import.md](docs/bmd-import.md): importing the file into BMD NTCS and the first-import checklist
-- [docs/bmd-format.md](docs/bmd-format.md): the fields of the file and the sources they were checked against
+- [docs/abacus-import.md](docs/abacus-import.md): importing the file into Abacus FIBU and the first-import checklist
+- [docs/abacus-format.md](docs/abacus-format.md): the fields of the file and the sources they were checked against
 - [docs/configuration.md](docs/configuration.md), [docs/docker.md](docs/docker.md), [docs/troubleshooting.md](docs/troubleshooting.md)
 - [docs/architecture.md](docs/architecture.md): modules and how to add a source or a target writer
 
