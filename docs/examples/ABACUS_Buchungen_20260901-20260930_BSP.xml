@@ -18,47 +18,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-03</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>311.40</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
+          <KeyAmount>311.40</KeyAmount>
           <Account>1090</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Anzahlung 10 %</Text1>
-          <Text2>PSP-8823410001</Text2>
+          <Text1>Anzahlung 3,8 %</Text1>
+          <Text2>PSP-BSP-0001</Text2>
           <DocumentNumber>0901000001</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-03</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>311.40</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
+          <KeyAmount>311.40</KeyAmount>
           <Account>2030</Account>
           <TaxAccount>2030</TaxAccount>
-          <Text1>Anzahlung 10 %</Text1>
-          <Text2>PSP-8823410001</Text2>
+          <Text1>Anzahlung 3,8 %</Text1>
+          <Text2>PSP-BSP-0001</Text2>
           <DocumentNumber>0901000001</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-20.00</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-11.40</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -73,47 +73,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>98.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>155.70</Amount>
           </AmountData>
-          <KeyAmount>98.00</KeyAmount>
+          <KeyAmount>155.70</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000002</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>98.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>155.70</Amount>
           </AmountData>
-          <KeyAmount>98.00</KeyAmount>
+          <KeyAmount>155.70</KeyAmount>
           <Account>3400</Account>
           <TaxAccount>3400</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000002</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-8.91</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-5.70</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -128,47 +128,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>13.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>54.05</Amount>
           </AmountData>
-          <KeyAmount>13.20</KeyAmount>
+          <KeyAmount>54.05</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Speisen und Getränke 8,1 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000003</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>13.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>54.05</Amount>
           </AmountData>
-          <KeyAmount>13.20</KeyAmount>
+          <KeyAmount>54.05</KeyAmount>
           <Account>3200</Account>
           <TaxAccount>3200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Speisen und Getränke 8,1 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000003</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-1.20</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-4.05</KeyAmount>
+            <TaxRate>8.1</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>311</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -183,50 +183,34 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.60</Amount>
+            <Currency>CHF</Currency>
+            <Amount>4.20</Amount>
           </AmountData>
-          <KeyAmount>3.60</KeyAmount>
+          <KeyAmount>4.20</KeyAmount>
           <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Kurtaxe</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000004</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.60</Amount>
+            <Currency>CHF</Currency>
+            <Amount>4.20</Amount>
           </AmountData>
-          <KeyAmount>3.60</KeyAmount>
-          <Account>3100</Account>
-          <TaxAccount>3100</TaxAccount>
-          <BookingLevel1>20</BookingLevel1>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>4.20</KeyAmount>
+          <Account>2210</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Kurtaxe</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000004</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-0.60</KeyAmount>
-            <TaxRate>20</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V20</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -239,34 +223,49 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>10.81</Amount>
           </AmountData>
-          <KeyAmount>3.20</KeyAmount>
+          <KeyAmount>10.81</KeyAmount>
           <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Kurtaxe</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <TaxAccount>2200</TaxAccount>
+          <Text1>Erlös Übrige Erlöse 8,1 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000005</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-10</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>10.81</Amount>
           </AmountData>
-          <KeyAmount>3.20</KeyAmount>
-          <Account>2210</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Kurtaxe</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>10.81</KeyAmount>
+          <Account>3500</Account>
+          <TaxAccount>3500</TaxAccount>
+          <Text1>Erlös Übrige Erlöse 8,1 %</Text1>
+          <Text2>BSP-BRAVO-1-V1</Text2>
           <DocumentNumber>0901000005</DocumentNumber>
+          <TaxData mode='SAVE'>
+            <TaxIncluded>I</TaxIncluded>
+            <TaxType>0</TaxType>
+            <UseCode>0</UseCode>
+            <AmountData mode='SAVE'>
+              <Currency>CHF</Currency>
+              <Amount>0.00</Amount>
+            </AmountData>
+            <KeyAmount>-0.81</KeyAmount>
+            <TaxRate>8.1</TaxRate>
+            <TaxCoefficient>100</TaxCoefficient>
+            <Country>CH</Country>
+            <TaxCode>311</TaxCode>
+            <FlatRate>0</FlatRate>
+          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -279,50 +278,34 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-14</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-11</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>24.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>224.76</Amount>
           </AmountData>
-          <KeyAmount>24.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BAR-BSP-1</Text2>
+          <KeyAmount>224.76</KeyAmount>
+          <Account>1000</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Bar</Text1>
+          <Text2>KASSE-BSP-1</Text2>
           <DocumentNumber>0901000006</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-14</EntryDate>
+          <EntryDate>2026-09-11</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>24.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>224.76</Amount>
           </AmountData>
-          <KeyAmount>24.00</KeyAmount>
-          <Account>3100</Account>
-          <TaxAccount>3100</TaxAccount>
-          <BookingLevel1>20</BookingLevel1>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BAR-BSP-1</Text2>
+          <KeyAmount>224.76</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Bar</Text1>
+          <Text2>KASSE-BSP-1</Text2>
           <DocumentNumber>0901000006</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-4.00</KeyAmount>
-            <TaxRate>20</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V20</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -335,47 +318,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>165.00</KeyAmount>
-          <Account>1090</Account>
+          <KeyAmount>103.80</KeyAmount>
+          <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Anzahlung 10 %</Text1>
-          <Text2>PSP-8823410002</Text2>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000007</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>165.00</KeyAmount>
-          <Account>2030</Account>
-          <TaxAccount>2030</TaxAccount>
-          <Text1>Anzahlung 10 %</Text1>
-          <Text2>PSP-8823410002</Text2>
+          <KeyAmount>103.80</KeyAmount>
+          <Account>3400</Account>
+          <TaxAccount>3400</TaxAccount>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000007</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-15.00</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-3.80</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -390,47 +373,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>98.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>98.00</KeyAmount>
+          <KeyAmount>103.80</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000008</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>98.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>98.00</KeyAmount>
+          <KeyAmount>103.80</KeyAmount>
           <Account>3400</Account>
           <TaxAccount>3400</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000008</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-8.91</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-3.80</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -445,49 +428,34 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>13.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>8.40</Amount>
           </AmountData>
-          <KeyAmount>13.20</KeyAmount>
+          <KeyAmount>8.40</KeyAmount>
           <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Kurtaxe</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000009</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>13.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>8.40</Amount>
           </AmountData>
-          <KeyAmount>13.20</KeyAmount>
-          <Account>3200</Account>
-          <TaxAccount>3200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>8.40</KeyAmount>
+          <Account>2210</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Kurtaxe</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000009</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-1.20</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -497,51 +465,50 @@
           <EntryLevel>A</EntryLevel>
           <EntryType>S</EntryType>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
+          <DebitCredit>C</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.60</Amount>
+            <Currency>CHF</Currency>
+            <Amount>207.60</Amount>
           </AmountData>
-          <KeyAmount>3.60</KeyAmount>
+          <KeyAmount>207.60</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <Text1>Auflösung Anzahlung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000010</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <DebitCredit>C</DebitCredit>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.60</Amount>
+            <Currency>CHF</Currency>
+            <Amount>207.60</Amount>
           </AmountData>
-          <KeyAmount>3.60</KeyAmount>
-          <Account>3100</Account>
-          <TaxAccount>3100</TaxAccount>
-          <BookingLevel1>20</BookingLevel1>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>207.60</KeyAmount>
+          <Account>2030</Account>
+          <TaxAccount>2030</TaxAccount>
+          <Text1>Auflösung Anzahlung 3,8 %</Text1>
+          <Text2>BSP-ALPHA-1-V1</Text2>
           <DocumentNumber>0901000010</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-0.60</KeyAmount>
-            <TaxRate>20</TaxRate>
+            <KeyAmount>7.60</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V20</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -553,37 +520,52 @@
           <EntryLevel>A</EntryLevel>
           <EntryType>S</EntryType>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
+          <DebitCredit>C</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>3.20</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Kurtaxe</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>103.80</KeyAmount>
+          <Account>1090</Account>
+          <TaxAccount>2200</TaxAccount>
+          <Text1>Rückzahlung Anzahlung 3,8 %</Text1>
+          <Text2>PSP-BSP-0002</Text2>
           <DocumentNumber>0901000011</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <DebitCredit>C</DebitCredit>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>3.20</Amount>
+            <Currency>CHF</Currency>
+            <Amount>103.80</Amount>
           </AmountData>
-          <KeyAmount>3.20</KeyAmount>
-          <Account>2210</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Kurtaxe</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>103.80</KeyAmount>
+          <Account>2030</Account>
+          <TaxAccount>2030</TaxAccount>
+          <Text1>Rückzahlung Anzahlung 3,8 %</Text1>
+          <Text2>PSP-BSP-0002</Text2>
           <DocumentNumber>0901000011</DocumentNumber>
+          <TaxData mode='SAVE'>
+            <TaxIncluded>I</TaxIncluded>
+            <TaxType>0</TaxType>
+            <UseCode>0</UseCode>
+            <AmountData mode='SAVE'>
+              <Currency>CHF</Currency>
+              <Amount>0.00</Amount>
+            </AmountData>
+            <KeyAmount>3.80</KeyAmount>
+            <TaxRate>3.8</TaxRate>
+            <TaxCoefficient>100</TaxCoefficient>
+            <Country>CH</Country>
+            <TaxCode>313</TaxCode>
+            <FlatRate>0</FlatRate>
+          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -593,52 +575,37 @@
           <EntryLevel>A</EntryLevel>
           <EntryType>S</EntryType>
           <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
+          <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>11.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>8.40</Amount>
           </AmountData>
-          <KeyAmount>11.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlösminderung Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>8.40</KeyAmount>
+          <Account>1090</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Mastercard</Text1>
+          <Text2>PSP-BSP-0003</Text2>
           <DocumentNumber>0901000012</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <DebitCredit>D</DebitCredit>
+          <EntryDate>2026-09-12</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>11.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>8.40</Amount>
           </AmountData>
-          <KeyAmount>11.00</KeyAmount>
-          <Account>3400</Account>
-          <TaxAccount>3400</TaxAccount>
-          <Text1>Erlösminderung Beherbergung 10 %</Text1>
-          <Text2>BSP-ABCDEF-1-V1</Text2>
+          <KeyAmount>8.40</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Mastercard</Text1>
+          <Text2>PSP-BSP-0003</Text2>
           <DocumentNumber>0901000012</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>1.00</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -651,49 +618,34 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-14</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>46.90</Amount>
+            <Currency>CHF</Currency>
+            <Amount>80.00</Amount>
           </AmountData>
-          <KeyAmount>46.90</KeyAmount>
+          <KeyAmount>80.00</KeyAmount>
           <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Erlös Annullation 0 %</Text1>
+          <Text2>BSP-CHARLIE-1-V1</Text2>
           <DocumentNumber>0901000013</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <EntryDate>2026-09-14</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>46.90</Amount>
+            <Currency>CHF</Currency>
+            <Amount>80.00</Amount>
           </AmountData>
-          <KeyAmount>46.90</KeyAmount>
-          <Account>3200</Account>
-          <TaxAccount>3200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 10 %</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <KeyAmount>80.00</KeyAmount>
+          <Account>3680</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Erlös Annullation 0 %</Text1>
+          <Text2>BSP-CHARLIE-1-V1</Text2>
           <DocumentNumber>0901000013</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-4.26</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -706,50 +658,34 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-15</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-14</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>14.80</Amount>
+            <Currency>CHF</Currency>
+            <Amount>80.00</Amount>
           </AmountData>
-          <KeyAmount>14.80</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <KeyAmount>80.00</KeyAmount>
+          <Account>1090</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Mastercard</Text1>
+          <Text2>PSP-BSP-0004</Text2>
           <DocumentNumber>0901000014</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-15</EntryDate>
+          <EntryDate>2026-09-14</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>14.80</Amount>
+            <Currency>CHF</Currency>
+            <Amount>80.00</Amount>
           </AmountData>
-          <KeyAmount>14.80</KeyAmount>
-          <Account>3100</Account>
-          <TaxAccount>3100</TaxAccount>
-          <BookingLevel1>20</BookingLevel1>
-          <Text1>Erlös Speisen und Getränke 20 %</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <KeyAmount>80.00</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Zahlung Mastercard</Text1>
+          <Text2>PSP-BSP-0004</Text2>
           <DocumentNumber>0901000014</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-2.47</KeyAmount>
-            <TaxRate>20</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V20</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -762,34 +698,49 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-16</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-17</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>120.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>15.39</Amount>
           </AmountData>
-          <KeyAmount>120.00</KeyAmount>
-          <Account>1090</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Zahlung Visa</Text1>
-          <Text2>PSP-8823410003</Text2>
+          <KeyAmount>15.39</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>2200</TaxAccount>
+          <Text1>Erlös Speisen und Getränke 2,6 %</Text1>
+          <Text2>TAKEAWAY-BSP-1</Text2>
           <DocumentNumber>0901000015</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-16</EntryDate>
+          <EntryDate>2026-09-17</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>120.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>15.39</Amount>
           </AmountData>
-          <KeyAmount>120.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Zahlung Visa</Text1>
-          <Text2>PSP-8823410003</Text2>
+          <KeyAmount>15.39</KeyAmount>
+          <Account>3260</Account>
+          <TaxAccount>3260</TaxAccount>
+          <Text1>Erlös Speisen und Getränke 2,6 %</Text1>
+          <Text2>TAKEAWAY-BSP-1</Text2>
           <DocumentNumber>0901000015</DocumentNumber>
+          <TaxData mode='SAVE'>
+            <TaxIncluded>I</TaxIncluded>
+            <TaxType>0</TaxType>
+            <UseCode>0</UseCode>
+            <AmountData mode='SAVE'>
+              <Currency>CHF</Currency>
+              <Amount>0.00</Amount>
+            </AmountData>
+            <KeyAmount>-0.39</KeyAmount>
+            <TaxRate>2.6</TaxRate>
+            <TaxCoefficient>100</TaxCoefficient>
+            <Country>CH</Country>
+            <TaxCode>312</TaxCode>
+            <FlatRate>0</FlatRate>
+          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -802,33 +753,33 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-16</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-17</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>24.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>15.39</Amount>
           </AmountData>
-          <KeyAmount>24.00</KeyAmount>
+          <KeyAmount>15.39</KeyAmount>
           <Account>1000</Account>
           <TaxAccount>0</TaxAccount>
           <Text1>Zahlung Bar</Text1>
-          <Text2>KASSA-BSP-1</Text2>
+          <Text2>TAKEAWAY-BSP-1</Text2>
           <DocumentNumber>0901000016</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-16</EntryDate>
+          <EntryDate>2026-09-17</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>24.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>15.39</Amount>
           </AmountData>
-          <KeyAmount>24.00</KeyAmount>
+          <KeyAmount>15.39</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>0</TaxAccount>
           <Text1>Zahlung Bar</Text1>
-          <Text2>KASSA-BSP-1</Text2>
+          <Text2>TAKEAWAY-BSP-1</Text2>
           <DocumentNumber>0901000016</DocumentNumber>
         </SingleInformation>
       </Entry>
@@ -842,34 +793,49 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-16</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-18</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>115.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>115.00</KeyAmount>
-          <Account>1102</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Forderung an Debitor</Text1>
-          <Text2>BSP-2026-0042</Text2>
+          <KeyAmount>120.00</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>2200</TaxAccount>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-FOXTROT-1-V1</Text2>
           <DocumentNumber>0901000017</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-16</EntryDate>
+          <EntryDate>2026-09-18</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>115.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>115.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Forderung an Debitor</Text1>
-          <Text2>BSP-2026-0042</Text2>
+          <KeyAmount>120.00</KeyAmount>
+          <Account>3400</Account>
+          <TaxAccount>3400</TaxAccount>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-FOXTROT-1-V1</Text2>
           <DocumentNumber>0901000017</DocumentNumber>
+          <TaxData mode='SAVE'>
+            <TaxIncluded>I</TaxIncluded>
+            <TaxType>0</TaxType>
+            <UseCode>0</UseCode>
+            <AmountData mode='SAVE'>
+              <Currency>CHF</Currency>
+              <Amount>0.00</Amount>
+            </AmountData>
+            <KeyAmount>-4.39</KeyAmount>
+            <TaxRate>3.8</TaxRate>
+            <TaxCoefficient>100</TaxCoefficient>
+            <Country>CH</Country>
+            <TaxCode>313</TaxCode>
+            <FlatRate>0</FlatRate>
+          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -882,34 +848,49 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-16</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>61.70</Amount>
+            <Currency>CHF</Currency>
+            <Amount>186.84</Amount>
           </AmountData>
-          <KeyAmount>61.70</KeyAmount>
-          <Account>1090</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Zahlung Mastercard</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <KeyAmount>186.84</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>2200</TaxAccount>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-DELTA-1-V1</Text2>
           <DocumentNumber>0901000018</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-16</EntryDate>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>61.70</Amount>
+            <Currency>CHF</Currency>
+            <Amount>186.84</Amount>
           </AmountData>
-          <KeyAmount>61.70</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Zahlung Mastercard</Text1>
-          <Text2>REST-BSP-1</Text2>
+          <KeyAmount>186.84</KeyAmount>
+          <Account>3400</Account>
+          <TaxAccount>3400</TaxAccount>
+          <Text1>Erlös Beherbergung 3,8 %</Text1>
+          <Text2>BSP-DELTA-1-V1</Text2>
           <DocumentNumber>0901000018</DocumentNumber>
+          <TaxData mode='SAVE'>
+            <TaxIncluded>I</TaxIncluded>
+            <TaxType>0</TaxType>
+            <UseCode>0</UseCode>
+            <AmountData mode='SAVE'>
+              <Currency>CHF</Currency>
+              <Amount>0.00</Amount>
+            </AmountData>
+            <KeyAmount>-6.84</KeyAmount>
+            <TaxRate>3.8</TaxRate>
+            <TaxCoefficient>100</TaxCoefficient>
+            <Country>CH</Country>
+            <TaxCode>313</TaxCode>
+            <FlatRate>0</FlatRate>
+          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -922,47 +903,47 @@
           <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-21</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>21.62</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
+          <KeyAmount>21.62</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-GHIJKL-1-V1</Text2>
+          <Text1>Erlös Speisen und Getränke 8,1 %</Text1>
+          <Text2>BSP-DELTA-1-V1</Text2>
           <DocumentNumber>0901000019</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
           <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-21</EntryDate>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>21.62</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
-          <Account>3400</Account>
-          <TaxAccount>3400</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-GHIJKL-1-V1</Text2>
+          <KeyAmount>21.62</KeyAmount>
+          <Account>3200</Account>
+          <TaxAccount>3200</TaxAccount>
+          <Text1>Erlös Speisen und Getränke 8,1 %</Text1>
+          <Text2>BSP-DELTA-1-V1</Text2>
           <DocumentNumber>0901000019</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-20.00</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>-1.62</KeyAmount>
+            <TaxRate>8.1</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>311</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>
@@ -974,52 +955,37 @@
           <EntryLevel>A</EntryLevel>
           <EntryType>S</EntryType>
           <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
+          <DebitCredit>D</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-21</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>208.46</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Auflösung Anzahlung 10 %</Text1>
-          <Text2>BSP-GHIJKL-1-V1</Text2>
+          <KeyAmount>208.46</KeyAmount>
+          <Account>1102</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Forderung an Debitor</Text1>
+          <Text2>BSP-2026-0915</Text2>
           <DocumentNumber>0901000020</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
-          <EntryDate>2026-09-21</EntryDate>
+          <DebitCredit>D</DebitCredit>
+          <EntryDate>2026-09-20</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>220.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>208.46</Amount>
           </AmountData>
-          <KeyAmount>220.00</KeyAmount>
-          <Account>2030</Account>
-          <TaxAccount>2030</TaxAccount>
-          <Text1>Auflösung Anzahlung 10 %</Text1>
-          <Text2>BSP-GHIJKL-1-V1</Text2>
+          <KeyAmount>208.46</KeyAmount>
+          <Account>1101</Account>
+          <TaxAccount>0</TaxAccount>
+          <Text1>Forderung an Debitor</Text1>
+          <Text2>BSP-2026-0915</Text2>
           <DocumentNumber>0901000020</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>20.00</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
         </SingleInformation>
       </Entry>
     </Transaction>
@@ -1029,295 +995,50 @@
           <EntryLevel>A</EntryLevel>
           <EntryType>S</EntryType>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
+          <DebitCredit>C</DebitCredit>
           <Client>7777</Client>
           <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-22</EntryDate>
+          <KeyCurrency>CHF</KeyCurrency>
+          <EntryDate>2026-09-28</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>165.00</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
+          <Text1>Debitorenverlust 3,8 %</Text1>
+          <Text2>BSP-FOXTROT-1-V1</Text2>
           <DocumentNumber>0901000021</DocumentNumber>
           <SingleCount>0</SingleCount>
         </CollectiveInformation>
         <SingleInformation mode='SAVE'>
           <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
-          </AmountData>
-          <KeyAmount>165.00</KeyAmount>
-          <Account>3400</Account>
-          <TaxAccount>3400</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
-          <DocumentNumber>0901000021</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-15.00</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
-        </SingleInformation>
-      </Entry>
-    </Transaction>
-    <Transaction id='22'>
-      <Entry mode='SAVE'>
-        <CollectiveInformation mode='SAVE'>
-          <EntryLevel>A</EntryLevel>
-          <EntryType>S</EntryType>
-          <Type>Normal</Type>
           <DebitCredit>C</DebitCredit>
-          <Client>7777</Client>
-          <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-22</EntryDate>
+          <EntryDate>2026-09-28</EntryDate>
           <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
+            <Currency>CHF</Currency>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>165.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Auflösung Anzahlung 10 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
-          <DocumentNumber>0901000022</DocumentNumber>
-          <SingleCount>0</SingleCount>
-        </CollectiveInformation>
-        <SingleInformation mode='SAVE'>
-          <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>165.00</Amount>
-          </AmountData>
-          <KeyAmount>165.00</KeyAmount>
-          <Account>2030</Account>
-          <TaxAccount>2030</TaxAccount>
-          <Text1>Auflösung Anzahlung 10 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
-          <DocumentNumber>0901000022</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>15.00</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
-        </SingleInformation>
-      </Entry>
-    </Transaction>
-    <Transaction id='23'>
-      <Entry mode='SAVE'>
-        <CollectiveInformation mode='SAVE'>
-          <EntryLevel>A</EntryLevel>
-          <EntryType>S</EntryType>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <Client>7777</Client>
-          <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>10.00</Amount>
-          </AmountData>
-          <KeyAmount>10.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Umbuchung Anzahlung 0 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
-          <DocumentNumber>0901000023</DocumentNumber>
-          <SingleCount>0</SingleCount>
-        </CollectiveInformation>
-        <SingleInformation mode='SAVE'>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>10.00</Amount>
-          </AmountData>
-          <KeyAmount>10.00</KeyAmount>
-          <Account>2039</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Umbuchung Anzahlung 0 %</Text1>
-          <Text2>BSP-MNOPQR-1-V1</Text2>
-          <DocumentNumber>0901000023</DocumentNumber>
-        </SingleInformation>
-      </Entry>
-    </Transaction>
-    <Transaction id='24'>
-      <Entry mode='SAVE'>
-        <CollectiveInformation mode='SAVE'>
-          <EntryLevel>A</EntryLevel>
-          <EntryType>S</EntryType>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <Client>7777</Client>
-          <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>10.00</Amount>
-          </AmountData>
-          <KeyAmount>10.00</KeyAmount>
-          <Account>2039</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Rückzahlung Anzahlung 0 %</Text1>
-          <Text2>REF-BSP-1</Text2>
-          <DocumentNumber>0901000024</DocumentNumber>
-          <SingleCount>0</SingleCount>
-        </CollectiveInformation>
-        <SingleInformation mode='SAVE'>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-22</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>10.00</Amount>
-          </AmountData>
-          <KeyAmount>10.00</KeyAmount>
-          <Account>1090</Account>
-          <TaxAccount>0</TaxAccount>
-          <Text1>Rückzahlung Anzahlung 0 %</Text1>
-          <Text2>REF-BSP-1</Text2>
-          <DocumentNumber>0901000024</DocumentNumber>
-        </SingleInformation>
-      </Entry>
-    </Transaction>
-    <Transaction id='25'>
-      <Entry mode='SAVE'>
-        <CollectiveInformation mode='SAVE'>
-          <EntryLevel>A</EntryLevel>
-          <EntryType>S</EntryType>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <Client>7777</Client>
-          <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-25</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>55.00</Amount>
-          </AmountData>
-          <KeyAmount>55.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-QRSTUV-1-V1</Text2>
-          <DocumentNumber>0901000025</DocumentNumber>
-          <SingleCount>0</SingleCount>
-        </CollectiveInformation>
-        <SingleInformation mode='SAVE'>
-          <Type>Normal</Type>
-          <DebitCredit>D</DebitCredit>
-          <EntryDate>2026-09-25</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>55.00</Amount>
-          </AmountData>
-          <KeyAmount>55.00</KeyAmount>
-          <Account>3400</Account>
-          <TaxAccount>3400</TaxAccount>
-          <Text1>Erlös Beherbergung 10 %</Text1>
-          <Text2>BSP-QRSTUV-1-V1</Text2>
-          <DocumentNumber>0901000025</DocumentNumber>
-          <TaxData mode='SAVE'>
-            <TaxIncluded>I</TaxIncluded>
-            <TaxType>0</TaxType>
-            <UseCode>0</UseCode>
-            <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
-              <Amount>0.00</Amount>
-            </AmountData>
-            <KeyAmount>-5.00</KeyAmount>
-            <TaxRate>10</TaxRate>
-            <TaxCoefficient>100</TaxCoefficient>
-            <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
-            <FlatRate>0</FlatRate>
-          </TaxData>
-        </SingleInformation>
-      </Entry>
-    </Transaction>
-    <Transaction id='26'>
-      <Entry mode='SAVE'>
-        <CollectiveInformation mode='SAVE'>
-          <EntryLevel>A</EntryLevel>
-          <EntryType>S</EntryType>
-          <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
-          <Client>7777</Client>
-          <Division>0</Division>
-          <KeyCurrency>EUR</KeyCurrency>
-          <EntryDate>2026-09-29</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>55.00</Amount>
-          </AmountData>
-          <KeyAmount>55.00</KeyAmount>
-          <Account>1101</Account>
-          <TaxAccount>2200</TaxAccount>
-          <Text1>Debitorenverlust 10 %</Text1>
-          <Text2>BSP-QRSTUV-1-V1</Text2>
-          <DocumentNumber>0901000026</DocumentNumber>
-          <SingleCount>0</SingleCount>
-        </CollectiveInformation>
-        <SingleInformation mode='SAVE'>
-          <Type>Normal</Type>
-          <DebitCredit>C</DebitCredit>
-          <EntryDate>2026-09-29</EntryDate>
-          <AmountData mode='SAVE'>
-            <Currency>EUR</Currency>
-            <Amount>55.00</Amount>
-          </AmountData>
-          <KeyAmount>55.00</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>3805</Account>
           <TaxAccount>3805</TaxAccount>
-          <Text1>Debitorenverlust 10 %</Text1>
-          <Text2>BSP-QRSTUV-1-V1</Text2>
-          <DocumentNumber>0901000026</DocumentNumber>
+          <Text1>Debitorenverlust 3,8 %</Text1>
+          <Text2>BSP-FOXTROT-1-V1</Text2>
+          <DocumentNumber>0901000021</DocumentNumber>
           <TaxData mode='SAVE'>
             <TaxIncluded>I</TaxIncluded>
             <TaxType>0</TaxType>
             <UseCode>0</UseCode>
             <AmountData mode='SAVE'>
-              <Currency>EUR</Currency>
+              <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>5.00</KeyAmount>
-            <TaxRate>10</TaxRate>
+            <KeyAmount>4.39</KeyAmount>
+            <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
-            <TaxCode>V10</TaxCode>
+            <TaxCode>313</TaxCode>
             <FlatRate>0</FlatRate>
           </TaxData>
         </SingleInformation>

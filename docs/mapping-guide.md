@@ -4,7 +4,7 @@ Die Abacus-Datei ist nur so gut wie die Kontenzuordnung. Sie ist eine CSV-Datei 
 
 `init-mapping --template kmu-hotel` schreibt die Datei nach der Vorlage `templates/kmu-hotel.rules.csv` (Schweizer Kontenrahmen KMU und Kontenrahmen für die Hotellerie und Gastronomie). Der Kommentar jeder Zeile sagt, warum sie so vorgeschlagen ist. Die Kontonummern sind Vorschläge: Viele Mandanten haben einen eigenen Kontenplan, und die Kontonummern wählt dein Treuhänder.
 
-Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen „Hotel Beispiel“, aus der die Beispieldatei in [examples/](examples/) entstanden ist. Die Demo-Daten haben noch die Platzhalter-Codes `V10` und `V20`; die Schweizer Demo folgt. Dein Treuhänder kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
+Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen Schweizer „Hotel Beispiel“, aus der die Beispieldatei in [examples/](examples/) entstanden ist: genau das, was `init-mapping --template kmu-hotel` auf dem Kontenplan der Demo schreibt, mit den MWST-Codes `311`, `312` und `313`, nur die Kurtaxe-Zeile ist ausgefüllt (`2210` ohne MWST-Code). Dein Treuhänder kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
 
 ## Ablauf
 
