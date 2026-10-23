@@ -71,10 +71,10 @@ describe('README first screen', () => {
     expect(firstScreen).toContain(PENDING_IMPORT);
   });
 
-  it('Claim without a recorded import: makes no tested-with-BMD claim while docs/maintainers.md records no import', () => {
+  it('Claim without a recorded import: makes no tested-with-Abacus claim while docs/maintainers.md records no import', () => {
     expect(checkCompatibilityClaims('README.md', README, recordedTestImports(MAINTAINERS).length)).toEqual([]);
-    expect(checkCompatibilityClaims('README.md', `${README}\nDie Datei ist getestet mit BMD NTCS.\n`, recordedTestImports(MAINTAINERS).length)).toEqual([
-      expect.stringMatching(/^README\.md: "getestet mit BMD"/),
+    expect(checkCompatibilityClaims('README.md', `${README}\nDie Datei ist getestet mit Abacus FIBU.\n`, recordedTestImports(MAINTAINERS).length)).toEqual([
+      expect.stringMatching(/^README\.md: "getestet mit Abacus"/),
     ]);
   });
 
@@ -350,15 +350,19 @@ describe('docs folder', () => {
       '`TAX_ACCOUNT_AT_RATE_ZERO`',
       '**`TaxIncluded` bei Satz 0**',
       '**MWST berechnen**',
+      '**Rundung der MWST**',
+      'W-VAT-ROUNDING',
       '**Belegnummern**',
       'pro Geschäftsjahr',
       '**Nebenjournal**',
+      '**Anzahlungen**',
+      'MWST-Code für Vorauszahlungen',
       '**Vereinnahmt**',
       'Hilfskonto',
     ]) {
       expect(questions, item).toContain(item);
     }
-    expect(questions.match(/^- \[ \]/gm)).toHaveLength(11);
+    expect(questions.match(/^- \[ \]/gm)).toHaveLength(13);
   });
 
   it('links docs/abacus-import.md from the README and docs/configuration.md', () => {
@@ -375,8 +379,8 @@ describe('docs folder', () => {
     expect(checklist).not.toContain('[x]');
   });
 
-  it('records test imports under "Testimporte" in a table with date, BMD version, dialect and result', () => {
-    expect(section(MAINTAINERS, '## Testimporte')).toContain('| Datum | BMD-Version | Dialekt | Ergebnis |');
+  it('records test imports under "Testimporte" in a table with date, Abacus version, interface version, import program and result', () => {
+    expect(section(MAINTAINERS, '## Testimporte')).toContain('| Datum | Abacus-Version | Schnittstellenversion | Programm | Ergebnis |');
   });
 
   it('plans later only items inside this product, no other target formats and no BMD-only items', () => {

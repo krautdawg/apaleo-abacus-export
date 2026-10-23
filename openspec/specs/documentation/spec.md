@@ -172,10 +172,10 @@ The repository SHALL contain `README.en.md` of at most 80 lines with: what the t
 - **THEN** it fails if `README.en.md` exceeds 80 lines, contains the quickstart marker, or lists install commands that differ from the German quick-start block apart from shell comments
 
 ### Requirement: No unverified compatibility claim
-README and docs SHALL describe the file as following the documented AbaConnect interface "XML Buchungen" and SHALL say that a first test import with a Treuhänder is pending, and SHALL NOT claim that the file was tested with or is accepted by BMD NTCS or BMD 5.5 ("getestet mit BMD", "kompatibel mit BMD NTCS", "BMD-zertifiziert") until `docs/maintainers.md` records a test import under `## Testimporte` with date, BMD version, dialect and result.
+README and docs SHALL describe the file as following the documented AbaConnect interface "XML Buchungen" and SHALL say that a first test import with a Treuhänder is pending, and SHALL NOT claim that the file was tested with or is accepted by Abacus FIBU ("getestet mit Abacus", "kompatibel mit Abacus FIBU", "Abacus-zertifiziert") until `docs/maintainers.md` records a test import under `## Testimporte` with date, Abacus version, interface version (`abacus.version`), import program (F11, F5534 or F625) and result, all five filled.
 
 #### Scenario: Claim without a recorded import
-- **WHEN** the README says "getestet mit BMD NTCS" and `## Testimporte` in `docs/maintainers.md` lists no import
+- **WHEN** the README says "getestet mit Abacus FIBU" and `## Testimporte` in `docs/maintainers.md` lists no import
 - **THEN** `pnpm test` fails naming the README and the phrase
 
 #### Scenario: Pending test import
