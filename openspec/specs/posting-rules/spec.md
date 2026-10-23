@@ -203,7 +203,7 @@ Prepayment lines (`PostPrepayment`) SHALL be booked to the mapped deposit accoun
 - **THEN** the booking has Collective account `1102`, Single account `1101`, `DebitCredit` `D`, gross 208.46 and `Text2` `ENG-2026-0815`
 
 ### Requirement: Vereinnahmte Entgelte
-With `abacus.abrechnungsart: vereinnahmt`, `doctor` and every export (dry run included, once per run in the summary and the protocol) SHALL warn `W-ABRECHNUNGSART-VEREINNAHMT`, explaining that Abacus books the output tax of these bookings to the Hilfskonto (`abacus.mwstHilfskonto`) and moves it to the Steuerkonto only when a payment is recorded, normally in the Debitorenbuchhaltung, which this tool does not feed; that the file books the tax on the charge date while it legally arises at payment (MWSTG Art. 40 Abs. 2), which matters for charges on accounts receivable that are unpaid at period end; and that the Treuhänder must correct the Hilfskonto at period end as `docs/mapping-guide.md` describes, until a test import shows how Abacus treats FIBU-only bookings with `UseCode` `1` (research §9 open question 15). The warning SHALL NOT change the exit code, and `vereinbart` SHALL raise no such warning.
+With `abacus.abrechnungsart: vereinnahmt`, `doctor` and every export (dry run included, once per property and month: once in that month's console output and once in its protocol, so every protocol a Treuhänder receives carries it) SHALL warn `W-ABRECHNUNGSART-VEREINNAHMT`, explaining that Abacus books the output tax of these bookings to the Hilfskonto (`abacus.mwstHilfskonto`) and moves it to the Steuerkonto only when a payment is recorded, normally in the Debitorenbuchhaltung, which this tool does not feed; that the file books the tax on the charge date while it legally arises at payment (MWSTG Art. 40 Abs. 2), which matters for charges on accounts receivable that are unpaid at period end; and that the Treuhänder must correct the Hilfskonto at period end as `docs/mapping-guide.md` describes, until a test import shows how Abacus treats FIBU-only bookings with `UseCode` `1` (research §9 open question 15). The warning SHALL NOT change the exit code, and `vereinbart` SHALL raise no such warning.
 
 #### Scenario: Doctor with vereinnahmte Entgelte
 - **WHEN** the config sets `abacus.abrechnungsart: vereinnahmt` and the user runs `doctor`
@@ -212,6 +212,10 @@ With `abacus.abrechnungsart: vereinnahmt`, `doctor` and every export (dry run in
 #### Scenario: Export with vereinnahmte Entgelte
 - **WHEN** the Swiss fixture month is exported with `abacus.abrechnungsart: vereinnahmt`
 - **THEN** the summary and the protocol show `W-ABRECHNUNGSART-VEREINNAHMT` once, the file is written, and the exit code is 0
+
+#### Scenario: Export of several months with vereinnahmte Entgelte
+- **WHEN** June to August 2026 are exported for the Swiss fixture property with `abacus.abrechnungsart: vereinnahmt`, as a dry run and as a real run
+- **THEN** the console shows `W-ABRECHNUNGSART-VEREINNAHMT` once per property and month (three times), and the written August protocol shows it once
 
 #### Scenario: Default Abrechnungsart
 - **WHEN** `abacus.abrechnungsart` is not set

@@ -53,6 +53,19 @@ describe('Vereinnahmte Entgelte', () => {
     expect(xml).not.toContain('<UseCode>0</UseCode>');
   });
 
+  it('Export of several months with vereinnahmte Entgelte: the console shows the warning once per property and month, each protocol once', async () => {
+    const dry = chMonth(chMonthConfig('abrechnungsart: vereinnahmt'));
+    expect(await runCli(['export', '--from', '2026-06-01', '--to', '2026-08-31', '--property', ENG, '--dry-run'], dry)).toBe(0);
+    expect(count(dry.out(), CODE)).toBe(3);
+
+    const real = chMonth(chMonthConfig('abrechnungsart: vereinnahmt'));
+    expect(await runCli(['export', '--from', '2026-06-01', '--to', '2026-08-31', '--property', ENG], real)).toBe(0);
+    expect(count(real.out(), CODE)).toBe(3);
+    expect(real.out()).toContain('Result: 1 written, 0 unchanged, 2 without bookings, 0 failed.');
+    const protocol = readFileSync(join(real.cwd, 'exports', ENG, '2026-08', 'ABACUS_Buchungen_20260801-20260831_ENG.protokoll.txt'), 'utf8');
+    expect(count(protocol, CODE)).toBe(1);
+  });
+
   it('Default Abrechnungsart: no W-ABRECHNUNGSART-VEREINNAHMT in doctor or the export, nor with vereinbart', async () => {
     const ctx = chMonth(chMonthConfig());
     expect(await runCli(['doctor'], ctx)).toBe(0);
