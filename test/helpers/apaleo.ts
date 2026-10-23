@@ -17,7 +17,7 @@ export const EMPTY_DAY: LocalDate = '2026-09-17';
 export const API = 'https://api.apaleo.com';
 export const IDENTITY = 'https://identity.apaleo.com';
 export const TOKEN_URL = `${IDENTITY}/connect/token`;
-export const CLIENT_ID = 'bsp-bmd-export';
+export const CLIENT_ID = 'bsp-abacus-export';
 export const CLIENT_SECRET = 'fixture-secret-9f2c41';
 export const ACCESS_TOKEN = 'fixture-access-token-77a1';
 

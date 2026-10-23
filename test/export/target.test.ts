@@ -173,7 +173,7 @@ describe.each(CONTRACT_CASES)('the export through a TargetWriter: %s', (_label, 
 });
 
 describe('the Abacus target through the export', () => {
-  it('Abacus is the default target: the export writes ABACUS_Buchungen_20260901-20260930_BSP.xml and no BMD file', async () => {
+  it('Abacus is the default target: the export writes ABACUS_Buchungen_20260901-20260930_BSP.xml and nothing else', async () => {
     const setup = exportSetup();
     const outcome = await runWith(setup, {}, DEFAULT_TARGET);
     expect(outcome.status).toBe('written');
@@ -255,6 +255,52 @@ describe('the currency of the target (export-run, "Currency of the target")', ()
     expect(outcome.findings[0]?.message).not.toMatch(/\bAbacus\b|abacus\./);
     expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
   });
+
+  describe('with the Abacus target and abacus.leitwaehrung CHF', () => {
+    /** Hotel Beispiel in a CHF Mandant: the property and the first `eurLines` ledger lines in EUR or CHF as given. */
+    async function chfMandant(propertyCurrency: 'CHF' | 'EUR', eurLines = 0) {
+      const setup = exportSetup({
+        data: (data) => {
+          for (const property of data.properties) property.currency = propertyCurrency;
+          for (const [i, line] of (data.ledger[BSP] ?? []).entries()) line.currency = i < eurLines || propertyCurrency === 'EUR' ? 'EUR' : 'CHF';
+        },
+      });
+      await setup.ctx.fs.writeFile(join(setup.ctx.cwd, 'apaleo-abacus.config.yaml'), exportConfigWith('CHF'));
+      return setup;
+    }
+
+    it('EUR property in a CHF Mandant: E-CURRENCY names EUR and CHF and the Leitwährung, reads no ledger and writes no file', async () => {
+      const setup = await chfMandant('EUR');
+      const outcome = await runWith(setup, {}, DEFAULT_TARGET);
+      expect(outcome.status).toBe('failed');
+      expect(outcome.findings.map((f) => [f.code, f.value])).toEqual([['E-CURRENCY', 'EUR']]);
+      expect(outcome.findings[0]?.message).toContain('keeps its books in EUR, but the export file books in CHF only');
+      expect(outcome.findings[0]?.message).toContain("An Abacus booking is written in the Mandant's Leitwährung (abacus.leitwaehrung)");
+      expect(outcome.findings[0]?.message).toContain('This tool does not convert');
+      expect(setup.fake.calls.some((call) => call.startsWith('getLedger'))).toBe(false);
+      expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
+    });
+
+    it('Swiss property: no E-CURRENCY, and the Abacus file books Currency and KeyCurrency CHF', async () => {
+      const setup = await chfMandant('CHF');
+      const outcome = await runWith(setup, {}, DEFAULT_TARGET);
+      expect(outcome.findings.map((f) => f.code)).not.toContain('E-CURRENCY');
+      expect(outcome.status).toBe('written');
+      const xml = readFileSync(join(folderOf(setup), 'ABACUS_Buchungen_20260901-20260930_BSP.xml'), 'utf8');
+      expect(xml).toContain('<KeyCurrency>CHF</KeyCurrency>');
+      expect(xml).toContain('<Currency>CHF</Currency>');
+      expect(xml).not.toMatch(/<(?:Key)?Currency>(?!CHF<)/);
+    });
+
+    it('Line in another currency: E-CURRENCY names the number of EUR lines and both currencies, and no file is written', async () => {
+      const setup = await chfMandant('CHF', 1);
+      const outcome = await runWith(setup, {}, DEFAULT_TARGET);
+      expect(outcome.status).toBe('failed');
+      expect(outcome.findings.map((f) => [f.code, f.value])).toEqual([['E-CURRENCY', 'EUR']]);
+      expect(outcome.findings[0]?.message).toContain('1 apaleo line(s) of BSP are in EUR, but the export file books in CHF only.');
+      expect(existsSync(join(setup.ctx.cwd, 'exports'))).toBe(false);
+    });
+  });
 });
 
 describe('the checks and the summary do not depend on the target (recorded VIE day 2026-10-21)', () => {
@@ -299,7 +345,7 @@ describe('the target boundary in src/export', () => {
     .map((name) => [name, readFileSync(join(dir, name), 'utf8')] as const);
 
   it.each(sources)('%s imports a target module only through its TargetWriter', (_name, text) => {
-    const targetImports = [...text.matchAll(/from '\.\.\/(?:bmd|abacus)\/([^']+)'/g)].map((match) => match[1]);
+    const targetImports = [...text.matchAll(/from '\.\.\/abacus\/([^']+)'/g)].map((match) => match[1]);
     expect(targetImports.every((module) => module === 'target.js')).toBe(true);
   });
 
@@ -307,7 +353,6 @@ describe('the target boundary in src/export', () => {
     const output = sources.find(([name]) => name === 'output.ts')?.[1] ?? '';
     expect(output).not.toMatch(/EXTF|Buchungsstapel|\.csv|\.xml|XML Buchungen/);
     expect(output).not.toMatch(/DATEV|datev\.[a-z]|\bBMD\b|bmd\.[a-z]|Festschreibung|\bAbacus\b|abacus\.[a-z]|Nebenjournal/);
-    expect(output).not.toContain('../bmd');
     expect(output).not.toContain('../abacus');
   });
 

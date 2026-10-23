@@ -59,7 +59,7 @@ describe('apaleo-abacus export', () => {
     const [entry] = manifestOf(setup).files;
     expect(entry).toMatchObject({ file: FILE, status: 'current', sha256: sha256(file), bookings: 24 });
     expect(entry).not.toHaveProperty('bodySha256');
-    // The journal total follows with the final manifest; the BMD Soll and Haben totals are gone.
+    // The journal total follows with the final manifest; the Soll and Haben totals of the former writer are gone.
     expect(entry).not.toHaveProperty('sollTotal');
     expect(entry).not.toHaveProperty('habenTotal');
     expect(entry?.taxByRate).toEqual([
