@@ -88,18 +88,35 @@ export function collectiveTaxAccount(settings: TaxAccountSettings): string {
   return settings.abrechnungsart === 'vereinnahmt' ? settings.mwstHilfskonto : settings.mwstKonto;
 }
 
-/**
- * The `TaxAccount` of both blocks of a booking with MWST: Collective as
- * `collectiveTaxAccount`, Single as `singleTaxAccount` selects (pass
- * `SINGLE_TAX_ACCOUNT`). A booking without MWST writes `0` in both blocks instead.
- */
-export function taxAccounts(singleAccount: string, settings: TaxAccountSettings, singleTaxAccount: SingleTaxAccount): TaxAccounts {
-  const collective = collectiveTaxAccount(settings);
-  return { collective, single: singleTaxAccount === 'account' ? singleAccount : collective };
-}
-
 /** `TaxAccount` of both blocks of a booking without MWST. */
 export const NO_TAX_ACCOUNT = '0';
+
+/**
+ * The Collective `TaxAccount` of a booking with an MWST-Code at rate 0 (400,
+ * 490, 491): `taxAccount` writes the Steuerkonto or Hilfskonto as on every other
+ * code, `zero` writes `0`. The KMU sample Mandant gives these codes no
+ * Steuerkonto, and the 2020 PDF names the "Steuerkonto des MWST-Codes", so `0`
+ * may be what Abacus expects (open question 8).
+ */
+export type TaxAccountAtRateZero = 'taxAccount' | 'zero';
+export const TAX_ACCOUNT_AT_RATE_ZERO: TaxAccountAtRateZero = 'taxAccount';
+
+/**
+ * The `TaxAccount` of both blocks of a booking with MWST at `percent`: Collective
+ * as `collectiveTaxAccount`, or `0` at rate 0 when `atRateZero` is `zero` (pass
+ * `TAX_ACCOUNT_AT_RATE_ZERO`); Single as `singleTaxAccount` selects (pass
+ * `SINGLE_TAX_ACCOUNT`). A booking without MWST writes `0` in both blocks instead.
+ */
+export function taxAccounts(
+  singleAccount: string,
+  percent: number,
+  settings: TaxAccountSettings,
+  singleTaxAccount: SingleTaxAccount,
+  atRateZero: TaxAccountAtRateZero,
+): TaxAccounts {
+  const collective = percent === 0 && atRateZero === 'zero' ? NO_TAX_ACCOUNT : collectiveTaxAccount(settings);
+  return { collective, single: singleTaxAccount === 'account' ? singleAccount : collective };
+}
 
 /** Signed Rappen with decimal point, two decimals, leading minus and no thousands separator. -760 → `-7.60`. */
 export function formatAmount(cents: number): string {

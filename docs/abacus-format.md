@@ -66,7 +66,7 @@ Nur `SingleInformation` kann `TaxData` tragen. Deshalb ist das MWST-pflichtige K
 | `AmountData` | `Currency` (Leitwährung) und `Amount` (Bruttobetrag) |
 | `KeyAmount` | Bruttobetrag in der Leitwährung |
 | `Account` | Konto, höchstens 11 Ziffern |
-| `TaxAccount` | mit MWST das Steuerkonto `abacus.mwstKonto` (vereinbart) oder das Hilfskonto `abacus.mwstHilfskonto` (vereinnahmt), ohne MWST `0` |
+| `TaxAccount` | mit MWST das Steuerkonto `abacus.mwstKonto` (vereinbart) oder das Hilfskonto `abacus.mwstHilfskonto` (vereinnahmt), bei einem MWST-Code mit Satz 0 je nach Konstante `TAX_ACCOUNT_AT_RATE_ZERO` dasselbe Konto (Standard) oder `0`, ohne MWST `0` |
 | `Text1` | Buchungstext, höchstens 80 Zeichen |
 | `Text2` | Beleg oder Referenz aus apaleo, höchstens 80 Zeichen, fehlt, wenn leer |
 | `DocumentNumber` | Belegnummer, 10 Zeichen |
@@ -141,7 +141,9 @@ Das Tool bucht Bruttobeträge. `TaxData` sagt Abacus, welcher Anteil davon MWST 
 
 **TaxAccount.** Die Tabelle der Abacus-Dokumentation (2020, „MWST berechnen“) nennt für eine inklusiv gebuchte Umsatzsteuer: in der `CollectiveInformation` das Steuerkonto des MWST-Codes (vereinbart) oder sein Hilfskonto (vereinnahmt), in der `SingleInformation` das Ertragskonto selbst. Die Standardwerte `2200` und `2202` sind die Konten der MWST-Codes 311, 312 und 313 im KMU-Mustermandanten von Abacus. erpnextswiss schreibt stattdessen das Steuerkonto in die `SingleInformation`; die Konstante `SINGLE_TAX_ACCOUNT` (`account` oder `taxAccount`) stellt das um. Ohne MWST ist `TaxAccount` in beiden Blöcken `0`.
 
-Die MWST rechnet das Tool nicht selbst nach Abacus-Art: Es schreibt die MWST, die apaleo pro Zeile auf den Rappen gerundet hat, damit der Import nicht von der Rundung im Mandanten abhängt.
+**TaxAccount bei Satz 0.** Die Codes mit Satz 0 (400, 490, 491) haben im KMU-Mustermandanten kein Steuerkonto, die Dokumentation von 2020 nennt aber das „Steuerkonto des MWST-Codes“. Das Tool schreibt in der `CollectiveInformation` auch bei diesen Codes `abacus.mwstKonto` (oder `abacus.mwstHilfskonto`); möglich ist, dass Abacus dort `0` erwartet, vor allem ohne „MWST berechnen“, wenn es die MWST-Daten der Datei prüft. Die Konstante `TAX_ACCOUNT_AT_RATE_ZERO` (`taxAccount` oder `zero`) stellt das mit einer Zeile um; der erste Testimport entscheidet (offene Frage 8).
+
+Die MWST rechnet das Tool nicht selbst nach Abacus-Art: Es schreibt die MWST, die apaleo pro Zeile auf den Rappen gerundet hat, damit der Import nicht von der Rundung im Mandanten abhängt. Es prüft aber, dass sie zum Satz passt: Weicht sie um mehr als einen Rappen von `Brutto × Satz / (100 + Satz)` ab, schreibt der Writer keine Datei (`E-ABACUS-TAX-RATE`). Ohne „MWST berechnen“ übernimmt Abacus die MWST nämlich so, wie sie in der Datei steht.
 
 ## MWST berechnen und der MWST-Code eines Kontos in F21
 
@@ -161,7 +163,7 @@ Damit dein Treuhänder das vergleichen kann, listet der Block „Import into Aba
 
 ## Belegnummer
 
-`DocumentNumber` ist ein Text mit 10 Zeichen. Das Tool bildet ihn aus Monat und Tag des ersten Tags des Zeitraums und einem 6-stelligen Zähler in Dateireihenfolge: Die Oktoberdatei vom 2026-10-01 hat `1001000001`, `1001000002` und so weiter, eine Tagesdatei vom 2026-10-15 beginnt mit `1015000001`. Beide Blöcke einer Buchung tragen dieselbe Nummer. So wiederholt sich keine Nummer in einer Datei, Dateien eines Hotels mit unterschiedlichem ersten Tag teilen nie eine Nummer, und dieselben Buchungen bekommen immer dieselben Nummern. Eine Datei hat höchstens 999 999 Buchungen (`E-ABACUS-BELEGNR`).
+`DocumentNumber` ist ein Text mit 10 Zeichen. Das Tool bildet ihn aus Monat und Tag des ersten Tags des Zeitraums und einem 6-stelligen Zähler in Dateireihenfolge: Die Oktoberdatei vom 2026-10-01 hat `1001000001`, `1001000002` und so weiter, eine Tagesdatei vom 2026-10-15 beginnt mit `1015000001`. Beide Blöcke einer Buchung tragen dieselbe Nummer. So wiederholt sich keine Nummer in einer Datei, Dateien eines Hotels mit unterschiedlichem ersten Tag im selben Kalenderjahr teilen nie eine Nummer, und dieselben Buchungen bekommen immer dieselben Nummern. Das Jahr steht nicht in der Nummer, dafür reichen die 10 Zeichen nicht: Die Dateien ab 2026-10-01 und ab 2027-10-01 beginnen beide mit `1001000001`. Die Nummern sind also nur im selben Geschäftsjahr eindeutig, und das genügt nur, wenn Abacus Doppelte pro Geschäftsjahr prüft. Das klärt der erste Testimport (offene Frage 7). Eine Datei hat höchstens 999 999 Buchungen (`E-ABACUS-BELEGNR`).
 
 Abacus nutzt die Belegnummer nur, wenn sie in F621 (Finanzbuchhaltung, Allgemein, Einstellungen) aktiv ist. Bucht dein Treuhänder zwei Hotels in denselben Mandanten und Geschäftsbereich, können sich ihre Belegnummern wiederholen; `doctor` und das Protokoll warnen dann mit `W-MANDANT-SHARED`. Gib jedem Hotel einen eigenen Geschäftsbereich (`properties[].geschaeftsbereich`) oder einen eigenen Mandanten (`properties[].mandant`).
 
@@ -190,8 +192,8 @@ Jede Antwort ist eine Einstellung an einer Stelle: eine Konstante in `src/abacus
 4. Vorzeichen der MWST in `TaxData`: negativ im Haben und positiv im Soll (unsere Annahme), immer negativ wie bei erpnextswiss, oder rechnet Abacus es mit „MWST berechnen“ neu? Eine Änderung betrifft nur `taxSign()`.
 5. Akzeptiert Abacus ohne „MWST berechnen“ die MWST aus apaleo, wenn sie um einen Rappen von `Brutto × Satz / (100 + Satz)` abweicht? Stimmt mit der Option das MWST-Journal pro Code mit dem Protokoll überein?
 6. Welche MWST-Typen und Kontonummern hat ein Schweizer Hotel in apaleo? (Aufzeichnung eines CHF-Tags mit `live-smoke`, sobald es eine Testumgebung gibt.)
-7. Nimmt Abacus die Belegnummern aus Monat, Tag und 6-stelligem Zähler an, und warnt es bei Doppelten über mehrere Dateien?
-8. `TaxAccount` in der `CollectiveInformation`: Steuerkonto `2200` und Hilfskonto `2202` wie dokumentiert, oder `0`?
+7. Nimmt Abacus die Belegnummern aus Monat, Tag und 6-stelligem Zähler an, und warnt es bei Doppelten über mehrere Dateien? Prüft es Doppelte pro Geschäftsjahr? Nur dann bleiben die Nummern eindeutig, wenn zwei Dateien am selben Tag verschiedener Jahre beginnen (2026-10-01 und 2027-10-01 beginnen beide mit `1001000001`).
+8. `TaxAccount` in der `CollectiveInformation`: Steuerkonto `2200` und Hilfskonto `2202` wie dokumentiert, oder `0`? Und bei Codes mit Satz 0 (400, 490, 491), die im KMU-Mustermandanten kein Steuerkonto haben: `2200` beziehungsweise `2202` (unser Standard `TAX_ACCOUNT_AT_RATE_ZERO = 'taxAccount'`) oder `0` (`'zero'`)?
 9. Landen importierte Buchungen in einem Nebenjournal, das der Treuhänder vor der Übernahme löschen kann? Das ist der Weg, den die Meldung `E-FILE-EXISTS` zum Rückgängigmachen nennt.
 10. Anzahlungen: Will der Treuhänder sie auf 2030 und folgende mit dem normalen MWST-Code, oder mit einem eigenen Code für Vorauszahlungen?
 11. `TaxData/AmountData/Amount`, wenn `Currency` gleich `KeyCurrency` ist: `0.00` mit der MWST nur in `KeyAmount` (unser Standard `TAX_AMOUNT_IN_KEY_CURRENCY = 'zero'`) oder der MWST-Betrag (`'tax'`)?

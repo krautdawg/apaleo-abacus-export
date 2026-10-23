@@ -165,7 +165,8 @@ describe('the Abacus import block', () => {
       '  Abrechnungsart: vereinbart (UseCode 0)',
       '  MWST-Codes: 311 (8.1 %; tax -1968.30 CHF), 313 (3.8 %; tax -2477.60 CHF)',
       '  Account -> MWST-Code: 2030 -> 313, 3100 -> 311, 3200 -> 311, 3400 -> 313',
-      '  TaxAccount: 2200 in CollectiveInformation, the Single account itself in SingleInformation, 0 on bookings without MWST',
+      '  TaxAccount: 2200 in CollectiveInformation (also on MWST-Codes at rate 0, TAX_ACCOUNT_AT_RATE_ZERO taxAccount), ' +
+        'the Single account itself in SingleInformation, 0 on bookings without MWST',
       '  TaxData: TaxType 0, tax negative when the Single account is credited, AmountData/Amount 0.00 (TAX_AMOUNT_IN_KEY_CURRENCY zero), ' +
         'TaxIncluded I at rate 0 (TAX_INCLUDED_AT_RATE_ZERO), SINGLE_TAX_ACCOUNT account',
       '  Belegnummern: 1001000001 to 1001000812',

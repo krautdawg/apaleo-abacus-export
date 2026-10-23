@@ -12,6 +12,7 @@ import {
   LINE_END,
   NO_TAX_ACCOUNT,
   SINGLE_TAX_ACCOUNT,
+  TAX_ACCOUNT_AT_RATE_ZERO,
   TAX_AMOUNT_IN_KEY_CURRENCY,
   TAX_COEFFICIENT,
   TAX_COUNTRY,
@@ -87,7 +88,9 @@ function entry(b: AbacusBooking, index: number, options: AbacusRenderOptions, no
   const text1 = clean(b.text1, 'text1');
   const text2 = clean(b.text2, 'text2');
   const texts = [leaf('Text1', text1), ...(text2 === '' ? [] : [leaf('Text2', text2)])];
-  const accounts = b.tax ? taxAccounts(b.singleAccount, options, SINGLE_TAX_ACCOUNT) : { collective: NO_TAX_ACCOUNT, single: NO_TAX_ACCOUNT };
+  const accounts = b.tax
+    ? taxAccounts(b.singleAccount, b.tax.percent, options, SINGLE_TAX_ACCOUNT, TAX_ACCOUNT_AT_RATE_ZERO)
+    : { collective: NO_TAX_ACCOUNT, single: NO_TAX_ACCOUNT };
   const amount = formatAmount(b.grossCents);
   const amountData = saved('AmountData', [leaf('Currency', options.leitwaehrung), leaf('Amount', amount)]);
   const date = formatDate(b.businessDate);

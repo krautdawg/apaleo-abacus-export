@@ -15,7 +15,7 @@ const name = xmlBuchungenFileName(options); // ABACUS_Buchungen_20261001-2026103
 ```
 
 - `types.ts`: `AbacusBooking` (Collective and Single account, `DebitCredit` of the Collective account, positive gross Rappen, optional MWST with signed tax, Kostenstelle, `Text1`, `Text2`) and `AbacusRenderOptions`.
-- `format.ts`: amounts, rates, dates, Belegnummern, escaping, and every choice the first test import may change, each one constant or function with its open question: `TAX_TYPE_OUTPUT`, `taxSign()`, `TAX_AMOUNT_IN_KEY_CURRENCY`, `TAX_INCLUDED_AT_RATE_ZERO`, `SINGLE_TAX_ACCOUNT`, `taxAccounts()`.
+- `format.ts`: amounts, rates, dates, Belegnummern, escaping, and every choice the first test import may change, each one constant or function with its open question: `TAX_TYPE_OUTPUT`, `taxSign()`, `TAX_AMOUNT_IN_KEY_CURRENCY`, `TAX_INCLUDED_AT_RATE_ZERO`, `SINGLE_TAX_ACCOUNT`, `TAX_ACCOUNT_AT_RATE_ZERO`, `taxAccounts()`.
 - `validate.ts`, `sanitise.ts`, `writer.ts`: `E-ABACUS-*` errors (the sign check calls `taxSign()`), `N-ABACUS-TRUNCATED`, the file.
 - `target.ts`: `abacusTarget`, the export's `TargetWriter` (settings from the `abacus` section and the property, `ABACUS_Buchungen_...xml` pattern, byte-equality `sameContent`, currency = `abacus.leitwaehrung`, `DEMO ` prefix of `Text1` in a demo file, Abacus advice).
 - `import-block.ts`: the protocol's import block (file, bookings, programs, interface version, Mandant, Geschäftsbereich, Leitwährung, Abrechnungsart, MWST-Codes with rates and tax totals, "account -> MWST-Code" pairs, `TaxAccount`, the `format.ts` constants, Belegnummern, "MWST berechnen" and the F21 warning).

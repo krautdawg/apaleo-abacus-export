@@ -65,7 +65,24 @@ describe('Abacus booking validation', () => {
       ['E-ABACUS-TAX', 0, 'taxCents'],
       ['E-ABACUS-TAX', 1, 'taxCents'],
       ['E-ABACUS-TAX', 2, 'taxCents'],
+      ['E-ABACUS-TAX-RATE', 3, 'taxCents'],
     ]);
+  });
+
+  it('E-ABACUS-TAX-RATE for a tax that does not fit the rate by more than one Rappen, on either side', () => {
+    const tax = (taxCents: number, grossCents = 20_760) => accommodation({ grossCents, tax: mwst('313', 3.8, taxCents) });
+    expect(codes([tax(-20_000), tax(-758), tax(-759), tax(-761), tax(-762), tax(-1)])).toEqual([
+      ['E-ABACUS-TAX-RATE', 0, 'taxCents'],
+      ['E-ABACUS-TAX-RATE', 1, 'taxCents'],
+      ['E-ABACUS-TAX-RATE', 4, 'taxCents'],
+      ['E-ABACUS-TAX-RATE', 5, 'taxCents'],
+    ]);
+    expect(codes([accommodation({ singleAccount: '3200', grossCents: 10_810, tax: mwst('311', 8.1, -810) }), accommodation({ debitCredit: 'C', grossCents: 2_076, tax: mwst('313', 3.8, 76) })])).toEqual([]);
+    const [finding] = validateBookings([tax(-20_000)], abacusOptions());
+    expect(finding?.message).toBe(
+      'MWST-Betrag -200.00 does not fit 3.8 % of the gross Betrag 207.60: expected 7.60 (Betrag × Satz / (100 + Satz), rounded to the Rappen), at most 0.01 off',
+    );
+    expect(() => renderXmlBuchungen([tax(-20_000)], abacusOptions())).toThrow(AbacusValidationError);
   });
 
   it('Untaxed revenue with an MWST-Code: rate 0 and tax 0.00 raise no finding on either side', () => {
@@ -83,8 +100,8 @@ describe('Abacus booking validation', () => {
   });
 
   it('E-ABACUS-RATE for a rate below 0, above 99.99 or with more than two decimals', () => {
-    const rate = (percent: number) => accommodation({ tax: mwst('313', percent, -1) });
-    expect(codes([rate(-1), rate(100), rate(3.805), rate(Number.NaN), rate(99.99), rate(2.6)])).toEqual([
+    const rate = (percent: number, taxCents = -1) => accommodation({ tax: mwst('313', percent, taxCents) });
+    expect(codes([rate(-1), rate(100), rate(3.805), rate(Number.NaN), rate(99.99, -10_379), rate(2.6, -526)])).toEqual([
       ['E-ABACUS-RATE', 0, 'percent'],
       ['E-ABACUS-RATE', 1, 'percent'],
       ['E-ABACUS-RATE', 2, 'percent'],

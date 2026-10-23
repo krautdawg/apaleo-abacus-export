@@ -4,6 +4,7 @@ import {
   formatDocumentNumber,
   formatRate,
   SINGLE_TAX_ACCOUNT,
+  TAX_ACCOUNT_AT_RATE_ZERO,
   TAX_AMOUNT_IN_KEY_CURRENCY,
   TAX_INCLUDED_AT_RATE_ZERO,
   TAX_TYPE_OUTPUT,
@@ -56,7 +57,8 @@ export function importBlock(bookings: readonly Pick<AbacusBooking, 'singleAccoun
     `  Abrechnungsart: ${options.abrechnungsart} (UseCode ${useCode(options.abrechnungsart)})`,
     `  MWST-Codes: ${mwstCodes.join(', ') || 'none'}`,
     `  Account -> MWST-Code: ${accountCodes.join(', ') || 'none'}`,
-    `  TaxAccount: ${collective} in CollectiveInformation, ${singleTaxAccount} in SingleInformation, 0 on bookings without MWST`,
+    `  TaxAccount: ${collective} in CollectiveInformation (${TAX_ACCOUNT_AT_RATE_ZERO === 'zero' ? '0' : 'also'} on MWST-Codes at rate 0, ` +
+      `TAX_ACCOUNT_AT_RATE_ZERO ${TAX_ACCOUNT_AT_RATE_ZERO}), ${singleTaxAccount} in SingleInformation, 0 on bookings without MWST`,
     `  TaxData: TaxType ${TAX_TYPE_OUTPUT}, tax ${taxSign('D') < 0 ? 'negative' : 'positive'} when the Single account is credited, ` +
       `AmountData/Amount ${TAX_AMOUNT_IN_KEY_CURRENCY === 'zero' ? '0.00' : 'the tax'} (TAX_AMOUNT_IN_KEY_CURRENCY ${TAX_AMOUNT_IN_KEY_CURRENCY}), ` +
       `TaxIncluded ${TAX_INCLUDED_AT_RATE_ZERO} at rate 0 (TAX_INCLUDED_AT_RATE_ZERO), SINGLE_TAX_ACCOUNT ${SINGLE_TAX_ACCOUNT}`,

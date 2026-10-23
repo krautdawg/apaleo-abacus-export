@@ -72,6 +72,8 @@ Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du
 
 Die Standardwerte der Konten und Codes sind die des KMU-Mustermandanten von Abacus. Viele Mandanten nutzen dieselben; prüf sie trotzdem mit deinem Treuhänder in der MWST-Tabelle des Mandanten.
 
+Schreib einen Code mit führender Null, Buchstaben `x` oder `e` in Anführungszeichen, zum Beispiel `normal: "011"`. Ohne Anführungszeichen liest YAML `011` als Zahl 11, `0x1F` als 31 und `1e2` als 100, und `011` und `11` sind verschiedene MWST-Codes. Das Tool lehnt solche Werte bei Mandant, Konten und MWST-Codes ab und nennt den Schlüssel.
+
 ### `posting`
 
 | Schlüssel | Standard | Bedeutung |

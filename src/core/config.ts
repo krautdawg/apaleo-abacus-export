@@ -1,5 +1,5 @@
 import { extname, resolve } from 'node:path';
-import { LineCounter, parseDocument, type ErrorCode } from 'yaml';
+import { isMap, isScalar, isSeq, LineCounter, parseDocument, type ErrorCode } from 'yaml';
 import { z } from 'zod';
 import { UserError } from './errors.js';
 import type { Finding } from './findings.js';
@@ -80,7 +80,10 @@ export const bmdSection = z.strictObject({
 /**
  * Digits or letters written as YAML numbers (`mandant: 1234`, `mwstKonto: 2200`,
  * `normal: 311`) are read as text, so `pattern` decides alone and a number with
- * a sign, a decimal point or too many digits is refused.
+ * a sign, a decimal point or too many digits is refused. A number whose source
+ * text is not its decimal form (`011`, `0x1F`, `1e2`) never gets here: the YAML
+ * parser would already have lost the digits, so `rejectRewrittenCodes` refuses it
+ * at one of the `CODE_KEYS` before the schema runs.
  */
 function codeText(pattern: RegExp, message: string) {
   return z.preprocess((value) => (typeof value === 'number' ? String(value) : value), z.string({ error: message }).regex(pattern, message));
@@ -406,9 +409,10 @@ export interface LoadConfigOptions {
 
 export async function loadConfig({ path, env, readFile }: LoadConfigOptions): Promise<LoadedConfig> {
   checkEnvVariables(env);
-  const raw = parseConfigText(await readConfigFile(path, readFile), path);
+  const { raw, numberSources } = parseConfigText(await readConfigFile(path, readFile), path);
   rejectSecretsInFile(raw, path);
   rejectDatevSection(raw, path);
+  rejectRewrittenCodes(numberSources, path);
   const fromEnv = applyEnvOverrides(raw, env);
 
   const result = configSchema.safeParse(raw);
@@ -432,13 +436,63 @@ async function readConfigFile(path: string, readFile: LoadConfigOptions['readFil
   }
 }
 
-function parseConfigText(text: string, path: string): Record<string, unknown> {
-  const parsed = extname(path).toLowerCase() === '.json' ? parseJson(text, path) : parseYamlText(text, path);
-  if (parsed === null || parsed === undefined) return {};
+/**
+ * Dotted key paths (`abacus.mwstCodes.normal`, `properties.0.mandant`) of the
+ * numbers in the file whose source text differs from their decimal form, each
+ * with that source text: `011` (read as 11), `0x1F` (31), `1e2` (100), `311.0` (311).
+ */
+type NumberSources = Map<string, string>;
+
+interface ParsedConfigText {
+  raw: Record<string, unknown>;
+  numberSources: NumberSources;
+}
+
+function parseConfigText(text: string, path: string): ParsedConfigText {
+  const isJson = extname(path).toLowerCase() === '.json';
+  const { value: parsed, numberSources } = isJson ? parseJson(text, path) : parseYamlText(text, path);
+  if (parsed === null || parsed === undefined) return { raw: {}, numberSources };
   if (typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new UserError(`Config file ${path} must contain key/value settings at the top level.`);
   }
-  return dropNullValues(parsed as Record<string, unknown>);
+  return { raw: dropNullValues(parsed as Record<string, unknown>), numberSources };
+}
+
+/**
+ * The keys whose value is a code written as text (Mandantennummer, account,
+ * MWST-Code). `011` and `11` are different MWST-Codes in the Mandant's MWST-Tabelle,
+ * so a number there is accepted only when its source text is its decimal form.
+ */
+const CODE_KEYS = [/^abacus\.(mandant|mwstKonto|mwstHilfskonto|mwstCodes\.(normal|reduziert|beherbergung))$/, /^properties\.\d+\.mandant$/];
+
+/** A code written as `011`, `0x1F` or `1e2` without quotes: the parser has already changed its digits, so refuse it and ask for quotes. */
+function rejectRewrittenCodes(numberSources: NumberSources, path: string): void {
+  const isJson = extname(path).toLowerCase() === '.json';
+  const problems = [...numberSources]
+    .filter(([key]) => CODE_KEYS.some((pattern) => pattern.test(key)))
+    .map(([key, source]) => {
+      const name = key.split('.').at(-1) ?? key;
+      const quoted = isJson ? `"${name}": "${source}"` : `${name}: "${source}"`;
+      return `${key}: ${source} is read as the number ${Number(source)}, not as the text "${source}"; write it in quotes, for example ${quoted}`;
+    });
+  if (problems.length > 0) {
+    throw new UserError(`Invalid config in ${path}:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+  }
+}
+
+/** The numbers below `node` whose source text is not their decimal form (see `NumberSources`). */
+function yamlNumberSources(node: unknown, keyPath: readonly string[], out: NumberSources): NumberSources {
+  if (isMap(node)) {
+    for (const pair of node.items) {
+      const key = isScalar(pair.key) ? String(pair.key.value) : String(pair.key);
+      yamlNumberSources(pair.value, [...keyPath, key], out);
+    }
+  } else if (isSeq(node)) {
+    node.items.forEach((item, index) => yamlNumberSources(item, [...keyPath, String(index)], out));
+  } else if (isScalar(node) && typeof node.value === 'number' && node.source !== undefined && node.source !== String(node.value)) {
+    out.set(keyPath.join('.'), node.source);
+  }
+  return out;
 }
 
 // Parse errors are reported by position and error kind only. The messages of the
@@ -459,7 +513,7 @@ const YAML_ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
   UNEXPECTED_TOKEN: 'unexpected character',
 };
 
-function parseYamlText(text: string, path: string): unknown {
+function parseYamlText(text: string, path: string): { value: unknown; numberSources: NumberSources } {
   const lineCounter = new LineCounter();
   const doc = parseDocument(text, { prettyErrors: false, lineCounter });
   const [error] = doc.errors;
@@ -469,15 +523,28 @@ function parseYamlText(text: string, path: string): unknown {
     throw new UserError(`Cannot parse config file ${path}: line ${line}, column ${col}: ${what}.`);
   }
   try {
-    return doc.toJS();
+    return { value: doc.toJS(), numberSources: yamlNumberSources(doc.contents, [], new Map()) };
   } catch {
     throw new UserError(`Cannot parse config file ${path}: invalid YAML (aliases or tags).`);
   }
 }
 
-function parseJson(text: string, path: string): unknown {
+function parseJson(text: string, path: string): { value: unknown; numberSources: NumberSources } {
+  // The reviver sees each number's source text (`1e2`) but not its key path, so it
+  // records the number by its holder object and key; the walk below adds the paths.
+  const rewritten = new WeakMap<object, Map<string, string>>();
+  function reviver(this: unknown, key: string, value: unknown, context?: { source?: string }): unknown {
+    const source = context?.source;
+    if (typeof value === 'number' && source !== undefined && source !== String(value) && typeof this === 'object' && this !== null) {
+      const keys = rewritten.get(this) ?? new Map<string, string>();
+      keys.set(key, source);
+      rewritten.set(this, keys);
+    }
+    return value;
+  }
+  let value: unknown;
   try {
-    return JSON.parse(text);
+    value = JSON.parse(text, reviver);
   } catch (error) {
     const message = (error as Error).message;
     const lineCol = /\(line (\d+) column (\d+)\)/.exec(message);
@@ -488,6 +555,14 @@ function parseJson(text: string, path: string): unknown {
     else if (/end of (JSON|data) input/i.test(message)) where = 'end of file: ';
     throw new UserError(`Cannot parse config file ${path}: ${where}invalid JSON.`);
   }
+  const numberSources: NumberSources = new Map();
+  const walk = (node: unknown, keyPath: readonly string[]) => {
+    if (typeof node !== 'object' || node === null) return;
+    for (const [key, source] of rewritten.get(node) ?? []) numberSources.set([...keyPath, key].join('.'), source);
+    for (const [key, child] of Object.entries(node)) walk(child, [...keyPath, key]);
+  };
+  walk(value, []);
+  return { value, numberSources };
 }
 
 function lineAndColumn(text: string, offset: number): string {

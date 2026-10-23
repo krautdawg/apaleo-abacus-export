@@ -4,11 +4,13 @@ export {
   formatDocumentNumber,
   formatRate,
   SINGLE_TAX_ACCOUNT,
+  TAX_ACCOUNT_AT_RATE_ZERO,
   TAX_AMOUNT_IN_KEY_CURRENCY,
   TAX_INCLUDED_AT_RATE_ZERO,
   TAX_TYPE_OUTPUT,
   taxSign,
   type SingleTaxAccount,
+  type TaxAccountAtRateZero,
   type TaxAmountInKeyCurrency,
   type TaxIncluded,
 } from './format.js';

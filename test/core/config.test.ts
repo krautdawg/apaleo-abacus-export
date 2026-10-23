@@ -315,6 +315,28 @@ describe('abacus section', () => {
     expect(error.message).toContain('abacus.mwstcode: unknown key');
   });
 
+  it.each([
+    ['normal: 011', 'abacus.mwstCodes.normal: 011 is read as the number 11, not as the text "011"; write it in quotes, for example normal: "011"'],
+    ['reduziert: 0x1F', 'abacus.mwstCodes.reduziert: 0x1F is read as the number 31, not as the text "0x1F"; write it in quotes, for example reduziert: "0x1F"'],
+    ['beherbergung: 1e2', 'abacus.mwstCodes.beherbergung: 1e2 is read as the number 100, not as the text "1e2"'],
+  ])('MWST-Code written as a rewritten YAML number: rejects %s with a hint to quote it', async (line, message) => {
+    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    ${line}\n`);
+    expect(error.message).toContain(message);
+  });
+
+  it('rejects a rewritten number as Mandant or account, also for a property and in JSON, and keeps quoted codes', async () => {
+    const yaml = await loadError(`${VALID}abacus:\n  mandant: 0x4D2\n  mwstKonto: 02200\nproperties:\n  - id: BSP\n    mandant: 1.0e3\n`);
+    expect(yaml.message).toContain('abacus.mandant: 0x4D2 is read as the number 1234');
+    expect(yaml.message).toContain('abacus.mwstKonto: 02200 is read as the number 2200');
+    expect(yaml.message).toContain('properties.0.mandant: 1.0e3 is read as the number 1000');
+    const json = await loadError(JSON.stringify({ bmd: { buchsymbol: 'HO' }, abacus: { mandant: 1234 } }).replace('1234', '1e2'), {}, 'config.json');
+    expect(json.message).toContain('abacus.mandant: 1e2 is read as the number 100, not as the text "1e2"; write it in quotes, for example "mandant": "1e2"');
+    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "011"\n    reduziert: 312\n`);
+    expect(config.abacus?.mwstCodes).toEqual({ normal: '011', reduziert: '312', beherbergung: '313' });
+    const other = await load(`${VALID}abacus:\n  mandant: 1234\n  geschaeftsbereich: 0x0C\n`);
+    expect(other.config.abacus?.geschaeftsbereich).toBe(12);
+  });
+
   it('the commented abacus block of the example config, uncommented, holds the defaults and has no "ß"', async () => {
     const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
     const lines = example.split('\n');

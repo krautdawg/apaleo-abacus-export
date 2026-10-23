@@ -44,7 +44,7 @@ describe('switching a format.ts constant changes its field only', () => {
     expect(value(block(after, 'SingleInformation'), 'TaxAccount')).toBe('2200');
     expect(changedLines(before, after)).toEqual([[expect.any(Number), '<TaxAccount>3400</TaxAccount>', '<TaxAccount>2200</TaxAccount>']]);
     const importBlock = switched.importBlock([accommodation()], abacusOptions(), 'x.xml').join('\n');
-    expect(importBlock).toContain('TaxAccount: 2200 in CollectiveInformation, 2200 in SingleInformation');
+    expect(importBlock).toContain('TaxAccount: 2200 in CollectiveInformation (also on MWST-Codes at rate 0, TAX_ACCOUNT_AT_RATE_ZERO taxAccount), 2200 in SingleInformation');
     expect(importBlock).toContain('SINGLE_TAX_ACCOUNT taxAccount');
   });
 
@@ -54,6 +54,17 @@ describe('switching a format.ts constant changes its field only', () => {
     const after = switched.renderXmlBuchungen(bookings, abacusOptions()).text;
     expect(changedLines(before, after)).toEqual([[expect.any(Number), '<TaxIncluded>I</TaxIncluded>', '<TaxIncluded>E</TaxIncluded>']]);
     expect(switched.importBlock(bookings, abacusOptions(), 'x.xml').join('\n')).toContain('TaxIncluded E at rate 0');
+  });
+
+  it('Kurtaxe with a Ziffer-910 code: TAX_ACCOUNT_AT_RATE_ZERO zero writes Collective TaxAccount 0 on the rate-0 code only', async () => {
+    const before = (await defaults()).renderXmlBuchungen(bookings, abacusOptions()).text;
+    const switched = await abacusWith({ TAX_ACCOUNT_AT_RATE_ZERO: 'zero' });
+    const after = switched.renderXmlBuchungen(bookings, abacusOptions()).text;
+    expect(changedLines(before, after)).toEqual([[expect.any(Number), '<TaxAccount>2200</TaxAccount>', '<TaxAccount>0</TaxAccount>']]);
+    expect(value(block(after.slice(after.lastIndexOf('<Transaction')), 'SingleInformation'), 'TaxAccount')).toBe('2210');
+    expect(switched.importBlock(bookings, abacusOptions(), 'x.xml').join('\n')).toContain(
+      'TaxAccount: 2200 in CollectiveInformation (0 on MWST-Codes at rate 0, TAX_ACCOUNT_AT_RATE_ZERO zero)',
+    );
   });
 
   it('TaxType constant switched: every TaxData has the new TaxType, nothing else changes', async () => {

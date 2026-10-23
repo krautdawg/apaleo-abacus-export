@@ -1,6 +1,6 @@
 import { isLocalDate } from '../core/date.js';
 import type { Finding } from '../core/findings.js';
-import { formatAmount, MAX_AMOUNT_CENTS, MAX_BOOKINGS_PER_FILE, MAX_INTEGER_DIGITS, taxSign } from './format.js';
+import { formatAmount, formatRate, MAX_AMOUNT_CENTS, MAX_BOOKINGS_PER_FILE, MAX_INTEGER_DIGITS, taxSign } from './format.js';
 import { labelOf } from './labels.js';
 import { sanitiseText } from './sanitise.js';
 import type { AbacusBooking, AbacusRenderOptions } from './types.js';
@@ -9,10 +9,22 @@ const ACCOUNT = /^\d{1,11}$/;
 const KOST = /^\d{1,11}$/;
 const MWST_CODE = /^[A-Za-z0-9]{1,3}$/;
 const MAX_RATE = 99.99;
+/**
+ * How far apaleo's tax of one line may lie from the inclusive tax of its gross
+ * amount: one Rappen, the rounding difference the posting rules report as
+ * `W-VAT-ROUNDING` (research open question 5). Every booking is one apaleo line.
+ */
+export const TAX_RATE_TOLERANCE_CENTS = 1;
+
+/** The MWST contained in `grossCents` at `percent`, rounded to the Rappen: `round(gross × rate / (100 + rate))`. 20760 at 3.8 → 760. */
+export function inclusiveTaxCents(grossCents: number, percent: number): number {
+  const hundredths = Math.round(percent * 100);
+  return Math.round((grossCents * hundredths) / (10_000 + hundredths));
+}
 
 /**
  * Every error in the bookings at once (codes `E-ABACUS-ACCOUNT` to
- * `E-ABACUS-BELEGNR`), each with the booking index and the field, and
+ * `E-ABACUS-BELEGNR`, among them `E-ABACUS-TAX-RATE`), each with the booking index and the field, and
  * `E-ABACUS-PERIOD` (no booking index) for an invalid or reversed file period.
  * Messages name fields as Abacus does (Konto, Betrag, MWST-Code).
  */
@@ -101,6 +113,18 @@ function validateTax(b: AbacusBooking, index: number, grossValid: boolean): Find
     error('E-ABACUS-TAX', 'taxCents', taxCents, `MWST-Betrag ${describeAmount(taxCents)} must be below the gross Betrag ${describeAmount(b.grossCents)}`);
   } else if (rateValid && percent === 0 && taxCents !== 0) {
     error('E-ABACUS-TAX', 'taxCents', taxCents, `MWST-Betrag must be 0.00 for the MWST-Code ${mwstCode} at rate 0, got ${describeAmount(taxCents)}`);
+  } else if (grossValid && rateValid && percent > 0) {
+    // With "MWST berechnen" off Abacus books KeyAmount as written, so a tax that does not fit the rate would go into the MWST-Abrechnung.
+    const expected = inclusiveTaxCents(b.grossCents, percent);
+    if (Math.abs(Math.abs(taxCents) - expected) > TAX_RATE_TOLERANCE_CENTS) {
+      error(
+        'E-ABACUS-TAX-RATE',
+        'taxCents',
+        taxCents,
+        `MWST-Betrag ${describeAmount(taxCents)} does not fit ${formatRate(percent)} % of the gross Betrag ${describeAmount(b.grossCents)}: ` +
+          `expected ${formatAmount(expected)} (Betrag × Satz / (100 + Satz), rounded to the Rappen), at most ${formatAmount(TAX_RATE_TOLERANCE_CENTS)} off`,
+      );
+    }
   }
   if (taxCents !== 0 && Math.sign(taxCents) !== taxSign(b.debitCredit)) {
     const side = b.debitCredit === 'D' ? 'credited (DebitCredit D)' : 'debited (DebitCredit C)';

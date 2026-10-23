@@ -73,10 +73,18 @@ describe('MWST choices of the first test import', () => {
 
   it('TaxAccount per Abrechnungsart: Steuerkonto or Hilfskonto in Collective, the account itself or the tax account in Single', () => {
     const settings = { abrechnungsart: 'vereinbart', mwstKonto: '2200', mwstHilfskonto: '2202' } as const;
-    expect(taxAccounts('3400', settings, 'account')).toEqual({ collective: '2200', single: '3400' });
-    expect(taxAccounts('3400', { ...settings, abrechnungsart: 'vereinnahmt' }, 'account')).toEqual({ collective: '2202', single: '3400' });
-    expect(taxAccounts('3400', settings, 'taxAccount')).toEqual({ collective: '2200', single: '2200' });
-    expect(taxAccounts('3400', { ...settings, abrechnungsart: 'vereinnahmt' }, 'taxAccount')).toEqual({ collective: '2202', single: '2202' });
+    expect(taxAccounts('3400', 3.8, settings, 'account', 'taxAccount')).toEqual({ collective: '2200', single: '3400' });
+    expect(taxAccounts('3400', 3.8, { ...settings, abrechnungsart: 'vereinnahmt' }, 'account', 'taxAccount')).toEqual({ collective: '2202', single: '3400' });
+    expect(taxAccounts('3400', 3.8, settings, 'taxAccount', 'taxAccount')).toEqual({ collective: '2200', single: '2200' });
+    expect(taxAccounts('3400', 3.8, { ...settings, abrechnungsart: 'vereinnahmt' }, 'taxAccount', 'taxAccount')).toEqual({ collective: '2202', single: '2202' });
+  });
+
+  it('TaxAccount at rate 0: the Steuerkonto by default, 0 in Collective with zero, and only at rate 0', () => {
+    const settings = { abrechnungsart: 'vereinbart', mwstKonto: '2200', mwstHilfskonto: '2202' } as const;
+    expect(taxAccounts('2210', 0, settings, 'account', 'taxAccount')).toEqual({ collective: '2200', single: '2210' });
+    expect(taxAccounts('2210', 0, settings, 'account', 'zero')).toEqual({ collective: '0', single: '2210' });
+    expect(taxAccounts('2210', 0, settings, 'taxAccount', 'zero')).toEqual({ collective: '0', single: '0' });
+    expect(taxAccounts('3400', 3.8, settings, 'account', 'zero')).toEqual({ collective: '2200', single: '3400' });
   });
 });
 
