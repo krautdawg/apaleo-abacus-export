@@ -55,6 +55,7 @@ Die Fälle, in denen das Schweizer MWST-Recht von einem einfachen Verkauf abweic
 | Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
 |---|---|---|---|---|---|---|---|
 | Logis mit Frühstück | `1101` | `3400` | `D` | 155.70 | −5.70 | `313` | Erlös Beherbergung 3,8 % |
+| Nacht, MWST aus apaleo 4.39306358, auf den Rappen gerundet | `1101` | `3400` | `D` | 120.00 | −4.39 | `313` | Erlös Beherbergung 3,8 % |
 | Abendessen | `1101` | `3200` | `D` | 54.05 | −4.05 | `311` | Erlös Speisen und Getränke 8,1 % |
 | Minibar | `1101` | `3500` | `D` | 10.81 | −0.81 | `311` | Erlös Übrige Erlöse 8,1 % |
 | Take-away | `1101` | `3260` | `D` | 15.39 | −0.39 | `312` | Erlös Speisen und Getränke 2,6 % |
@@ -85,7 +86,7 @@ Die Halbpension selbst ist eine Zeile auf dem Beherbergungskonto zu 3,8 %, weil 
 
 | Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
 |---|---|---|---|---|---|---|---|
-| Nicht bezahlte Nacht abgeschrieben | `1101` | `3805` | `C` | 103.80 | 3.80 | `313` | Debitorenverlust 3,8 % |
+| Nicht bezahlte Nacht abgeschrieben (MWST aus apaleo 4.39306358) | `1101` | `3805` | `C` | 120.00 | 4.39 | `313` | Debitorenverlust 3,8 % |
 
 **Annullationen und No-Shows.** Sie laufen wie jeder Erlös durch ihre Zeile und die Prüfung der MWST, mit dem Satz, den apaleo berechnet hat. Ohne MWST sind sie Schadenersatz (ESTV MBI 08 Ziff. 8.7) und gehen ohne `TaxData` auf `3680`. Hat apaleo eine Annullation besteuert und die Zeile keinen MWST-Code, stoppt der Export mit `E-VAT-MISSING`; lässt die Vorlage die Zeile leer (eine Annullation mit MWST), mit `E-UNMAPPED`.
 
@@ -126,7 +127,7 @@ So sieht die Anzahlung per Twint in der Datei aus (gekürzt):
 
 ## Vereinnahmte Entgelte
 
-Mit `abacus.abrechnungsart: vereinnahmt` sind die Buchungen dieselben; nur der `UseCode` wird `1`, und das Steuerkonto der `CollectiveInformation` wird das Hilfskonto (`abacus.mwstHilfskonto`, Standard `2202`). Abacus bucht die MWST dieser Buchungen dann auf das Hilfskonto und überträgt sie erst auf das Steuerkonto, wenn eine Zahlung erfasst wird, normalerweise in der Debitorenbuchhaltung, die dieses Tool nicht bedient. Die Datei bucht die MWST am Tag der Leistung, nach vereinnahmten Entgelten entsteht sie aber mit der Zahlung (MWSTG Art. 40 Abs. 2); das betrifft Rechnungen, die am Periodenende offen sind. `doctor` und jeder Export, auch der Probelauf, warnen deshalb einmal pro Lauf mit `W-ABRECHNUNGSART-VEREINNAHMT`. Der Exit-Code bleibt 0. Wie dein Treuhänder das Hilfskonto am Periodenende korrigiert, steht in [mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte).
+Mit `abacus.abrechnungsart: vereinnahmt` sind die Buchungen dieselben; nur der `UseCode` wird `1`, und das Steuerkonto der `CollectiveInformation` wird das Hilfskonto (`abacus.mwstHilfskonto`, Standard `2202`). Abacus bucht die MWST dieser Buchungen dann auf das Hilfskonto und überträgt sie erst auf das Steuerkonto, wenn eine Zahlung erfasst wird, normalerweise in der Debitorenbuchhaltung, die dieses Tool nicht bedient. Die Datei bucht die MWST am Tag der Leistung, nach vereinnahmten Entgelten entsteht sie aber mit der Zahlung (MWSTG Art. 40 Abs. 2); das betrifft Rechnungen, die am Periodenende offen sind. `doctor` und jeder Export, auch der Probelauf, warnen deshalb mit `W-ABRECHNUNGSART-VEREINNAHMT`, einmal pro Hotel und Monat: in der Ausgabe dieses Monats und in seinem Protokoll. Der Exit-Code bleibt 0. Wie dein Treuhänder das Hilfskonto am Periodenende korrigiert, steht in [mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte).
 
 ## Anzahlungen ohne MWST-Betrag
 
@@ -159,4 +160,4 @@ Eine erhaltene oder zurückbezahlte Anzahlung ohne `taxes[]` nimmt den Satz eine
 
 Alles in Rappen: Soll, Haben und Saldo pro Abacus-Konto nach dem Bewegungsmodell (das Konto der `CollectiveInformation` mit dem Bruttobetrag, das Konto der `SingleInformation` mit dem Bruttobetrag minus der MWST); Erlöse, Anzahlungen und abgeschriebene Forderungen (Debitorenverluste mit der MWST-Korrektur) pro MWST-Code und Satz mit Netto, MWST und Brutto, wie sie an Abacus gehen, daneben die genaue MWST von apaleo auf denselben Zeilen; Kurtaxe und andere Abgaben, gesamt und pro Abacus-Konto mit oder ohne MWST; Zahlungen pro Konto; erhaltene, aufgelöste und zurückbezahlte Anzahlungen; die Bewegung auf den Debitoren; übersprungene Zeilen pro Grund; die Rundungssumme; Befunde pro Code.
 
-Im Schweizer Testmonat sind das zum Beispiel: Beherbergung `313` netto 630.00, MWST 23.94, brutto 653.94; Normalsatz `311` netto 80.00, MWST 6.48; reduzierter Satz `312` netto 15.00, MWST 0.39; Annullation ohne MWST-Code 80.00; Kurtaxe 12.60 auf `2210` ohne MWST; Anzahlungen erhalten 311.40, aufgelöst 311.40, davon zurückbezahlt 103.80, MWST der Anzahlungen 0.00; Debitorenverlust `313` 103.80 mit der MWST-Korrektur 3.80; Kasse `1000` 240.15, Transferkonto `1090` 296.00, Debitoren `1102` 208.46. Die Salden aller Konten ergeben zusammen die MWST, die Abacus bucht: 23.94 + 6.48 + 0.39 − 3.80 = 27.01.
+Im Schweizer Testmonat sind das zum Beispiel: Beherbergung `313` netto 645.61, MWST 24.53 (genau aus apaleo 24.53306358), brutto 670.14; Normalsatz `311` netto 80.00, MWST 6.48; reduzierter Satz `312` netto 15.00, MWST 0.39; Annullation ohne MWST-Code 80.00; Kurtaxe 12.60 auf `2210` ohne MWST; Anzahlungen erhalten 311.40, aufgelöst 311.40, davon zurückbezahlt 103.80, MWST der Anzahlungen 0.00; Debitorenverlust `313` 120.00 mit der MWST-Korrektur 4.39; Kasse `1000` 240.15, Transferkonto `1090` 296.00, Debitoren `1102` 208.46. Die Salden aller Konten ergeben zusammen die MWST, die Abacus bucht: 24.53 + 6.48 + 0.39 − 4.39 = 27.01.

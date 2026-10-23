@@ -797,9 +797,9 @@
           <EntryDate>2026-08-18</EntryDate>
           <AmountData mode='SAVE'>
             <Currency>CHF</Currency>
-            <Amount>103.80</Amount>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>103.80</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
           <Text1>Erlös Beherbergung 3,8 %</Text1>
@@ -813,9 +813,9 @@
           <EntryDate>2026-08-18</EntryDate>
           <AmountData mode='SAVE'>
             <Currency>CHF</Currency>
-            <Amount>103.80</Amount>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>103.80</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>3400</Account>
           <TaxAccount>3400</TaxAccount>
           <Text1>Erlös Beherbergung 3,8 %</Text1>
@@ -829,7 +829,7 @@
               <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>-3.80</KeyAmount>
+            <KeyAmount>-4.39</KeyAmount>
             <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>
@@ -1002,9 +1002,9 @@
           <EntryDate>2026-08-28</EntryDate>
           <AmountData mode='SAVE'>
             <Currency>CHF</Currency>
-            <Amount>103.80</Amount>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>103.80</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>1101</Account>
           <TaxAccount>2200</TaxAccount>
           <Text1>Debitorenverlust 3,8 %</Text1>
@@ -1018,9 +1018,9 @@
           <EntryDate>2026-08-28</EntryDate>
           <AmountData mode='SAVE'>
             <Currency>CHF</Currency>
-            <Amount>103.80</Amount>
+            <Amount>120.00</Amount>
           </AmountData>
-          <KeyAmount>103.80</KeyAmount>
+          <KeyAmount>120.00</KeyAmount>
           <Account>3805</Account>
           <TaxAccount>3805</TaxAccount>
           <Text1>Debitorenverlust 3,8 %</Text1>
@@ -1034,7 +1034,7 @@
               <Currency>CHF</Currency>
               <Amount>0.00</Amount>
             </AmountData>
-            <KeyAmount>3.80</KeyAmount>
+            <KeyAmount>4.39</KeyAmount>
             <TaxRate>3.8</TaxRate>
             <TaxCoefficient>100</TaxCoefficient>
             <Country>CH</Country>

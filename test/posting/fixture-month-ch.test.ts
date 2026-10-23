@@ -18,8 +18,11 @@ import { describeUtf8Difference } from '../helpers/golden.js';
  * Totals computed by hand; Abacus gets the gross amount and apaleo's tax:
  *
  * Beherbergung 3400 (313, 3.8 %): BRAVO 155.70, ALPHA 103.80 + 103.80, FOXTROT
- *   103.80, DELTA Halbpension 186.84 = 653.94; tax 5.70 + 3.80 × 3 + 6.84 = 23.94,
- *   net 630.00.
+ *   120.00, DELTA Halbpension 186.84 = 670.14; tax 5.70 + 3.80 × 2 + 4.39 + 6.84 =
+ *   24.53, net 645.61. FOXTROT carries apaleo's precise values like the live data:
+ *   net 115.60693642, tax 4.39306358, booked 4.39, and Abacus' check value
+ *   120.00 × 3.8 / 103.8 = 4.3930… is 4.39 too, so no W-VAT-ROUNDING; apaleo's
+ *   exact 313 revenue tax is 24.53306358.
  * Normalsatz 311 (8.1 %): dinner 54.05 and drinks 21.62 on 3200, minibar 10.81 on
  *   3500 = 86.48; tax 4.05 + 1.62 + 0.81 = 6.48, net 70.00 + 10.00.
  * Reduzierter Satz 312 (2.6 %): take-away 15.39 on 3260, tax 0.39, net 15.00.
@@ -27,17 +30,18 @@ import { describeUtf8Difference } from '../helpers/golden.js';
  * Kurtaxe on 2210 without MWST: 4.20 + 8.40 = 12.60.
  * Deposit 2030 (313): received 311.40 (tax 11.40), released 207.60 (tax 7.60) and
  *   refunded 103.80 (tax 3.80): deposit tax 11.40 − 7.60 − 3.80 = 0.
- * Write-off 3805 (313): 103.80 with the MWST correction 3.80, net 100.00.
+ * Write-off 3805 (313): FOXTROT 120.00 with the MWST correction 4.39 (apaleo
+ *   4.39306358), net 115.61.
  * Payments: Kasse 1000 = 224.76 + 15.39 = 240.15; Transferkonto 1090 = Twint
  *   311.40 − 103.80 + Mastercard 8.40 + 80.00 = 296.00. Debitoren 1102: 208.46.
  * 1101 Soll (the charges as Collective account): 155.70 + 54.05 + 4.20 + 10.81 +
- *   103.80 + 103.80 + 8.40 + 80.00 + 15.39 + 103.80 + 186.84 + 21.62 = 848.41;
- *   Haben: release 207.60, write-off 103.80, payments 224.76 + 8.40 + 80.00 +
- *   15.39 and the AR transfer 208.46 = 848.41.
+ *   103.80 + 103.80 + 8.40 + 80.00 + 15.39 + 120.00 + 186.84 + 21.62 = 864.61;
+ *   Haben: release 207.60, write-off 120.00, payments 224.76 + 8.40 + 80.00 +
+ *   15.39 and the AR transfer 208.46 = 864.61.
  * Skipped SAME_ACCOUNT: the /Offset second lines of four payments and the AR
  *   transfer, 224.76 + 8.40 + 80.00 + 15.39 + 208.46 = 537.01. 26 − 5 = 21
- *   bookings. The balances add up to the MWST Abacus books: 23.94 + 6.48 + 0.39 −
- *   3.80 = 27.01.
+ *   bookings. The balances add up to the MWST Abacus books: 24.53 + 6.48 + 0.39 −
+ *   4.39 = 27.01.
  */
 const UPDATE = process.env.UPDATE_GOLDEN === '1';
 const GOLDEN = new URL('../golden/abacus/ch-month.xml', import.meta.url);
@@ -84,11 +88,11 @@ describe('posting the Swiss fixture month', () => {
       ['2026-08-14', '1090', '1101', 'D', 8_000, '', null, 'Zahlung Mastercard', 'PSP-ENG-0004'],
       ['2026-08-17', '1101', '3260', 'D', 1_539, '312', -39, 'Erlös Speisen und Getränke 2,6 %', 'TAKEAWAY-ENG-1'],
       ['2026-08-17', '1000', '1101', 'D', 1_539, '', null, 'Zahlung Bar', 'TAKEAWAY-ENG-1'],
-      ['2026-08-18', '1101', '3400', 'D', 10_380, '313', -380, 'Erlös Beherbergung 3,8 %', 'ENG-FOXTROT-1-V1'],
+      ['2026-08-18', '1101', '3400', 'D', 12_000, '313', -439, 'Erlös Beherbergung 3,8 %', 'ENG-FOXTROT-1-V1'],
       ['2026-08-20', '1101', '3400', 'D', 18_684, '313', -684, 'Erlös Beherbergung 3,8 %', 'ENG-DELTA-1-V1'],
       ['2026-08-20', '1101', '3200', 'D', 2_162, '311', -162, 'Erlös Speisen und Getränke 8,1 %', 'ENG-DELTA-1-V1'],
       ['2026-08-20', '1102', '1101', 'D', 20_846, '', null, 'Forderung an Debitor', 'ENG-2026-0815'],
-      ['2026-08-28', '1101', '3805', 'C', 10_380, '313', 380, 'Debitorenverlust 3,8 %', 'ENG-FOXTROT-1-V1'],
+      ['2026-08-28', '1101', '3805', 'C', 12_000, '313', 439, 'Debitorenverlust 3,8 %', 'ENG-FOXTROT-1-V1'],
     ]);
   });
 
@@ -97,25 +101,25 @@ describe('posting the Swiss fixture month', () => {
       accounts: [
         { account: '1000', sollCents: 24_015, habenCents: 0, balanceCents: 24_015 },
         { account: '1090', sollCents: 39_980, habenCents: 10_380, balanceCents: 29_600 },
-        { account: '1101', sollCents: 84_841, habenCents: 84_841, balanceCents: 0 },
+        { account: '1101', sollCents: 86_461, habenCents: 86_461, balanceCents: 0 },
         { account: '1102', sollCents: 20_846, habenCents: 0, balanceCents: 20_846 },
         { account: '2030', sollCents: 30_000, habenCents: 30_000, balanceCents: 0 },
         { account: '2210', sollCents: 0, habenCents: 1_260, balanceCents: -1_260 },
         { account: '3200', sollCents: 0, habenCents: 7_000, balanceCents: -7_000 },
         { account: '3260', sollCents: 0, habenCents: 1_500, balanceCents: -1_500 },
-        { account: '3400', sollCents: 0, habenCents: 63_000, balanceCents: -63_000 },
+        { account: '3400', sollCents: 0, habenCents: 64_561, balanceCents: -64_561 },
         { account: '3500', sollCents: 0, habenCents: 1_000, balanceCents: -1_000 },
         { account: '3680', sollCents: 0, habenCents: 8_000, balanceCents: -8_000 },
-        { account: '3805', sollCents: 10_000, habenCents: 0, balanceCents: 10_000 },
+        { account: '3805', sollCents: 11_561, habenCents: 0, balanceCents: 11_561 },
       ],
       revenueByRate: [
         { mwstCode: '', ratePercent: 0, netCents: 8_000, vatCents: 0, grossCents: 8_000, apaleoVat: '0' },
         { mwstCode: '312', ratePercent: 2.6, netCents: 1_500, vatCents: 39, grossCents: 1_539, apaleoVat: '0.39' },
-        { mwstCode: '313', ratePercent: 3.8, netCents: 63_000, vatCents: 2_394, grossCents: 65_394, apaleoVat: '23.94' },
+        { mwstCode: '313', ratePercent: 3.8, netCents: 64_561, vatCents: 2_453, grossCents: 67_014, apaleoVat: '24.53306358' },
         { mwstCode: '311', ratePercent: 8.1, netCents: 8_000, vatCents: 648, grossCents: 8_648, apaleoVat: '6.48' },
       ],
       depositVatByRate: [{ mwstCode: '313', ratePercent: 3.8, netCents: 0, vatCents: 0, grossCents: 0, apaleoVat: '0' }],
-      writeOffsByRate: [{ mwstCode: '313', ratePercent: 3.8, netCents: 10_000, vatCents: 380, grossCents: 10_380, apaleoVat: '3.8' }],
+      writeOffsByRate: [{ mwstCode: '313', ratePercent: 3.8, netCents: 11_561, vatCents: 439, grossCents: 12_000, apaleoVat: '4.39306358' }],
       cityTaxCents: 1_260,
       levies: [{ account: '2210', mwstCode: '', ratePercent: 0, grossCents: 1_260, vatCents: 0 }],
       payments: [
@@ -129,7 +133,7 @@ describe('posting the Swiss fixture month', () => {
       findings: [],
     });
     const balance = result.summary.accounts.reduce((sum, account) => sum + account.balanceCents, 0);
-    expect(balance).toBe(2_394 + 648 + 39 - 380);
+    expect(balance).toBe(2_453 + 648 + 39 - 439);
   });
 
   it('carries 311 at 8.1 %, 312 at 2.6 % or 313 at 3.8 % on every taxed booking, in whole Rappen without 5-Rappen rounding, and no E- finding', () => {
@@ -139,6 +143,20 @@ describe('posting the Swiss fixture month', () => {
     expect(amounts.every(Number.isInteger)).toBe(true);
     expect(amounts.some((cents) => cents % 5 !== 0)).toBe(true);
     expect(result.findings.filter(isErrorFinding)).toEqual([]);
+  });
+
+  it('carries apaleo\'s sub-Rappen precise net and tax on FOXTROT, books the tax rounded to the Rappen, and raises no W-VAT-ROUNDING', () => {
+    const precise = CH_LEDGER.filter((line) => line.taxes.some((tax) => /\.\d{3,}$/.test(tax.amountPrecise)));
+    expect(precise.map((line) => [line.sourceEntryNumber, line.netPrecise, line.taxes.map((tax) => tax.amountPrecise)])).toEqual([
+      ['ENGE0017', '115.60693642', ['4.39306358']],
+      ['ENGE0021', '115.60693642', ['4.39306358']],
+    ]);
+    expect(result.bookings.filter((b) => b.text2 === 'ENG-FOXTROT-1-V1').map((b) => [b.grossCents, b.tax?.taxCents])).toEqual([
+      [12_000, -439],
+      [12_000, 439],
+    ]);
+    expect(result.summary.roundingCents).toBe(0);
+    expect(result.findings.map((f) => f.code)).not.toContain('W-VAT-ROUNDING');
   });
 
   it('keeps every apaleo line traceable: booked or skipped', () => {
