@@ -12,6 +12,12 @@ Die Geschichte von apaleo-bmd-export beginnt hier. Das Projekt ist eine Kopie vo
 
 - **Neuer Name apaleo-abacus-export** (a01): das Paket `apaleo-abacus-export` (Version 0.0.0), die Kommandozeile `apaleo-abacus`, die Konfigurationsdatei `apaleo-abacus.config.yaml` und die Umgebungsvariablen `APALEO_ABACUS_*`. `APALEO_CLIENT_ID` und `APALEO_CLIENT_SECRET` bleiben, die alten Variablen `APALEO_BMD_*` liest das Tool nicht mehr.
 - **Währung des Zielformats** (a01): Der `TargetWriter` nennt die Währung, in der seine Datei bucht, und `E-CURRENCY` vergleicht das Hotel und jede Zeile des Buchungsjournals damit. Der BMD-Writer bucht weiterhin in EUR, seine Dateien bleiben gleich.
+- **Export nach Abacus** (a03): `export` schreibt pro Hotel und Monat `ABACUS_Buchungen_<von>-<bis>_<Hotel>.xml` (AbaConnect „XML Buchungen“) statt der BMD-Datei. Die Seite mit MWST-Code steht in `SingleInformation` mit dem Bruttobetrag und der MWST aus apaleo, `DebitCredit` ist die Seite der `CollectiveInformation`, die Kostenstelle steht nur auf Erlös- und Debitorenverlustbuchungen, `Text2` kommt aus `posting.text2` (ersetzt das frühere extbelegnr). Der Abschnitt `abacus` ist Pflicht, die Abschnitte `bmd` und `datev` lehnt das Tool ab; CHF-Hotels exportieren mit der Standard-Leitwährung. Das Manifest hat keine Soll- und Habensummen von BMD mehr.
+- **Kontenzuordnung für Abacus** (a03): Die Spalten sind `apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;abacus_account;mwst_code;mwst_percent;kost;comment`; BMD- und DATEV-Zuordnungen und den Kontenexport eines kostenpflichtigen Connectors lehnt das Tool mit einem Hinweis auf `init-mapping --template kmu-hotel` ab. `init-mapping --template kmu-hotel` schreibt die Zuordnung nach dem Schweizer Kontenrahmen KMU mit den MWST-Codes aus `abacus.mwstCodes`, `--accounts-from <Datei>` übernimmt Konten und Kostenstellen aus dem Kontenexport eines kostenpflichtigen Connectors. `mapping check` prüft Abacus-Konten (`E-ACCOUNT-FORMAT`), MWST-Codes (`E-MWST-CODE-FORMAT`, `E-MWST-CODE-MISSING`, `E-MWST-CODE-NOT-ALLOWED`, `W-MWST-CODE-UNCHECKED` mit der Ziffer der KMU-Mustercodes, `W-MWST-CODE-RATE`) und die Schweizer Sätze.
+
+### Entfernt
+
+- **BMD als Ziel des Exports** (a03): die EKR-Vorlage im Befehl `init-mapping` (`--template ekr`), die Sach- und Personenkontenlänge, die Buchungssymbole und die BMD-Befunde der Kontenzuordnung. Der BMD-Writer selbst entfällt im nächsten Schritt.
 
 ## [0.1.0] - 2026-10-21
 
@@ -28,7 +34,7 @@ Die Geschichte von apaleo-bmd-export beginnt hier. Das Projekt ist eine Kopie vo
 
 - **Neuer Name apaleo-bmd-export** (b01): das Paket `apaleo-bmd-export`, die Kommandozeile `apaleo-bmd`, die Konfigurationsdatei `apaleo-bmd.config.yaml` und die Umgebungsvariablen `APALEO_BMD_*`; `APALEO_CLIENT_ID` und `APALEO_CLIENT_SECRET` bleiben.
 - **Schnittstelle für Zielformate** (b01): Der Export schreibt Dateien nur noch über einen `TargetWriter`; der BMD-Writer ist die einzige Umsetzung.
-- **Konfiguration für BMD** (b03): Der Abschnitt `bmd` (`buchsymbol` als Pflicht, `buchsymbolZahlung`, `sachkontenlaenge`, `personenkontenlaenge`, `dialect`) ersetzt `datev`, `posting.extbelegnr` ersetzt `posting.belegfeld1`, und `properties[].buchsymbol` ersetzt die Mandantennummer pro Hotel. Eine Konfiguration mit `datev` und eine DATEV-Kontenzuordnung lehnt das Tool mit einem Hinweis auf `bmd` und `init-mapping --template ekr` ab.
+- **Konfiguration für BMD** (b03): Der Abschnitt `bmd` (`buchsymbol` als Pflicht, `buchsymbolZahlung`, `sachkontenlaenge`, `personenkontenlaenge`, `dialect`) ersetzt `datev`, posting.extbelegnr ersetzt posting.belegfeld1, und properties[].buchsymbol ersetzt die Mandantennummer pro Hotel. Eine Konfiguration mit `datev` und eine DATEV-Kontenzuordnung lehnt das Tool mit einem Hinweis auf `bmd` und `init-mapping --template ekr` ab.
 
 ### Entfernt
 

@@ -1,5 +1,7 @@
 # BMD Buchungsimport: was der Writer macht und warum
 
+> Das Tool schreibt Abacus-Dateien; diese Seite beschreibt den früheren BMD-Buchungsimport, dessen Writer noch im Quellcode liegt und bald entfällt. Die Konfiguration hat keinen Abschnitt bmd mehr.
+
 Diese Seite hält fest, was `src/bmd` schreibt, gegen welche Quellen es geprüft wurde und welche Fragen erst der erste Testimport in einer Kanzlei beantwortet. Sie ist für Mitwirkende und für die Steuerberatung oder Buchhaltung, die den ersten Import in BMD NTCS macht.
 
 Zuletzt geprüft: **2026-10-21**.
@@ -36,7 +38,7 @@ satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;st
 
 ## Dialekte: NTCS und BMD 5.5
 
-Kopfzeile, Datumsformat und die Bedeutung der Steuercodes gehören zusammen. Ein Schalter wählt alle drei, damit eine Datei sie nie mischt. Standard ist `ntcs`; `bmd55` ist für Kanzleien, die noch mit BMD 5.5 importieren. In der Konfiguration heißt der Schalter `bmd.dialect`.
+Kopfzeile, Datumsformat und die Bedeutung der Steuercodes gehören zusammen. Ein Schalter wählt alle drei, damit eine Datei sie nie mischt. Standard ist `ntcs`; `bmd55` ist für Kanzleien, die noch mit BMD 5.5 importieren. In der Konfiguration heißt der Schalter bmd.dialect.
 
 | | `ntcs` (Standard) | `bmd55` |
 |---|---|---|

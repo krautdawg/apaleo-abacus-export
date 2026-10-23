@@ -1,20 +1,23 @@
 # Kontenzuordnung (Mapping): Leitfaden für Hotel und Steuerberatung
 
-Die BMD-Datei ist nur so gut wie die Kontenzuordnung. Sie ist eine CSV-Datei pro Hotel (Property), die du in Excel öffnest und mit deiner Kanzlei durchgehst. Sie ordnet jedem apaleo-Konto ein Sachkonto oder Personenkonto in BMD zu, dazu den Steuercode und den USt-Satz. **Keine Gewähr, keine Steuerberatung: Jede Zeile der Vorlage ist ein Vorschlag (ungeprüft), den die Kanzlei bestätigt.**
+Die Abacus-Datei ist nur so gut wie die Kontenzuordnung. Sie ist eine CSV-Datei pro Hotel (Property), die du in Excel öffnest und mit deinem Treuhänder durchgehst. Sie ordnet jedem apaleo-Konto ein Abacus-Konto zu, dazu den MWST-Code und den MWST-Satz. **Keine Gewähr, keine Steuerberatung: Jede Zeile der Vorlage ist ein Vorschlag (ungeprüft), den dein Treuhänder bestätigt.**
 
-Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen „Hotel Beispiel“ nach dem Einheitskontenrahmen (EKR), aus der die Beispieldatei in [examples/](examples/) entstanden ist. Die Kanzlei kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
+`init-mapping --template kmu-hotel` schreibt die Datei nach der Vorlage `templates/kmu-hotel.rules.csv` (Schweizer Kontenrahmen KMU und Kontenrahmen für die Hotellerie und Gastronomie); der Kommentar jeder Zeile sagt, warum sie so vorgeschlagen ist. Die Abschnitte ab „Steuersätze in Österreich“ beschreiben noch die frühere österreichische Vorlage `ekr-hotel@1`; die Schweizer Fassung dieser Abschnitte folgt.
+
+Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen „Hotel Beispiel“, aus der die Beispieldatei in [examples/](examples/) entstanden ist. Dein Treuhänder kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
 
 ## Ablauf
 
 ```sh
-apaleo-abacus init-mapping --property BSP --template ekr      # schreibt mapping-BSP.csv aus dem apaleo-Kontenplan
-# Datei mit der Kanzlei prüfen, leere BMD-Konten ausfüllen
+apaleo-abacus init-mapping --property BSP --template kmu-hotel      # schreibt mapping-BSP.csv aus dem apaleo-Kontenplan
+# Datei mit dem Treuhänder prüfen, leere Abacus-Konten ausfüllen
 apaleo-abacus mapping check --property BSP                    # prüft die Datei
 apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30   # ist jedes gebuchte Konto zugeordnet?
-apaleo-abacus init-mapping --property BSP --template ekr --update   # später: neue apaleo-Konten anhängen, bearbeitete Zeilen bleiben
+apaleo-abacus init-mapping --property BSP --template kmu-hotel --update   # später: neue apaleo-Konten anhängen, bearbeitete Zeilen bleiben
+apaleo-abacus init-mapping --property BSP --template kmu-hotel --accounts-from konten.csv   # Konten aus dem Kontenexport eines kostenpflichtigen Connectors übernehmen
 ```
 
-Der Pfad der Datei kann in der Konfiguration stehen (`properties[].mapping`), sonst heißt sie `mapping-<id>.csv` im Arbeitsverzeichnis. `mapping check --from --to` liest das Buchungsjournal des Zeitraums aus apaleo und meldet jedes gebuchte Konto ohne Zuordnung; die Kanzlei kann die Datei also an einem echten Monat prüfen, bevor ein Export läuft. Die Vorlage richtet sich nach `bmd.sachkontenlaenge`, `bmd.personenkontenlaenge` und `bmd.dialect` aus der Konfiguration.
+Der Pfad der Datei kann in der Konfiguration stehen (`properties[].mapping`), sonst heißt sie `mapping-<id>.csv` im Arbeitsverzeichnis. `mapping check --from --to` liest das Buchungsjournal des Zeitraums aus apaleo und meldet jedes gebuchte Konto ohne Zuordnung; die Kanzlei kann die Datei also an einem echten Monat prüfen, bevor ein Export läuft. Die Vorlage schreibt die MWST-Codes aus `abacus.mwstCodes` der Konfiguration (Standard `311`, `312` und `313` wie im KMU-Mustermandanten von Abacus).
 
 ## Spalten
 
@@ -22,20 +25,18 @@ Der Pfad der Datei kann in der Konfiguration stehen (`properties[].mapping`), so
 |---|---|
 | `apaleo_account` | apaleo-Kontonummer, oder `*` für alle Konten eines Typs |
 | `apaleo_type` | apaleo-Kontotyp (Revenues, Payments, Liabilities, Receivables, AccountsReceivable, CityTaxes, …) |
-| `apaleo_name`, `apaleo_vat_percent` | zur Information, aus apaleo; bei `*`-Zeilen ist `apaleo_vat_percent` der USt-Satz, für den die Zeile gilt |
-| `bmd_account` | Sachkonto oder Personenkonto in BMD. Leer heißt: nicht zugeordnet, der Export bricht mit `E-UNMAPPED` ab |
-| `steuercode` | Steuercode in BMD. Leer heißt: keine Steuer auf dieser Zeile. In BMD NTCS ist `1` die Umsatzsteuer, siehe unten |
-| `bmd_vat_percent` | USt-Satz, den BMD mit dem Steuercode bucht, zum Beispiel `10`, `13`, `20` oder `4,9`. Mit Steuercode Pflicht (auch `0`), ohne Steuercode leer oder `0` |
-| `kost` | Kostenstelle, 1 bis 9 Ziffern (optional). Steht nur auf Erlös- und Forderungsverlust-Buchungen in der Datei, siehe unten |
-| `comment` | Freitext, zum Beispiel die Begründung der Kanzlei |
+| `apaleo_name`, `apaleo_vat_percent` | zur Information, aus apaleo; bei `*`-Zeilen ist `apaleo_vat_percent` der MWST-Satz, für den die Zeile gilt |
+| `abacus_account` | Konto in Abacus, 1 bis 11 Ziffern. Leer heisst: nicht zugeordnet, der Export bricht mit `E-UNMAPPED` ab |
+| `mwst_code` | MWST-Code aus der MWST-Tabelle des Mandanten, 1 bis 3 Zeichen, zum Beispiel `313`. Leer heisst: keine MWST auf dieser Zeile |
+| `mwst_percent` | MWST-Satz, den Abacus mit dem MWST-Code bucht, zum Beispiel `3.8`, `8.1` oder `2.6`. Mit MWST-Code Pflicht (auch `0`), ohne MWST-Code leer oder `0` |
+| `kost` | Kostenstelle, 1 bis 11 Ziffern (optional). Steht nur auf Erlös- und Debitorenverlust-Buchungen in der Datei, siehe unten |
+| `comment` | Freitext, zum Beispiel die Begründung des Treuhänders |
 
-USt-Sätze darfst du mit Komma oder Punkt schreiben (`4,9` oder `4.9`). Eine Kontenzuordnung aus einer deutschen Einrichtung (Spalten `datev_account`, `bu_key`) liest das Tool nicht; es nennt dann `init-mapping --template ekr` ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-übernommen)).
+Sätze darfst du mit Komma oder Punkt schreiben (`8,1` oder `8.1`). Eine Zuordnung von apaleo-bmd-export (Spalten `bmd_account`, `steuercode`) oder aus einer deutschen Einrichtung (Spalten `datev_account`, `bu_key`) liest das Tool nicht; es nennt dann `init-mapping --template kmu-hotel` ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-übernommen)). Den Kontenexport eines kostenpflichtigen Connectors (Spalten `Apaleo Kontonummer`, `Kontoname`, `Kontotyp`, `Abacus Kontonummer`, `Kostenstelle`) liest es nur mit `init-mapping --accounts-from`, siehe unten.
 
-### Kontonummern, Sachkontenlänge und Personenkontenlänge
+### Kontonummern und MWST-Codes
 
-Ein Sachkonto hat genau die Sachkontenlänge der Kanzlei (`bmd.sachkontenlaenge`, im EKR 4 Stellen), ein Personenkonto (Debitor) genau die Personenkontenlänge (`bmd.personenkontenlaenge`, Standard 6). Nur Zeilen vom Typ AccountsReceivable dürfen ein Personenkonto nennen. Die Vorlage ist für Sachkontenlänge 4 geschrieben. Bei einer größeren Länge hängt `init-mapping` Nullen an (Hinweis `N-TEMPLATE-SCALED`): Bei Sachkontenlänge 5 wird aus 2890 also 28900; der Sammeldebitor 200000 richtet sich nach der Personenkontenlänge: Bei 6 Stellen bleibt er 200000, bei 5 wird er 20000, bei 7 wird er 2000000. Sind Personenkontenlänge und Sachkontenlänge gleich, lässt die Vorlage den Sammeldebitor leer, weil BMD Personen- und Sachkonto dann nicht an der Länge unterscheidet; trag dann das Personenkonto der Kanzlei ein. Prüfe mit der Kanzlei, dass das ihren Konten entspricht.
-
-Excel entfernt führende Nullen: Formatiere die Spalte `bmd_account` als Text. Fehlen bei Sachkontenlänge 4 nur führende Nullen eines Kontos der Klasse 0 (650 statt 0650), ergänzt das Tool sie mit der Warnung `W-PADDED`; jede andere falsche Länge ist ein Fehler (`E-ACCOUNT-LENGTH`).
+Ein Abacus-Konto hat 1 bis 11 Ziffern (`E-ACCOUNT-FORMAT`); das Tool füllt nie Nullen auf und prüft nur die Form, nicht, ob das Konto im Mandanten existiert. Der MWST-Code bleibt Text: `011` und `11` sind verschiedene Codes. Formatiere die Spalten `abacus_account` und `mwst_code` in Excel als Text, damit Excel keine führende Null entfernt.
 
 ## Welche Zeile gilt?
 
@@ -51,23 +52,20 @@ Erlöskonten (Revenues) werden nie per `*` zugeordnet: Ein neues Erlöskonto (Sp
 
 ## Steuercode und USt-Satz
 
-BMD bekommt Nettobetrag und Steuer getrennt: Das Konto mit Steuercode steht vorn (`konto`), der Betrag ist netto, die Steuer kommt genau so, wie apaleo sie für die Buchung berechnet hat. So bucht BMD in der UVA dieselbe Umsatzsteuer wie apaleo. Die Steuercodes hängen vom Dialekt ab (`bmd.dialect`):
-
-| | BMD NTCS (`ntcs`, Standard) | BMD 5.5 (`bmd55`) |
-|---|---|---|
-| Umsatzsteuer, die die Vorlage schreibt | `1` | `3` (Soll-USt; `1` ist Ist-USt) |
-| Codes, die auf Erlösen, Anzahlungen, Abgaben und Forderungsverlusten nie stehen dürfen | `2` Vorsteuer, `3` Vorsteuer-Berichtigung | `0` Vorsteuer |
+In Abacus heisst das MWST-Code und MWST-Satz. Abacus bekommt den Bruttobetrag und die MWST aus apaleo: Das Konto mit MWST-Code steht in `SingleInformation`, weil nur dort `TaxData` steht, und die MWST kommt genau so, wie apaleo sie für die Buchung berechnet hat. Die MWST-Codes legt der Mandant in seiner MWST-Tabelle fest; das Tool kennt die drei Codes aus `abacus.mwstCodes` (Standard `311` Normalsatz 8,1 %, `312` reduzierter Satz 2,6 %, `313` Beherbergung 3,8 %).
 
 `mapping check` prüft jede Zeile:
 
-- Ein Vorsteuer-Code auf einer Erlös-, Anzahlungs-, Abgaben- oder Forderungsverlustzeile ist ein Fehler (`E-STEUERCODE-INPUT-TAX`). Ein Steuercode, den das Tool nicht kennt (zum Beispiel `81` für nicht steuerbare Umsätze), ergibt `W-STEUERCODE-UNCHECKED`: Lass ihn von der Kanzlei bestätigen.
-- Zahlungen (Payments), Gastforderungen (Receivables) und Debitoren (AccountsReceivable) haben nie einen Steuercode (`E-STEUERCODE-NOT-ALLOWED`): Sonst bucht BMD die Steuer auf das Geld- oder Forderungskonto, und aus einem Verkauf wird eine Minderung der Umsatzsteuer.
-- Ein Steuercode braucht einen USt-Satz (`E-VAT-RATE-MISSING`), ein USt-Satz über 0 % einen Steuercode (`E-STEUERCODE-MISSING`). Ein Steuercode mit 0 % ist erlaubt.
-- Ein Satz außer 0, 4,9, 10, 13 und 20 % ergibt `W-VAT-RATE-UNUSUAL`; das fängt zum Beispiel eine Zeile ab, die mit einem deutschen Satz aus einer anderen Zuordnung kopiert wurde.
-- Der USt-Satz der Zeile muss dem Satz in apaleo entsprechen (`E-VAT-MISMATCH`), auch über eine Elternzeile: Landet ein Konto mit 10 % über `5000;Revenues;…;4030;1;20` auf 4030 mit 20 %, meldet `mapping check --from --to` `E-VAT-MISMATCH` und verlangt eine eigene Zeile.
-- Eine Erlöszeile ohne Steuercode ergibt `W-UNTAXED-REVENUE`: BMD trägt einen Steuercode, der am Konto fix hinterlegt ist, in ein leeres Feld ein. Prüfe, dass das BMD-Konto keinen fixen Steuercode hat, oder trag den Steuercode der Kanzlei für nicht steuerbare Umsätze ein.
+- Ein MWST-Code hat 1 bis 3 Zeichen `A-Z`, `a-z` und `0-9` (`E-MWST-CODE-FORMAT`).
+- Zahlungen (Payments), Gästeforderungen (Receivables) und Debitoren (AccountsReceivable) haben nie einen MWST-Code (`E-MWST-CODE-NOT-ALLOWED`): Sonst bucht Abacus die MWST auf das Geld- oder Forderungskonto.
+- Ein MWST-Code braucht einen Satz (`E-VAT-RATE-MISSING`), ein Satz über 0 % einen MWST-Code (`E-MWST-CODE-MISSING`). Ein MWST-Code mit 0 % ist erlaubt.
+- Ein MWST-Code, der nicht in `abacus.mwstCodes` steht, ergibt `W-MWST-CODE-UNCHECKED`: Lass deinen Treuhänder bestätigen, dass er ein Umsatzsteuer-Code des Mandanten ist. Ist er einer der Codes des KMU-Mustermandanten, nennt die Warnung seine Ziffer der MWST-Abrechnung (`400` Ziffer 230, `490` Ziffer 900, `491` Ziffer 910). Der Code `490` „Subvention Kurtaxen“ ist nicht für die Kurtaxe, die das Hotel einzieht: Die ist ein durchlaufender Posten ohne MWST-Code oder mit einem Code für Ziffer 910.
+- Ein Code aus `abacus.mwstCodes` mit einem anderen Satz als seinem eigenen ergibt `W-MWST-CODE-RATE` (zum Beispiel vertauschte Codes).
+- Ein Satz ausser 0, 2,6, 3,8 und 8,1 % ergibt `W-VAT-RATE-UNUSUAL`; bei 7,7, 3,7 und 2,5 % sagt die Warnung, dass sie bis 2023 galten.
+- Der Satz der Zeile muss dem Satz in apaleo entsprechen (`E-VAT-MISMATCH`), auch über eine Elternzeile: Landet ein Konto mit 3,8 % über `5000;Revenues;…;3500;311;8.1` auf 3500 mit 8,1 %, meldet `mapping check --from --to` `E-VAT-MISMATCH` und verlangt eine eigene Zeile.
+- Eine Erlöszeile ohne MWST-Code ergibt `W-UNTAXED-REVENUE`: Mit „MWST berechnen“ setzt Abacus den Standard-MWST-Code des Kontos ein. Prüfe, dass das Abacus-Konto keinen hat, oder trag den MWST-Code des Mandanten für Umsätze ohne MWST ein.
 
-Beim Export prüft das Tool zusätzlich jede Buchung: Der Satz muss der Satz der apaleo-Buchung sein (`E-VAT-RATE`), und BMDs eigene Kontrolle (Betrag mal Satz) darf höchstens einen Cent von der Steuer abweichen (`W-VAT-ROUNDING`, die Buchung behält die Steuer aus apaleo). Mehr dazu in [posting-rules.md](posting-rules.md).
+Beim Export prüft das Tool zusätzlich jede Buchung: Der Satz muss der Satz der apaleo-Buchung sein (`E-VAT-RATE`), und die MWST, die im Bruttobetrag steckt, darf höchstens einen Rappen von der Steuer abweichen (`W-VAT-ROUNDING`, die Buchung behält die Steuer aus apaleo). Mehr dazu in [posting-rules.md](posting-rules.md).
 
 ## Steuersätze in Österreich
 
@@ -177,7 +175,7 @@ Die Vorlage steht in `templates/ekr-hotel.rules.csv` (Version `ekr-hotel@1`). Si
 | Forderungsverlust 10 % / 13 % / 20 % | `7800` / `7802` / `7801` | 1 | 10 / 13 / 20 % |
 | Forderungsverlust ohne USt | `7809` | leer | 0 % |
 
-Mit `bmd.dialect: bmd55` schreibt die Vorlage auf denselben Zeilen den Steuercode 3. Für einen Container wie `3000` (Anzahlungen) oder `6900` (Forderungsverluste) schreibt sie keine Zeile, weil die `*`-Zeilen dessen Konten je Reservierung abdecken.
+Für einen Container wie `3000` (Anzahlungen) oder `6900` (Forderungsverluste) schreibt sie keine Zeile, weil die `*`-Zeilen dessen Konten je Reservierung abdecken.
 
 ### Was die Kanzlei entscheiden muss
 
@@ -195,18 +193,20 @@ Diese Vorlagenzeilen lassen das BMD-Konto leer oder verlangen eine Entscheidung:
 
 ## Umstieg von einem anderen Connector
 
-Die Kontenzuordnung eines bezahlten Connectors lässt sich nicht einlesen: Jeder Anbieter hat eigene Spalten und eigene Bildschirme, und eine Zuordnung aus einer deutschen Einrichtung hat keine BMD-Konten und keine Steuercodes. Lege die Datei neu an und übertrag die Kontonummern aus der Zuordnung des alten Connectors mit deiner Kanzlei von Hand:
+Nutzt dein Hotel heute einen kostenpflichtigen apaleo-Abacus-Connector, hat dein Treuhänder dessen Kontenzuordnung schon geprüft. Exportiere sie dort als CSV (Spalten `Apaleo Kontonummer`, `Kontoname`, `Kontotyp`, `Abacus Kontonummer`, `Kostenstelle`) und übernimm sie:
 
 ```sh
-apaleo-abacus init-mapping --property BSP --template ekr
+apaleo-abacus init-mapping --property BSP --template kmu-hotel --accounts-from konten.csv
 apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30
 ```
+
+Das Tool nimmt für jedes apaleo-Konto mit Typ das Abacus-Konto und die Kostenstelle aus dem Export und den MWST-Code und Satz aus der Vorlage, denn der Export hat keine MWST-Spalte. Jede übernommene Zeile ist als „Vorschlag (ungeprüft)“ markiert und sagt im Kommentar, dass sie übernommen ist. Konten des Exports, die der apaleo-Kontenplan nicht hat, listet der Befehl auf. Gibt die Vorlage für ein Konto keinen MWST-Code, bleibt er leer, und `mapping check` meldet `E-MWST-CODE-MISSING`, bis du ihn mit deinem Treuhänder einträgst. Als Kontenzuordnung lehnt das Tool den Export ab und nennt `--accounts-from`.
 
 ## Checkliste zur Freigabe durch die Kanzlei
 
 Bevor die erste Datei in BMD importiert wird:
 
-- [ ] Buchungssymbol, Sachkontenlänge, Personenkontenlänge und Dialekt in der Konfiguration stimmen (`bmd.buchsymbol`, `bmd.sachkontenlaenge`, `bmd.personenkontenlaenge`, `bmd.dialect`), und das Buchungssymbol ist in BMD angelegt ([bmd-import.md](bmd-import.md)).
+- [ ] Mandant, Leitwährung und MWST-Codes in der Konfiguration stimmen (`abacus.mandant`, `abacus.leitwaehrung`, `abacus.mwstCodes.normal`, `abacus.mwstCodes.reduziert`, `abacus.mwstCodes.beherbergung`).
 - [ ] Jede Zeile mit BMD-Konto ist geprüft; jede leere Zeile ist ausgefüllt oder bewusst leer (ein solches Konto darf dann nicht gebucht werden).
 - [ ] Die Erlöskonten haben den Steuercode und den Satz, den apaleo bucht (Beherbergung und Speisen 10 %, Getränke 20 %), und auf keiner Erlös- oder Anzahlungszeile steht ein Vorsteuer-Code.
 - [ ] Die Ortstaxe ist für die Gemeinde des Hotels entschieden, und ihr BMD-Konto hat keinen fixen Steuercode.

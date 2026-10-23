@@ -62,11 +62,11 @@ jobs:
         run: |
           node dist/cli/main.js --help > "$RUNNER_TEMP/help.txt"
           grep -qxF 'Usage: apaleo-abacus <command> [options]' "$RUNNER_TEMP/help.txt"
-      - name: Demo dry run without config, secret or network prints the BMD summary
+      - name: Demo dry run without config, secret or network prints the Abacus summary
         run: |
           node dist/cli/main.js export --month 2026-09 --demo --dry-run | tee "$RUNNER_TEMP/demo.txt"
-          grep -q '^Import into BMD' "$RUNNER_TEMP/demo.txt"
-          grep -q '^Totals per BMD account' "$RUNNER_TEMP/demo.txt"
+          grep -q '^Import into Abacus FIBU' "$RUNNER_TEMP/demo.txt"
+          grep -q '^Totals per Abacus account' "$RUNNER_TEMP/demo.txt"
           grep -q '^DEMO Result: dry run, nothing written; 1 file(s) passed every check.' "$RUNNER_TEMP/demo.txt"
 
   docker:
@@ -84,7 +84,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/demo-data"
           sudo chown 1000:1000 "$RUNNER_TEMP/demo-data"
           docker run --rm -w /data -v "$RUNNER_TEMP/demo-data:/data" apaleo-abacus-export:ci export --month 2026-09 --demo
-          test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv"
+          test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/ABACUS_Buchungen_20260901-20260930_BSP_DEMO.xml"
           test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/manifest.json"
       - name: Demo without a writable working directory names the fix
         run: |

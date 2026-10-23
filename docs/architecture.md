@@ -1,6 +1,6 @@
 # Architektur, für Mitwirkende
 
-apaleo-abacus-export ist ein kleines Kommandozeilenprogramm in TypeScript (Node.js 24, ESM, strenge Typen, drei Abhängigkeiten zur Laufzeit: `csv-parse`, `yaml`, `zod`). Es liest ein PMS (apaleo) und schreibt ein Zielformat (BMD Buchungsimport). Der Code ist so geschnitten, dass eine zweite Quelle (zum Beispiel Mews, Smoobu oder Stripe) oder ein zweites Zielformat dazukommen kann, ohne den Rest anzufassen. Geplant ist davon nichts; die Schnittstellen sind für Mitwirkende da, die so etwas brauchen.
+apaleo-abacus-export ist ein kleines Kommandozeilenprogramm in TypeScript (Node.js 24, ESM, strenge Typen, drei Abhängigkeiten zur Laufzeit: `csv-parse`, `yaml`, `zod`). Es liest ein PMS (apaleo) und schreibt ein Zielformat (Abacus FIBU, AbaConnect „XML Buchungen“). Der Code ist so geschnitten, dass eine zweite Quelle (zum Beispiel Mews, Smoobu oder Stripe) oder ein zweites Zielformat dazukommen kann, ohne den Rest anzufassen. Geplant ist davon nichts; die Schnittstellen sind für Mitwirkende da, die so etwas brauchen.
 
 Code, Bezeichner und Commit-Nachrichten sind auf Englisch; diese Seite erklärt sie auf Deutsch.
 
@@ -13,9 +13,10 @@ src/
   sources/
     apaleo/     der Adapter für apaleo: Token, HTTP mit Wiederholungen, Schemas nach der Swagger-Beschreibung, Umwandlung in die Typen aus core
   demo/         export --demo: aufgezeichnete apaleo-Antworten aus examples/demo/, ohne Netz
-  mapping/      die Kontenzuordnung als CSV: laden, auflösen, prüfen, die EKR-Vorlage
-  posting/      Journalzeilen + Kontenzuordnung -> BMD-Buchungen, mit der USt-Prüfung
-  bmd/          der Writer für den BMD Buchungsimport: Dialekte NTCS und BMD 5.5, Belegnummern, Prüfung, Bereinigung
+  mapping/      die Kontenzuordnung als CSV: laden, auflösen, prüfen, die KMU-Hotelvorlage, der Kontenexport eines Connectors
+  posting/      Journalzeilen + Kontenzuordnung -> Abacus-Buchungen, mit der MWST-Prüfung
+  abacus/       der Writer für AbaConnect XML Buchungen: Belegnummern, TaxData, Prüfung, Bereinigung, Bewegungsmodell
+  bmd/          der frühere Writer für den BMD Buchungsimport, ohne Export, entfällt bald
   export/       der Ablauf: Regeln für Zeiträume, Abruf, Buchen, Plausibilitätsprüfungen, Ausgabeordner und Manifest
   schedule/     schedule --once: welche Zeiträume fällig sind, dann der Export für jeden
 ```
@@ -24,12 +25,12 @@ Die Abhängigkeiten zeigen in eine Richtung:
 
 ```text
 cli -> export / schedule -> sources/<name>     (Verdrahtung)
-                        -> mapping, posting, bmd -> core
+                        -> mapping, posting, abacus -> core
 ```
 
 Zwei Lint-Regeln (in `eslint.config.js`, getestet in `test/lint/`) sorgen dafür, dass das so bleibt:
 
-- `core`, `bmd`, `mapping` und `posting` dürfen nichts aus `src/sources/` importieren. Sie sehen nur die kanonischen Typen in `src/core/source.ts`.
+- `core`, `abacus`, `bmd`, `mapping` und `posting` dürfen nichts aus `src/sources/` importieren. Sie sehen nur die kanonischen Typen in `src/core/source.ts`.
 - Alles unter `src/` außer dem Einstieg der Kommandozeile erreicht die Uhr, das Netz und die Umgebung nur über den übergebenen `CommandContext` (`ctx.now()`, `ctx.fetchFn`, `ctx.env`, `ctx.fs`). Kein `new Date()`, kein `Date.now()`, kein nacktes `fetch` und kein `process.env`. Tests bauen mit `createTestContext()` in `test/helpers/context.ts` einen Kontext mit Attrappen.
 
 ## Der Vertrag SourceAdapter
@@ -57,11 +58,11 @@ Eine `LedgerLine` ist ein gebuchtes Paar aus Soll und Haben im Buchungsjournal d
 | `postedAt` | der Zeitstempel der Quelle, wie gesendet |
 | `debit`, `credit` | die beiden Konten: `number`, `name`, `type`, optional `parentNumber` |
 | `command` | der Geschäftsvorfall, zum Beispiel `PostCharge`, `PostPayment` |
-| `currency` | muss die Währung des Zielformats sein (`TargetWriter.currency`, bei BMD `EUR`; sonst `E-CURRENCY`) |
+| `currency` | muss die Währung des Zielformats sein (`TargetWriter.currency`, bei Abacus `abacus.leitwaehrung`; sonst `E-CURRENCY`) |
 | `grossCents` | Bruttobetrag in ganzen Cent mit dem Vorzeichen der Quelle; Nachlässe sind negativ |
 | `netPrecise`, `netCents` | Nettobetrag als genauer Dezimaltext der Quelle (apaleo schickt bis zu acht Nachkommastellen, z. B. `"12.5210084"`) und kaufmännisch auf ganze Cent gerundet |
 | `taxes[]` | `vatType`, `percent`, `amountPrecise` (genauer Dezimaltext) und `amountCents` (gerundet), so weitergegeben, wie sie ankommen |
-| `receipt`, `reference`, `referenceType` | Rechnungs- oder Zahlungsreferenz und die Reservierung, für `extbelegnr` (siehe `posting.extbelegnr`) |
+| `receipt`, `reference`, `referenceType` | Rechnungs- oder Zahlungsreferenz und die Reservierung, für `Text2` (siehe `posting.text2`) |
 | `sourceEntryNumber`, `source` | damit sich jede Zeile bis zur Quelle zurückverfolgen lässt |
 
 Die Kontotypen nutzen die Namen von apaleo (`Revenues`, `Payments`, `Liabilities`, `Receivables`, `CityTaxes`, `Vat`, ...), das genaueste Modell, das bisher bekannt ist. Eine andere Quelle ordnet ihre Konten diesen Typen zu. Der Bruttobetrag ist immer ganze Cent: Rechne Gleitkommazahlen am Rand um, wie es `toCents` in `src/core/money.ts` tut, und lehne Bruttobeträge unter einem Cent ab. Netto- und Steuerbeträge dürfen genauer sein; behalte sie als Dezimaltext (`netPrecise`, `amountPrecise`) und runde sie für die Cent-Felder kaufmännisch (`decimalToCents`). Genaue Beträge addierst du mit `sumDecimals` exakt, nie als Gleitkommazahlen.
@@ -78,39 +79,40 @@ Die Kontotypen nutzen die Namen von apaleo (`Revenues`, `Payments`, `Liabilities
 
 ## Die Schnittstelle TargetWriter
 
-Die Buchungsregeln (`src/posting/`) erzeugen Werte vom Typ `PostedBooking`. Das ist ein `BmdBooking` aus `src/bmd/types.ts` plus die apaleo-Buchungsnummern, aus denen die Buchung entstand:
+Die Buchungsregeln (`src/posting/`) erzeugen Werte vom Typ `PostedBooking`. Das ist ein `AbacusBooking` aus `src/abacus/types.ts` plus die apaleo-Buchungsnummern, aus denen die Buchung entstand:
 
 ```ts
-interface BmdBooking {
-  konto: string;          // führendes Konto, bei Erlösen das Erlöskonto
-  gkonto: string;         // Gegenkonto
-  businessDate: LocalDate; // wird Belegdatum und Buchungsdatum
-  buchsymbol: string;
-  betragCents: number;    // aus Sicht von konto: positiv Soll, negativ Haben; netto, wenn tax gesetzt ist
-  tax?: { steuercode: number; prozent: number; steuerCents: number };
-  text?: string;
-  kost?: string;
-  extbelegnr?: string;
+interface AbacusBooking {
+  collectiveAccount: string; // Konto der CollectiveInformation, zum Beispiel die Gästeforderung 1101
+  singleAccount: string;     // Konto der SingleInformation, das mit MWST-Code (Erlös, Anzahlung, Debitorenverlust)
+  debitCredit: 'D' | 'C';    // Seite des Kontos der CollectiveInformation
+  businessDate: LocalDate;   // wird EntryDate
+  grossCents: number;        // Bruttobetrag in Rappen, immer positiv
+  tax?: { mwstCode: string; percent: number; taxCents: number }; // negativ, wenn das Single-Konto im Haben steht
+  kost?: string;             // Kostenstelle, nur auf Erlös- und Debitorenverlustbuchungen
+  text1: string;
+  text2?: string;
 }
 ```
 
-Nur `src/bmd/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dateien ausschließlich über die Schnittstelle `TargetWriter<B>` aus `src/export/target.ts`, wobei `B` der Buchungstyp des Ziels ist. Die Umsetzung für BMD ist `bmdTarget` in `src/bmd/target.ts` (Einstellungen aus dem Abschnitt `bmd` der Konfiguration), und `DEFAULT_TARGET` in `src/export/pipeline.ts` wählt sie. Ein `TargetWriter` liefert:
+Nur `src/abacus/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dateien ausschliesslich über die Schnittstelle `TargetWriter<B>` aus `src/export/target.ts`, wobei `B` der Buchungstyp des Ziels ist. Die Umsetzung für Abacus ist `abacusTarget` in `src/abacus/target.ts` (Einstellungen aus dem Abschnitt `abacus` der Konfiguration und dem Hotel), und `DEFAULT_TARGET` in `src/export/pipeline.ts` wählt sie. Der frühere BMD-Writer in `src/bmd/` mit seinem `BmdBooking` und `bmdTarget` liegt noch im Quellcode, schreibt aber keine Exporte mehr und entfällt bald. Ein `TargetWriter` liefert:
 
 - den Dateinamen und ein Muster, an dem der Ausgabeordner vorhandene und überlappende Dateien erkennt (`fileName`, `filePattern`);
-- die gerenderten Bytes und die Befunde über geänderte Werte (`render`, wie `renderBuchungsimport` in `src/bmd/writer.ts`, dessen `BmdValidationError` aus `src/bmd/errors.ts` als `FindingsError` alle Fehler auf einmal enthält);
-- den Vergleich „unverändert“ (`sameContent`), den Titel des Protokolls und den Block zum Import im Protokoll (`importBlock`, bei BMD „Import into BMD“);
-- die Währung, in der die Datei bucht (`currency`, bei BMD `EUR`): Ein Hotel oder eine apaleo-Zeile in einer anderen Währung lehnt der Export mit `E-CURRENCY` ab, denn das Tool rechnet nicht um;
-- die Hinweise (`advice`) für die Meldungen `E-PERIOD-OVERLAP`, `E-FILE-EXISTS` und `E-CURRENCY`: welches Programm die Datei importiert, welche Konfigurationswerte jede Zeile ändern, wie die Kanzlei eine importierte Datei rückgängig macht und warum die Datei keine andere Währung tragen kann.
+- die gerenderten Bytes und die Befunde über geänderte Werte (`render`, wie `renderXmlBuchungen` in `src/abacus/writer.ts`, dessen `AbacusValidationError` aus `src/abacus/errors.ts` als `FindingsError` alle Fehler auf einmal enthält);
+- den Vergleich „unverändert“ (`sameContent`), den Titel des Protokolls und den Block zum Import im Protokoll (`importBlock`, bei Abacus „Import into Abacus FIBU“);
+- das Bewegungsmodell einer Buchung (`movements`): um wie viel jedes Konto der Buchung sich im Ziel bewegt, ohne die Steuerbuchung auf dem eigenen Steuerkonto. Die Plausibilitätsprüfung `E-ACCOUNT-BALANCE` vergleicht damit die Buchungen mit apaleo, ohne Feldnamen des Ziels zu kennen;
+- die Währung, in der die Datei bucht (`currency`, bei Abacus `abacus.leitwaehrung`): Ein Hotel oder eine apaleo-Zeile in einer anderen Währung lehnt der Export mit `E-CURRENCY` ab, denn das Tool rechnet nicht um;
+- die Hinweise (`advice`) für die Meldungen `E-PERIOD-OVERLAP`, `E-FILE-EXISTS` und `E-CURRENCY`: welches Programm die Datei importiert, welche Konfigurationswerte die Datei ändern, wie der Treuhänder eine importierte Datei rückgängig macht und warum die Datei keine andere Währung tragen kann.
 
-Was der BMD-Writer schreibt und gegen welche Quellen er geprüft wurde, steht in [bmd-format.md](bmd-format.md). Seine Golden Files liegen in `test/golden/bmd/` und werden Byte für Byte verglichen (siehe `test/bmd/golden.test.ts`).
+Was der Abacus-Writer schreibt und gegen welche Quellen er geprüft wurde, steht in [abacus-format.md](abacus-format.md). Seine Golden Files liegen in `test/golden/abacus/` und werden Byte für Byte verglichen (siehe `test/abacus/golden.test.ts`).
 
 ### Angenommen, jemand braucht ein anderes Zielformat
 
 Ein Beispiel ohne Zusage: Eine Kanzlei bucht mit RZL und möchte dieselben Buchungen als RZL-Datei. Dann
 
 1. kommt der Writer nach `src/<ziel>/`, hängt nicht von `src/sources/` ab und meldet fehlerhafte Daten als Befunde mit eigenen Codes, die in [troubleshooting.md](troubleshooting.md) stehen;
-2. bekommt er Golden Files in `test/golden/<ziel>/` und einen Test wie `test/bmd/golden.test.ts`;
-3. setzt er `TargetWriter` für seinen Buchungstyp um. Braucht das Ziel andere Felder als `BmdBooking`, gehört die Umrechnung aus den Buchungsregeln in einen eigenen Buchungsschritt für dieses Ziel, nicht in den Writer: USt-Logik, die nur ein Zielformat betrifft, bleibt in dessen Buchungsschritt.
+2. bekommt er Golden Files in `test/golden/<ziel>/` und einen Test wie `test/abacus/golden.test.ts`;
+3. setzt er `TargetWriter` für seinen Buchungstyp um. Braucht das Ziel andere Felder als `AbacusBooking` (wie früher der BMD-Writer mit `BmdBooking`), gehört die Umrechnung aus den Buchungsregeln in einen eigenen Buchungsschritt für dieses Ziel, nicht in den Writer: USt-Logik, die nur ein Zielformat betrifft, bleibt in dessen Buchungsschritt.
 
 Besprich so eine Änderung zuerst in einem Issue (Formular „Neue Quelle oder neues Zielformat“); sie braucht eine eigene OpenSpec-Änderung.
 

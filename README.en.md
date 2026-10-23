@@ -2,7 +2,7 @@
 
 **Deutsch:** [README.md](README.md)
 
-Free, open-source export from the apaleo hotel PMS to BMD Buchungsimport files that an Austrian Steuerberater or Buchhaltung imports into BMD NTCS (or BMD 5.5 with `bmd.dialect: bmd55`). It reads the apaleo ledger of a month through a read-only apaleo custom app, books every line with an account mapping per property (an Einheitskontenrahmen hotel template), passes net amount and VAT separately so that BMD books exactly the VAT apaleo charged, and writes one file per property and month. It runs on your own machine or in a locally built Docker container. No subscription, no hosted service.
+Free, open-source export from the apaleo hotel PMS to BMD Buchungsimport files that an Austrian Steuerberater or Buchhaltung imports into BMD NTCS (the tool is switching to Abacus FIBU: `export` now writes AbaConnect XML Buchungen files, the mapping template is `kmu-hotel`). It reads the apaleo ledger of a month through a read-only apaleo custom app, books every line with an account mapping per property (an Einheitskontenrahmen hotel template), passes net amount and VAT separately so that BMD books exactly the VAT apaleo charged, and writes one file per property and month. It runs on your own machine or in a locally built Docker container. No subscription, no hosted service.
 
 The file follows the documented BMD import layout (PR08/PR08A); a first test import with a Kanzlei is still pending. The tool is built on [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export), which writes DATEV files for Germany.
 
@@ -27,10 +27,10 @@ There is no npm package or container image release yet. You install from source.
    The commands below use `apaleo-abacus` (after `pnpm link --global`). Without it, type `node dist/cli/main.js` instead.
 
 3. Try it on the bundled demo data, without apaleo: `node dist/cli/main.js export --month 2026-09 --demo --dry-run`.
-4. Copy `apaleo-abacus.config.example.yaml` to `apaleo-abacus.config.yaml`, fill in the client id, the Buchungssymbol your Kanzlei created in BMD and your property under `properties` (`apaleo-abacus properties` lists the ids; `export` exports every property listed there), and set the secret in the environment (`APALEO_CLIENT_SECRET`), never in the file. Then create the mapping, have your Steuerberater check it, and export:
+4. Copy `apaleo-abacus.config.example.yaml` to `apaleo-abacus.config.yaml`, fill in the client id, the Abacus Mandant (`abacus.mandant`) and your property under `properties` (`apaleo-abacus properties` lists the ids; `export` exports every property listed there), and set the secret in the environment (`APALEO_CLIENT_SECRET`), never in the file. Then create the mapping, have your Steuerberater check it, and export:
 
    ```sh
-   apaleo-abacus init-mapping --property BSP --template ekr
+   apaleo-abacus init-mapping --property BSP --template kmu-hotel
    apaleo-abacus export --month 2026-09 --dry-run
    apaleo-abacus export --month 2026-09
    ```

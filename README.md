@@ -76,7 +76,7 @@ Es gibt noch kein npm-Paket und kein Container-Image zum Herunterladen. Du insta
 3. **Kontenzuordnung anlegen** und von deiner Kanzlei mit dem [Leitfaden zur Kontenzuordnung](docs/mapping-guide.md) prüfen lassen:
 
    ```sh
-   apaleo-abacus init-mapping --property BSP --template ekr   # schreibt mapping-BSP.csv aus dem Einheitskontenrahmen (EKR)
+   apaleo-abacus init-mapping --property BSP --template kmu-hotel   # schreibt mapping-BSP.csv aus dem Schweizer Kontenrahmen KMU
    apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30
    ```
 
@@ -86,7 +86,7 @@ Es gibt noch kein npm-Paket und kein Container-Image zum Herunterladen. Du insta
    apaleo-abacus export --month 2026-09 --dry-run
    ```
 
-5. **Export**: eine Datei pro Hotel nach `exports/<Hotel>/<JJJJ-MM>/`. Gib sie der Kanzlei für den [BMD-Import](docs/bmd-import.md).
+5. **Export**: eine Abacus-Datei pro Hotel nach `exports/<Hotel>/<JJJJ-MM>/`. Gib sie deinem Treuhänder für den Import in Abacus ([abacus-format.md](docs/abacus-format.md)).
 
    ```sh
    apaleo-abacus export --month 2026-09
@@ -115,9 +115,9 @@ Die Dateien erscheinen in `./data/<Hotel>/<JJJJ-MM>/`. Cron auf dem Host, einmal
 | `doctor` | Prüft Node.js, Konfigurationsdatei und Uhr. Ohne Netz. |
 | `properties` | Listet die apaleo-Hotels, die die Custom App lesen darf. |
 | `live-smoke` | Liest einen Geschäftstag aus apaleo mit echten Zugangsdaten und zeigt, was zurückkam. Schreibt nichts. |
-| `init-mapping` | Schreibt eine Kontenzuordnung aus dem apaleo-Kontenplan und der EKR-Hotelvorlage (`--template ekr`); `--update` hängt neue Konten an. |
+| `init-mapping` | Schreibt eine Kontenzuordnung aus dem apaleo-Kontenplan und der KMU-Hotelvorlage (`--template kmu-hotel`); `--update` hängt neue Konten an, `--accounts-from` übernimmt die Konten aus dem Kontenexport eines kostenpflichtigen Connectors. |
 | `mapping check` | Prüft eine Kontenzuordnung, und mit `--from`/`--to`, ob jedes im Zeitraum gebuchte Konto zugeordnet ist. |
-| `export` | Schreibt die BMD-Dateien (Buchungsimport) eines Monats oder Zeitraums nach allen Prüfungen; `--dry-run` schreibt nichts, `--demo` nimmt die Demodaten. |
+| `export` | Schreibt die Abacus-Dateien (AbaConnect XML Buchungen) eines Monats oder Zeitraums nach allen Prüfungen; `--dry-run` schreibt nichts, `--demo` nimmt die Demodaten. |
 | `schedule` | `schedule --once` exportiert jeden fälligen Zeitraum, der noch nicht im Ausgabeordner liegt, und endet. Für Cron und Docker. |
 
 `apaleo-abacus <Befehl> --help` zeigt die Optionen. Exit-Codes: 0 Erfolg, 1 eine Prüfung oder ein Lauf ist fehlgeschlagen, 2 falscher Aufruf. Jeder Befund-Code mit Lösung: [docs/troubleshooting.md](docs/troubleshooting.md).
@@ -155,19 +155,19 @@ Selbst betreiben heißt: Du behältst die Daten und zahlst nichts, aber du spiel
 
 **Was kostet es?** Nichts. Es steht unter der MIT-Lizenz. Deine Kosten sind der Rechner, auf dem es läuft, und die Zeit der Kanzlei für die Prüfung der Zuordnung.
 
-**Wohin gehen meine Daten?** Nur auf deine eigene Festplatte. Das Tool liest apaleo mit deiner Custom App und schreibt Dateien in einen lokalen Ordner. Es schickt nichts an uns oder an andere. Die BMD-Datei enthält keine Gästenamen: Buchungstexte nutzen Kontobezeichnungen, nie die Namen von Gastfolios.
+**Wohin gehen meine Daten?** Nur auf deine eigene Festplatte. Das Tool liest apaleo mit deiner Custom App und schreibt Dateien in einen lokalen Ordner. Es schickt nichts an uns oder an andere. Die Datei enthält keine Gästenamen: Buchungstexte nutzen Kontobezeichnungen, nie die Namen von Gastfolios.
 
 **Kann es direkt an BMD übertragen, etwa über BMD Com?** Nein. Die Kanzlei importiert die Datei in BMD NTCS; siehe [docs/bmd-import.md](docs/bmd-import.md).
 
 **Hat eine Kanzlei die Datei schon importiert?** Noch nicht. Die Datei folgt den veröffentlichten Beschreibungen des BMD-Imports (PR08/PR08A, dvo); die Quellen stehen in [docs/bmd-format.md](docs/bmd-format.md). Der erste Testimport wird mit Datum, BMD-Version und Ergebnis in [docs/maintainers.md](docs/maintainers.md#testimporte) festgehalten.
 
-**Kann ich einen Import rückgängig machen?** Die Buchungen kommen unter dem Buchungssymbol, das die Kanzlei in BMD anlegt (`bmd.buchsymbol`); eine falsch importierte Datei löscht oder storniert die Kanzlei dort. Importiere nie eine Datei aus `--overwrite`, bevor die Kanzlei die Buchungen der alten Datei entfernt hat; siehe [docs/bmd-import.md](docs/bmd-import.md).
+**Kann ich einen Import rückgängig machen?** Die Buchungen kommen in den Abacus-Mandanten aus `abacus.mandant`; eine falsch importierte Datei löscht dein Treuhänder im Nebenjournal oder storniert sie. Importiere nie eine Datei aus `--overwrite`, bevor die Buchungen der alten Datei entfernt sind; siehe [docs/export.md](docs/export.md#noch-einmal-exportieren).
 
-**Mehrere Hotels?** Trag sie unter `properties` in der Konfiguration ein. Jedes bekommt eine eigene Zuordnung und eine eigene Datei. Bucht die Kanzlei sie in einen Mandanten, bekommt jedes ein eigenes Buchungssymbol (`properties[].buchsymbol`).
+**Mehrere Hotels?** Trag sie unter `properties` in der Konfiguration ein. Jedes bekommt eine eigene Zuordnung und eine eigene Datei. Bucht dein Treuhänder sie in einen Mandanten, bekommt jedes einen eigenen Geschäftsbereich (`properties[].geschaeftsbereich`).
 
-**Ich nutze heute einen bezahlten Connector. Kann ich wechseln?** Ja. Die Kontenzuordnung eines anderen Connectors liest das Tool nicht. Leg die Zuordnung mit `init-mapping --template ekr` neu an und übertrag die Kontonummern mit deiner Kanzlei. Fang mit dem ersten Monat an, den der alte Connector nicht mehr geliefert hat, damit nichts doppelt importiert wird; siehe [docs/docker.md](docs/docker.md#der-erste-lauf).
+**Ich nutze heute einen bezahlten Connector. Kann ich wechseln?** Ja. Exportiere die Kontenzuordnung des Connectors als CSV und leg die Zuordnung mit `init-mapping --template kmu-hotel --accounts-from <Datei>` an: Das Tool übernimmt Konten und Kostenstellen, die MWST-Codes kommen aus der Vorlage; prüf das Ergebnis mit deinem Treuhänder. Fang mit dem ersten Monat an, den der alte Connector nicht mehr geliefert hat, damit nichts doppelt importiert wird; siehe [docs/docker.md](docs/docker.md#der-erste-lauf).
 
-**Und BMD 5.5?** Mit `bmd.dialect: bmd55` schreibt das Tool die Spaltennamen, das Datumsformat und die Steuercodes von BMD 5.5; siehe [docs/bmd-format.md](docs/bmd-format.md).
+**Und BMD 5.5?** Dieses Tool schreibt Abacus-Dateien. Für BMD NTCS und BMD 5.5 nimm apaleo-bmd-export; die frühere BMD-Fassung ist in [docs/bmd-format.md](docs/bmd-format.md) beschrieben.
 
 **Gibt es das auch für DATEV?** Dieses Tool baut auf [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) auf, und wer in Deutschland mit DATEV bucht, nimmt dieses Projekt.
 
