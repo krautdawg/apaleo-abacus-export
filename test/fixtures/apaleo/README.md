@@ -23,4 +23,6 @@ The amounts are chosen so that Abacus' check of every booking (the MWST containe
 `examples/demo/apaleo/` holds copies of these files plus two demo-only days (an unpaid night on 2026-09-25 and its write-off on 2026-09-29, see `examples/demo/README.md`), so the demo protocol shows every section; the tests here do not use them.
 
 
+The Swiss fixture month (property `ENG`, CHF, August 2026, with Kurtaxe, a deposit received, released and refunded, an Annullation, an invoice on accounts receivable and a write-off) is in [`ch-month/`](ch-month/README.md).
+
 Recorded real responses of an apaleo DEV sandbox (properties `BER` and `VIE`, with eight-decimal net and tax amounts) are in [`live/`](live/README.md); the regression tests run the whole pipeline on them. More real responses are welcome: if you run `apaleo-abacus live-smoke` against a real account and the shapes differ, please run the privacy scan (`node test/helpers/fixture-scan.ts <folder>`), anonymise names, reservation ids and amounts, and add them as a new fixture day.

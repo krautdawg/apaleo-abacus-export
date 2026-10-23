@@ -9,14 +9,14 @@ const definitions = excerpt.definitions;
 
 /**
  * Which Swagger model each fixture folder or file holds, for Hotel Beispiel, the
- * live recordings (`live/<property>/`).
+ * live recordings (`live/<property>/`) and the Swiss fixture month (`ch-month/`).
  * Every fixture must be listed.
  */
 const MODELS: [RegExp, string][] = [
-  [/^(live\/[A-Z]+\/)?export-gross-daily\/\d{4}-\d{2}-\d{2}\.json$/, 'ExportGrossTransactionListModel'],
+  [/^(live\/[A-Z]+\/|ch-month\/)?export-gross-daily\/\d{4}-\d{2}-\d{2}\.json$/, 'ExportGrossTransactionListModel'],
   [/^(live\/[A-Z]+\/)?aggregate-daily\/\d{4}-\d{2}-\d{2}\.json$/, 'AggregateTransactionListModel'],
-  [/^(live\/[A-Z]+\/)?accounts-schema\.json$/, 'ChartOfAccountsModel'],
-  [/^properties\/page-\d+\.json$/, 'PropertyListModel'],
+  [/^(live\/[A-Z]+\/|ch-month\/)?accounts-schema\.json$/, 'ChartOfAccountsModel'],
+  [/^(ch-month\/)?properties\/page-\d+\.json$/, 'PropertyListModel'],
 ];
 
 const fixtures = readdirSync(fileURLToPath(fixturePath('.')), { recursive: true, encoding: 'utf8' })
@@ -29,6 +29,7 @@ describe('apaleo fixtures conform to the Swagger excerpt', () => {
     expect(unknown).toEqual([]);
     expect(fixtures.length).toBeGreaterThanOrEqual(12);
     expect(fixtures.filter((file) => file.startsWith('live/'))).toHaveLength(10);
+    expect(fixtures.filter((file) => file.startsWith('ch-month/'))).toHaveLength(11);
   });
 
   it.each(fixtures)('%s', (file) => {

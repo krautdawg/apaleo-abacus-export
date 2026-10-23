@@ -76,7 +76,7 @@ describe('docs/examples', () => {
 describe('examples/demo', () => {
   it('holds exact copies of the Hotel Beispiel apaleo fixtures, plus the demo-only days', () => {
     const recorded = filesIn('examples/demo/apaleo');
-    const fixtures = filesIn('test/fixtures/apaleo').filter((file) => file.endsWith('.json') && !file.includes('swagger') && !file.startsWith('live/'));
+    const fixtures = filesIn('test/fixtures/apaleo').filter((file) => file.endsWith('.json') && !file.includes('swagger') && !file.startsWith('live/') && !file.startsWith('ch-month/'));
     expect(recorded).toEqual([...fixtures, ...DEMO_ONLY_DAYS].sort());
     for (const file of fixtures) {
       expect(read(`examples/demo/apaleo/${file}`).equals(read(`test/fixtures/apaleo/${file}`)), file).toBe(true);
