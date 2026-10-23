@@ -28,6 +28,7 @@ const fakeTarget: TargetWriter<PostedBooking> = {
   sameContent: (existing, next) => Buffer.from(existing).equals(Buffer.from(next)),
   importBlock: (bookings) => ['FAKE import:', `  ${bookings.length} lines`],
   movements: (booking) => abacusTarget.movements(booking),
+  taxReturnLine: () => undefined,
   advice: {
     currency: 'FAKE currency advice.',
     overlap: 'FAKE overlap advice',
@@ -334,7 +335,7 @@ describe('the checks and the summary do not depend on the target (recorded VIE d
     expect(fake.findings).toEqual(standard.findings);
     expect(withoutPlaceholderCodes(fake.findings).map((f) => f.code)).toEqual([]);
     expect(fake.findings.map((f) => f.value).sort()).toEqual(['V10', 'V13', 'V20']);
-    expect(fake.summary).toContain('Deposits: received 491.00, released 295.00, of it refunded 10.00');
+    expect(fake.summary).toContain('Deposits (Anzahlungen) received, released and refunded:\n  received        491.00\n  released        295.00\n  of it refunded   10.00\n');
   });
 });
 

@@ -19,7 +19,17 @@ export interface SummaryInput {
   summary?: PostingSummary;
   /** The target's import block (`TargetWriter.importBlock`), once the file is rendered. */
   importBlock?: readonly string[];
+  /** The line of the tax return for a rate (`TargetWriter.taxReturnLine`), for example `Ziffer 343`. */
+  taxReturnLine?: TaxReturnLine;
   findings: readonly Finding[];
+}
+
+type TaxReturnLine = (ratePercent: number) => string | undefined;
+
+/** `313 3.8 % (Ziffer 343)`, `V10 10 %` for a rate without a line of the tax return, `no MWST-Code 0 %` without code. */
+function codeAndRate(mwstCode: string, ratePercent: number, taxReturnLine: TaxReturnLine): string {
+  const line = mwstCode === '' ? undefined : taxReturnLine(ratePercent);
+  return `${mwstCode || 'no MWST-Code'} ${ratePercent} %${line ? ` (${line})` : ''}`;
 }
 
 /** Why the tax of the bookings and apaleo's VAT differ by a few Rappen, for the Treuhänder. */
@@ -30,19 +40,23 @@ export const VAT_ROUNDING_NOTE =
 /**
  * The posting summary as aligned text, for the dry run and the protocol file:
  * the import block, totals per Abacus account, revenue, deposit and write-off VAT
- * per MWST-Code and rate (bookings against apaleo), Kurtaxe and other levies, payments per
- * clearing account, deposits, accounts receivable, skipped lines and every finding.
+ * per MWST-Code and rate (bookings against apaleo, with the Ziffer of the
+ * MWST-Abrechnung for a Swiss rate), Kurtaxe and other levies per account, payments per
+ * clearing account, deposits received, released and refunded, accounts
+ * receivable, skipped lines and every finding. It renders the totals of the
+ * posting run (`PostingSummary`) and computes none of its own.
  */
-export function renderSummary({ propertyId, part, ledgerLines, bookings, summary, importBlock, findings }: SummaryInput): string {
+export function renderSummary({ propertyId, part, ledgerLines, bookings, summary, importBlock, taxReturnLine, findings }: SummaryInput): string {
   const out: string[] = [`Property ${propertyId}, ${part.from} to ${part.to}: ${ledgerLines} apaleo lines, ${bookings} Abacus bookings`, ''];
   if (importBlock) out.push(...importBlock, '');
-  if (summary) out.push(...postingSection(summary));
+  if (summary) out.push(...postingSection(summary, taxReturnLine ?? (() => undefined)));
   out.push('Findings:');
   out.push(...(findings.length === 0 ? ['  none'] : findings.map((finding) => `  ${formatFinding(finding)}`)), '');
   return out.join('\n');
 }
 
-function postingSection(summary: PostingSummary): string[] {
+function postingSection(summary: PostingSummary, taxReturnLine: TaxReturnLine): string[] {
+  const vatLines = (totals: readonly VatTotal[]) => vatTotalLines(totals, taxReturnLine);
   const out: string[] = [];
   const section = (title: string, body: string) => out.push(title, body.trimEnd() || '  none', '');
 
@@ -52,17 +66,28 @@ function postingSection(summary: PostingSummary): string[] {
     formatTable([['account', 'Soll', 'Haben', 'balance'], ...accounts], [1, 2, 3], '  '),
   );
 
-  section('Revenue and MWST per MWST-Code and rate:', vatLines(summary.revenueByRate));
+  section('Revenue and MWST per MWST-Code and rate, with the Ziffer of the MWST-Abrechnung for each Swiss rate:', vatLines(summary.revenueByRate));
   section('Deposits and their MWST per MWST-Code and rate (received minus released):', vatLines(summary.depositVatByRate));
   section('Written-off receivables (Debitorenverluste) and the MWST correction per MWST-Code and rate:', vatLines(summary.writeOffsByRate));
-  out.push(VAT_ROUNDING_NOTE, '', `Kurtaxe and other guest levies (apaleo city tax): ${formatCents(summary.cityTaxCents)}`);
-  out.push(...levyLines(summary.levies), '');
+  out.push(VAT_ROUNDING_NOTE, '');
+  section(`Kurtaxe and other guest levies per account (apaleo city tax, total ${formatCents(summary.cityTaxCents)}):`, levyLines(summary.levies, taxReturnLine).join('\n'));
 
   const payments = summary.payments.map((p) => [p.account, formatCents(p.cents)]);
   section('Payments per clearing account:', payments.length === 0 ? '' : formatTable([['account', 'amount'], ...payments], [1], '  '));
   const { receivedCents, releasedCents, refundedCents } = summary.deposits;
+  section(
+    'Deposits (Anzahlungen) received, released and refunded:',
+    formatTable(
+      [
+        ['received', formatCents(receivedCents)],
+        ['released', formatCents(releasedCents)],
+        ['of it refunded', formatCents(refundedCents)],
+      ],
+      [1],
+      '  ',
+    ),
+  );
   out.push(
-    `Deposits: received ${formatCents(receivedCents)}, released ${formatCents(releasedCents)}, of it refunded ${formatCents(refundedCents)}`,
     `Accounts receivable (Debitoren, Soll positive): ${formatCents(summary.accountsReceivableCents)}`,
     `VAT rounding differences: ${formatCents(summary.roundingCents)}`,
     '',
@@ -75,26 +100,26 @@ function postingSection(summary: PostingSummary): string[] {
 
 /**
  * `  2210 without MWST: 12.60` or
- * `  3400 with MWST-Code 313 3.8 %: gross 2.08, tax 0.08`, one line per account, code and rate.
+ * `  3400 with MWST-Code 313 3.8 % (Ziffer 343): gross 2.08, tax 0.08`, one line per account, code and rate.
  */
-function levyLines(levies: readonly LevyTotal[]): string[] {
+function levyLines(levies: readonly LevyTotal[], taxReturnLine: TaxReturnLine): string[] {
   return levies.map((levy) =>
     levy.mwstCode === ''
       ? `  ${levy.account} without MWST: ${formatCents(levy.grossCents)}`
-      : `  ${levy.account} with MWST-Code ${levy.mwstCode} ${levy.ratePercent} %: gross ${formatCents(levy.grossCents)}, tax ${formatCents(levy.vatCents)}`,
+      : `  ${levy.account} with MWST-Code ${codeAndRate(levy.mwstCode, levy.ratePercent, taxReturnLine)}: gross ${formatCents(levy.grossCents)}, tax ${formatCents(levy.vatCents)}`,
   );
 }
 
 /**
  * `V10 10 %: net 77.46, tax 7.74, gross 85.20, apaleo VAT 7.75, difference 0.01 (apaleo precise 7.74545454)`,
- * one line per MWST-Code and rate; bookings without MWST-Code as `no MWST-Code 0 %`.
+ * or `313 3.8 % (Ziffer 343): …` for a Swiss rate, one line per MWST-Code and rate; bookings without MWST-Code as `no MWST-Code 0 %`.
  */
-function vatLines(totals: readonly VatTotal[]): string {
+function vatTotalLines(totals: readonly VatTotal[], taxReturnLine: TaxReturnLine): string {
   return totals
     .map((t) => {
       const apaleo = decimalToCents(t.apaleoVat);
       return (
-        `  ${t.mwstCode || 'no MWST-Code'} ${t.ratePercent} %: net ${formatCents(t.netCents)}, tax ${formatCents(t.vatCents)}, gross ${formatCents(t.grossCents)}, ` +
+        `  ${codeAndRate(t.mwstCode, t.ratePercent, taxReturnLine)}: net ${formatCents(t.netCents)}, tax ${formatCents(t.vatCents)}, gross ${formatCents(t.grossCents)}, ` +
         `apaleo VAT ${formatCents(apaleo)}, difference ${formatCents(apaleo - t.vatCents)} (apaleo precise ${t.apaleoVat})`
       );
     })

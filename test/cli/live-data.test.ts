@@ -68,12 +68,14 @@ describe('export of the recorded VIE day 2026-10-21 (full pipeline, Abacus targe
     expect(text).toContain('V13 13 %: net 155.77, tax 20.25, gross 176.02, apaleo VAT 20.25, difference 0.00 (apaleo precise 20.2500885)');
     expect(text).toContain('V20 20 %: net 16.65, tax 3.33, gross 19.98, apaleo VAT 3.33, difference 0.00 (apaleo precise 3.33)');
     expect(text).toContain('rounded to the Rappen, while apaleo rounds only the precise total of its lines per day');
-    expect(text).toContain('Deposits: received 491.00, released 295.00, of it refunded 10.00');
+    expect(text).toContain('Deposits (Anzahlungen) received, released and refunded:\n  received        491.00\n  released        295.00\n  of it refunded   10.00\n');
     expect(text).toContain('Accounts receivable (Debitoren, Soll positive): 95.00');
     expect(text).toMatch(/^ {2}1000 +111\.70$/m);
     expect(text).toMatch(/^ {2}1090 +576\.90$/m);
     expect(text).toContain('VAT rounding differences: 0.00');
     expect(text).not.toContain('E-VAT-TOTAL');
+    // A Ziffer of the MWST-Abrechnung only for the Swiss rates, so none on this Austrian day.
+    expect(text).not.toContain('(Ziffer');
   });
 
   it('VAT comparison on the recorded VIE day: the dry run shows it and the Abacus import block, and writes nothing', async () => {

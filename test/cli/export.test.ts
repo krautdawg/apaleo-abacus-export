@@ -59,12 +59,16 @@ describe('apaleo-abacus export', () => {
     const [entry] = manifestOf(setup).files;
     expect(entry).toMatchObject({ file: FILE, status: 'current', sha256: sha256(file), bookings: 24 });
     expect(entry).not.toHaveProperty('bodySha256');
-    // The journal total follows with the final manifest; the Soll and Haben totals of the former writer are gone.
+    // The journal total replaces the Soll and Haben totals of the former writer: every Einzelbuchung moves its gross amount to both sides.
     expect(entry).not.toHaveProperty('sollTotal');
     expect(entry).not.toHaveProperty('habenTotal');
-    expect(entry?.taxByRate).toEqual([
-      { ratePercent: 10, taxCents: 5_848 },
-      { ratePercent: 20, taxCents: 767 },
+    expect(entry).not.toHaveProperty('taxByRate');
+    const collectiveAmounts = Array.from({ length: 24 }, (_, i) => value(block(transaction(xmlOf(file), i + 1), 'CollectiveInformation'), 'KeyAmount'));
+    const journalTotal = collectiveAmounts.reduce((sum, amount) => sum + Math.round(Number(amount) * 100), 0);
+    expect(entry).toMatchObject({ journalTotalCents: journalTotal, currency: 'EUR', mandant: '1234', geschaeftsbereich: 0 });
+    expect(entry?.taxByMwstCode).toEqual([
+      { mwstCode: 'V10', ratePercent: 10, taxCents: 5_848 },
+      { mwstCode: 'V20', ratePercent: 20, taxCents: 767 },
     ]);
     expect(entry?.mappingSha256).toBe(sha256(readFileSync(join(setup.ctx.cwd, 'mapping-BSP.csv'))));
 
@@ -74,6 +78,13 @@ describe('apaleo-abacus export', () => {
     expect(protocol).toContain(`  File: ${FILE}`);
     expect(protocol).toContain(`SHA-256: ${sha256(file)}`);
     expect(protocol).toContain('Tool: apaleo-abacus 0.0.0');
+  });
+
+  it('Protocol names the Mandant: the import block and the manifest entry name Mandant 1234 and Geschäftsbereich 2', async () => {
+    const setup = exportSetup({ config: exportConfig().replace('  mandant: 1234\n', '  mandant: 1234\n  geschaeftsbereich: 2\n') });
+    expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(0);
+    expect(read(setup, PROTOCOL).toString('utf8')).toContain('\n  Mandant: 1234, Geschäftsbereich 2, Leitwährung EUR\n');
+    expect(manifestOf(setup).files[0]).toMatchObject({ file: FILE, mandant: '1234', geschaeftsbereich: 2 });
   });
 
   it('exits 2 and explains --month and --from/--to when the period is missing', async () => {
@@ -148,9 +159,9 @@ describe('apaleo-abacus export', () => {
       'Totals per Abacus account (Collective account with the gross amount, Single account with the gross amount minus the MWST):',
       'Revenue and MWST per MWST-Code and rate',
       'Deposits and their MWST per MWST-Code and rate',
-      'Kurtaxe and other guest levies (apaleo city tax): 6.40',
+      'Kurtaxe and other guest levies per account (apaleo city tax, total 6.40):\n  2210 without MWST: 6.40\n',
       'Payments per clearing account:',
-      'Deposits: received 395.00, released 395.00, of it refunded 10.00',
+      'Deposits (Anzahlungen) received, released and refunded:\n  received        395.00\n  released        395.00\n  of it refunded   10.00\n',
       'Accounts receivable (Debitoren, Soll positive): 115.00',
       'gross (unsigned)',
       'Skipped lines:',
@@ -158,7 +169,9 @@ describe('apaleo-abacus export', () => {
     ]) {
       expect(out).toContain(text);
     }
+    // No Ziffer of the MWST-Abrechnung for a non-Swiss rate.
     expect(out).toContain('  V10 10 %: net 584.82, tax 58.48, gross 643.30, apaleo VAT 58.48, difference 0.00 (apaleo precise 58.48181818)');
+    expect(out).not.toContain('(Ziffer');
     expect(out).toContain("Each booking carries apaleo's tax of its line, rounded to the Rappen");
     // The import block, before the totals.
     const importBlock = out.indexOf('Import into Abacus FIBU');
@@ -326,11 +339,29 @@ describe('re-running an export', () => {
     expect(manifestOf(setup).files.map((e) => e.status)).toEqual(['replaced', 'current']);
   });
 
+  it('Config changed the interface version: abacus.version 2024.00 refuses the re-run with E-FILE-EXISTS, and --overwrite writes version 2024.00', async () => {
+    const setup = await exportedOnce();
+    const configPath = join(setup.ctx.cwd, 'apaleo-abacus.config.yaml');
+    writeFileSync(configPath, readFileSync(configPath, 'utf8').replace('  mandant: 1234\n', '  mandant: 1234\n  version: "2024.00"\n'));
+    const old = read(setup, FILE);
+    expect(values(xmlOf(old), 'Version')).toEqual(['2015.00']);
+
+    const start = setup.ctx.out().length;
+    expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(1);
+    expect(setup.ctx.out().slice(start)).toContain('E-FILE-EXISTS');
+    expect(read(setup, FILE)).toEqual(old);
+
+    expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--overwrite'], setup.ctx)).toBe(0);
+    expect(values(xmlOf(read(setup, FILE)), 'Version')).toEqual(['2024.00']);
+    expect(read(setup, PROTOCOL).toString('utf8')).toContain('  Interface: FIBU / XML Buchungen / AbaDefault, version 2024.00\n');
+    expect(manifestOf(setup).files.map((e) => e.status)).toEqual(['replaced', 'current']);
+  });
+
   it('reads a manifest of an earlier version with fields it does not know, and keeps them', async () => {
     const setup = await exportedOnce();
     const manifestPath = join(folder(setup), 'manifest.json');
     const [entry] = manifestOf(setup).files;
-    writeFileSync(manifestPath, JSON.stringify({ files: [{ ...entry, taxByRate: undefined, bodySha256: 'from an earlier version', futureField: 1 }] }));
+    writeFileSync(manifestPath, JSON.stringify({ files: [{ ...entry, taxByMwstCode: undefined, bodySha256: 'from an earlier version', taxByRate: [], futureField: 1 }] }));
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(0);
     expect(setup.ctx.out()).toContain(`unchanged exports/BSP/2026-09/${FILE}`);
     expect(setup.ctx.out()).not.toContain('N-COMPANIONS-REPAIRED');
@@ -338,10 +369,10 @@ describe('re-running an export', () => {
     latePosting(setup.data);
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--overwrite'], setup.ctx)).toBe(0);
     const [replaced, current] = manifestOf(setup).files;
-    expect(replaced).toMatchObject({ status: 'replaced', bodySha256: 'from an earlier version', futureField: 1 });
+    expect(replaced).toMatchObject({ status: 'replaced', bodySha256: 'from an earlier version', taxByRate: [], futureField: 1 });
     expect(current).toMatchObject({ file: FILE, status: 'current', bookings: 25 });
     expect(current).not.toHaveProperty('bodySha256');
-    expect(current?.taxByRate?.[0]).toEqual({ ratePercent: 10, taxCents: 5_848 + 891 });
+    expect(current?.taxByMwstCode?.[0]).toEqual({ mwstCode: 'V10', ratePercent: 10, taxCents: 5_848 + 891 });
   });
 
   it('compares the whole file: the Abacus file has no creation time', async () => {

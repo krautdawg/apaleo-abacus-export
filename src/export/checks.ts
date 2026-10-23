@@ -176,6 +176,61 @@ export function checkVatByRate(lines: readonly LedgerLine[], result: PostingResu
   });
 }
 
+/**
+ * One rate per MWST-Code in the file (`E-MWST-CODE-RATES`): an MWST-Code has one
+ * rate per date, so the accounting program would recompute or refuse the bookings of a
+ * code at a second rate. Two mapping rows may use one code at two rates over
+ * time (a rate change on 1 January), so this runs on the bookings of one
+ * property-month, not on the mapping. Names the code, its rates and the mapping
+ * rows the month used with it.
+ */
+export function checkMwstCodeRates(lines: readonly LedgerLine[], result: PostingResult, { mapping, chart }: Pick<CheckOptions, 'mapping' | 'chart'>): Finding[] {
+  const rates = new Map<string, Set<number>>();
+  for (const { tax } of result.bookings) {
+    if (!tax) continue;
+    const set = rates.get(tax.mwstCode) ?? new Set<number>();
+    set.add(tax.percent);
+    rates.set(tax.mwstCode, set);
+  }
+  const mixed = [...rates].filter(([, set]) => set.size > 1).sort(([a], [b]) => a.localeCompare(b));
+  if (mixed.length === 0) return [];
+  const rows = rowsWithMwstCode(lines, result, mapping, chart);
+  return mixed.map(([code, set]) => {
+    const percents = [...set].sort((a, b) => a - b).map((rate) => `${rate} %`);
+    const used = rows.get(code) ?? [];
+    return {
+      code: 'E-MWST-CODE-RATES',
+      message:
+        `the MWST-Code ${code} is booked at ${percents.join(' and ')} in this file ` +
+        `(${used.length === 1 ? 'line' : 'lines'} ${used.join(', ')} of the mapping file), but an MWST-Code has one rate per date in the MWST-Tabelle, ` +
+        'so the accounting program would recompute or refuse the bookings at the other rate. Give each rate its own MWST-Code ' +
+        '(mwst_code and mwst_percent), run "apaleo-abacus mapping check" and export again. No file was written',
+      field: 'mwst_code',
+      value: code,
+    };
+  });
+}
+
+/** Per MWST-Code, the sorted line numbers of the mapping rows with that code that the booked apaleo lines resolve to. */
+function rowsWithMwstCode(lines: readonly LedgerLine[], result: PostingResult, mapping: Mapping, chart: ChartIndex): Map<string, number[]> {
+  const skipped = new Set(result.skipped.map((entry) => entry.line));
+  const releases = inferReleaseRates(lines, chart);
+  const rows = new Map<string, Set<number>>();
+  for (const line of lines) {
+    if (skipped.has(line)) continue;
+    const rate = resolutionRate(line, releases);
+    for (const account of [line.debit, line.credit]) {
+      const row = resolve(mapping, account, { rate, chart });
+      const code = row && mwstCodeOf(row);
+      if (!row || code === undefined) continue;
+      const set = rows.get(code) ?? new Set<number>();
+      set.add(row.line);
+      rows.set(code, set);
+    }
+  }
+  return new Map([...rows].map(([code, set]) => [code, [...set].sort((a, b) => a - b)]));
+}
+
 /** The three blocking checks, in order. */
 export function plausibilityFindings(lines: readonly LedgerLine[], result: PostingResult, options: CheckOptions): Finding[] {
   return [...checkConservation(lines, result), ...checkAccountMovements(lines, result, options), ...checkVatByRate(lines, result, options)];

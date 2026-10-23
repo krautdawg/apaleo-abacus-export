@@ -39,8 +39,18 @@ export interface ManifestEntry {
   /** SHA-256 of the whole file: the file is deterministic, so this alone identifies its content. */
   sha256: string;
   bookings?: number;
-  /** The tax of the bookings per VAT rate in cents, signed as owed (a correction that reduces it is negative). */
-  taxByRate?: TaxAtRate[];
+  /**
+   * The journal total in cents: the sum of the gross amounts, which the accounting program shows
+   * as both Soll and Haben of the imported bookings (each booking moves its gross amount once to each side).
+   */
+  journalTotalCents?: number;
+  /** The currency of every amount of the file (the Leitwährung). */
+  currency?: string;
+  /** The tax of the bookings per MWST-Code and rate in cents, signed as owed (a correction that reduces it is negative). */
+  taxByMwstCode?: TaxAtCode[];
+  /** The Mandant and Geschäftsbereich the file books into. */
+  mandant?: string;
+  geschaeftsbereich?: number;
   mappingSha256?: string;
   toolVersion?: string;
   createdAt?: string;
@@ -48,8 +58,9 @@ export interface ManifestEntry {
   replacedBy?: string;
 }
 
-/** The tax of the bookings at one VAT rate. */
-export interface TaxAtRate {
+/** The tax of the bookings with one MWST-Code at one rate. */
+export interface TaxAtCode {
+  mwstCode: string;
   ratePercent: number;
   taxCents: number;
 }
@@ -57,7 +68,7 @@ export interface TaxAtRate {
 /**
  * `manifest.json`. Reading keeps whatever an entry holds and uses only the fields
  * above, so a field an older or newer version wrote (such as the `bodySha256` of
- * earlier versions) is ignored and kept as it is.
+ * earlier versions, or their `taxByRate`) is ignored and kept as it is.
  */
 export interface Manifest {
   files: ManifestEntry[];

@@ -59,6 +59,12 @@ export interface TargetWriter<B> {
    * program it is imported into). One string per line, the first a title.
    */
   importBlock(bookings: readonly B[], meta: TargetFileMeta): string[];
+  /**
+   * The line of the tax return the tax at `ratePercent` is declared in, as the
+   * summary shows it after the MWST-Code and rate (for example `Ziffer 343`), or
+   * undefined for a rate the target knows no line for.
+   */
+  taxReturnLine(ratePercent: number): string | undefined;
   /** The target's own words in the refusals of the output folder logic, which names no accounting program. */
   readonly advice: TargetAdvice;
 }

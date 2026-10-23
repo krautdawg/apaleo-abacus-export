@@ -24,9 +24,10 @@ interface CodeTotal {
  * Abacus Mandant before the import (docs/abacus-format.md). MWST-Codes are
  * listed with every rate they carry in the file and their tax total, and every
  * account that carries `TaxData` with its MWST-Code, for the comparison with
- * the default MWST-Code of that account in F21.
+ * the default MWST-Code of that account in F21. The journal total is the sum
+ * of the gross amounts: each Einzelbuchung moves it once to Soll and once to Haben.
  */
-export function importBlock(bookings: readonly Pick<AbacusBooking, 'singleAccount' | 'tax'>[], options: AbacusRenderOptions, fileName: string): string[] {
+export function importBlock(bookings: readonly Pick<AbacusBooking, 'singleAccount' | 'tax' | 'grossCents'>[], options: AbacusRenderOptions, fileName: string): string[] {
   const codes = new Map<string, CodeTotal>();
   const pairs = new Set<string>();
   for (const { singleAccount, tax } of bookings) {
@@ -51,6 +52,8 @@ export function importBlock(bookings: readonly Pick<AbacusBooking, 'singleAccoun
     'Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):',
     `  File: ${fileName}`,
     `  Bookings: ${bookings.length} Einzelbuchungen (one Transaction each)`,
+    `  Journal total: ${formatAmount(bookings.reduce((sum, booking) => sum + booking.grossCents, 0))} ${options.leitwaehrung} ` +
+      '(Soll and Haben of the imported Einzelbuchungen each, without the MWST bookings Abacus adds)',
     `  Program: F11 Buchen (drop the file into the booking window) or F5534 "Import/Export Buchungen AbaConnect" with import type "${INTERFACE_ID}"`,
     `  Interface: ${APPLICATION} / ${INTERFACE_ID} / ${MAP_ID}, version ${options.version}`,
     `  Mandant: ${options.mandant}, Geschäftsbereich ${options.geschaeftsbereich}, Leitwährung ${options.leitwaehrung}`,

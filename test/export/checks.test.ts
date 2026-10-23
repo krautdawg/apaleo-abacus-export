@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountTotals } from '../../src/core/source.js';
-import { checkAccountMovements, checkAggregates, checkConservation, checkVatByRate, plausibilityFindings, type CheckOptions } from '../../src/export/index.js';
+import { checkAccountMovements, checkAggregates, checkConservation, checkMwstCodeRates, checkVatByRate, plausibilityFindings, type CheckOptions } from '../../src/export/index.js';
 import { buildBookings, type PostingResult } from '../../src/posting/index.js';
 import { ChartIndex } from '../../src/core/chart.js';
 import { BSP, LIVE_DAY, LIVE_PROPERTIES, loadLiveData } from '../helpers/apaleo.js';
@@ -42,6 +42,24 @@ function withDefect(defect: (result: PostingResult) => void): PostingResult {
 describe('plausibility checks on the fixture month', () => {
   it('find nothing in a correct posting run', () => {
     expect(plausibilityFindings(LEDGER, post(LEDGER), OPTIONS)).toEqual([]);
+  });
+});
+
+describe('one rate per MWST-Code (E-MWST-CODE-RATES)', () => {
+  it('finds nothing when every code has one rate, also with bookings without MWST', () => {
+    expect(checkMwstCodeRates(LEDGER, post(LEDGER), OPTIONS)).toEqual([]);
+  });
+
+  it('names the code, its rates in order and the mapping rows when one code carries two rates', () => {
+    const result = withDefect((r) => {
+      const taxed = r.bookings.filter((booking) => booking.tax?.mwstCode === 'V20');
+      for (const booking of taxed) if (booking.tax) booking.tax.mwstCode = 'V10';
+    });
+    const [finding, ...rest] = checkMwstCodeRates(LEDGER, result, OPTIONS);
+    expect(rest).toEqual([]);
+    expect(finding).toMatchObject({ code: 'E-MWST-CODE-RATES', field: 'mwst_code', value: 'V10' });
+    expect(finding?.message).toMatch(/^the MWST-Code V10 is booked at 10 % and 20 % in this file \(lines? [\d, ]+ of the mapping file\)/);
+    expect(finding?.message).toContain('No file was written');
   });
 });
 

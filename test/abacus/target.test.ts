@@ -166,12 +166,13 @@ describe('the Abacus import block', () => {
     });
   }
 
-  it('Import block: file, bookings, programs, version, Mandant, Leitwährung, Abrechnungsart, codes with totals, pairs, TaxAccount, constants, Belegnummern, MWST berechnen and F21', () => {
+  it('Import block: file, bookings, journal total, programs, version, Mandant, Leitwährung, Abrechnungsart, codes with totals, pairs, TaxAccount, constants, Belegnummern, MWST berechnen and F21', () => {
     // 163 bookings each of cases 0 and 1 (313 at -7.60), 162 each of cases 2 (311 at -8.10), 3 (311 at -4.05) and 4 (payments).
     expect(abacusTarget.importBlock(october(), meta())).toEqual([
       'Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):',
       '  File: ABACUS_Buchungen_20261001-20261031_BSP.xml',
       '  Bookings: 812 Einzelbuchungen (one Transaction each)',
+      '  Journal total: 113385.90 CHF (Soll and Haben of the imported Einzelbuchungen each, without the MWST bookings Abacus adds)',
       '  Program: F11 Buchen (drop the file into the booking window) or F5534 "Import/Export Buchungen AbaConnect" with import type "XML Buchungen"',
       '  Interface: FIBU / XML Buchungen / AbaDefault, version 2015.00',
       '  Mandant: 1234, Geschäftsbereich 0, Leitwährung CHF',
