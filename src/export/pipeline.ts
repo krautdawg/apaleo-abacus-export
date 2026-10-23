@@ -2,7 +2,7 @@ import { basename, join, resolve } from 'node:path';
 import type { CommandContext } from '../cli/context.js';
 import { VERSION } from '../cli/version.js';
 import { ChartIndex } from '../core/chart.js';
-import { abacusUnitKey, abacusUnitOf, sharedMandantFindings, type Config, type LoadedConfig } from '../core/config.js';
+import { abacusUnitKey, abacusUnitOf, abrechnungsartFindings, sharedMandantFindings, type Config, type LoadedConfig } from '../core/config.js';
 import { localDateIn, nextDay } from '../core/date.js';
 import { FindingsError, UserError } from '../core/errors.js';
 import { isErrorFinding, type Finding } from '../core/findings.js';
@@ -85,12 +85,14 @@ export interface PartOutcome {
 export async function runExport(request: ExportRequest, deps: ExportDeps): Promise<PartOutcome[]> {
   const parts = splitPeriod(request.period, CALENDAR_YEAR_START);
   const shared = sharedMandantFindings(deps.loaded.config);
+  const abrechnungsart = abrechnungsartFindings(deps.loaded.config.abacus);
   const properties = await deps.source.listProperties();
   const outcomes: PartOutcome[] = [];
   for (const propertyId of request.propertyIds) {
     const inputs = new PropertyInputs(propertyId, properties.find((p) => p.id === propertyId), deps);
     for (const part of parts) {
-      const outcome = await exportPart(part, inputs, request, deps, shared.filter((finding) => concernsProperty(finding, propertyId, deps.loaded.config)));
+      const notes = [...shared.filter((finding) => concernsProperty(finding, propertyId, deps.loaded.config)), ...abrechnungsart];
+      const outcome = await exportPart(part, inputs, request, deps, notes);
       outcomes.push(outcome);
       deps.onOutcome?.(outcome);
     }

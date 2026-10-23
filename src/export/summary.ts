@@ -1,6 +1,6 @@
 import { formatFinding, type Finding } from '../core/findings.js';
 import { decimalToCents, formatCents } from '../core/money.js';
-import type { PostingSummary, SkipReason, VatTotal } from '../posting/index.js';
+import type { LevyTotal, PostingSummary, SkipReason, VatTotal } from '../posting/index.js';
 import { formatTable } from '../cli/table.js';
 import type { PeriodPart } from './period.js';
 
@@ -55,7 +55,8 @@ function postingSection(summary: PostingSummary): string[] {
   section('Revenue and MWST per MWST-Code and rate:', vatLines(summary.revenueByRate));
   section('Deposits and their MWST per MWST-Code and rate (received minus released):', vatLines(summary.depositVatByRate));
   section('Written-off receivables (Debitorenverluste) and the MWST correction per MWST-Code and rate:', vatLines(summary.writeOffsByRate));
-  out.push(VAT_ROUNDING_NOTE, '', `Kurtaxe and other guest levies (apaleo city tax): ${formatCents(summary.cityTaxCents)}`, '');
+  out.push(VAT_ROUNDING_NOTE, '', `Kurtaxe and other guest levies (apaleo city tax): ${formatCents(summary.cityTaxCents)}`);
+  out.push(...levyLines(summary.levies), '');
 
   const payments = summary.payments.map((p) => [p.account, formatCents(p.cents)]);
   section('Payments per clearing account:', payments.length === 0 ? '' : formatTable([['account', 'amount'], ...payments], [1], '  '));
@@ -70,6 +71,18 @@ function postingSection(summary: PostingSummary): string[] {
   const skipped = summary.skipped.map((s) => [SKIP_LABELS[s.reason], String(s.lines), formatCents(s.grossCents)]);
   section('Skipped lines:', skipped.length === 0 ? '' : formatTable([['reason', 'lines', 'gross (unsigned)'], ...skipped], [1, 2], '  '));
   return out;
+}
+
+/**
+ * `  2210 without MWST: 12.60` or
+ * `  3400 with MWST-Code 313 3.8 %: gross 2.08, tax 0.08`, one line per account, code and rate.
+ */
+function levyLines(levies: readonly LevyTotal[]): string[] {
+  return levies.map((levy) =>
+    levy.mwstCode === ''
+      ? `  ${levy.account} without MWST: ${formatCents(levy.grossCents)}`
+      : `  ${levy.account} with MWST-Code ${levy.mwstCode} ${levy.ratePercent} %: gross ${formatCents(levy.grossCents)}, tax ${formatCents(levy.vatCents)}`,
+  );
 }
 
 /**

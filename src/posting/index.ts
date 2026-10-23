@@ -17,6 +17,7 @@ export {
   SKIP_REASONS,
   type AccountTotal,
   type FindingCount,
+  type LevyTotal,
   type PaymentTotal,
   type PostedBooking,
   type PostingOptions,

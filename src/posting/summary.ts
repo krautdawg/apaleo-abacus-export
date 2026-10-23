@@ -6,7 +6,7 @@ import { negateDecimal, sumDecimals } from '../core/money.js';
 import type { LedgerLine } from '../core/source.js';
 import type { ApaleoVat } from './apaleo-vat.js';
 import type { PostedSide } from './guard.js';
-import { SKIP_REASONS, type PostingSummary, type SkipReason, type VatTotal } from './types.js';
+import { SKIP_REASONS, type LevyTotal, type PostingSummary, type SkipReason, type VatTotal } from './types.js';
 
 /** Abacus account numbers in numeric order: shorter before longer numbers. */
 const byNumber = (a: string, b: string) => a.length - b.length || a.localeCompare(b);
@@ -43,6 +43,7 @@ export class SummaryBuilder {
   private readonly payments = new Map<string, number>();
   private readonly skipped = new Map<SkipReason, { lines: number; gross: number }>();
   private cityTax = 0;
+  private readonly levies = new Map<string, LevyTotal>();
   private readonly deposits = { receivedCents: 0, releasedCents: 0, refundedCents: 0 };
   private accountsReceivable = 0;
   private rounding = 0;
@@ -80,6 +81,8 @@ export class SummaryBuilder {
       addVat(this.writeOffs, taxed?.mwstCode ?? '', taxed?.percent ?? 0, written, apaleoVat.map((vat) => negateDecimal(vat.precise)));
     }
     this.cityTax += creditedAmount(line, CITY_TAX_TYPES);
+    const levy = [credit, debit].find((posted) => CITY_TAX_TYPES.has(posted.ref.type));
+    if (levy) this.addLevy(line, levy, levy.vat ? tax : undefined);
     for (const payment of [debit, credit]) {
       if (payment.ref.type !== 'Payments') continue;
       const signed = payment === debit ? line.grossCents : -line.grossCents;
@@ -90,6 +93,18 @@ export class SummaryBuilder {
     if (movement?.direction === 'decrease') this.deposits.releasedCents += movement.cents;
     if (movement?.direction === 'decrease' && movement.viaPayment) this.deposits.refundedCents += movement.cents;
     this.accountsReceivable -= creditedAmount(line, 'AccountsReceivable');
+  }
+
+  /** A levy line on its Abacus account, with the booking's MWST when the levy side carries the MWST-Code. */
+  private addLevy(line: LedgerLine, levy: PostedSide, tax: AbacusBooking['tax']): void {
+    const mwstCode = tax?.mwstCode ?? '';
+    const ratePercent = tax?.percent ?? 0;
+    const key = `${levy.row.abacusAccount}\u0000${mwstCode}\u0000${ratePercent}`;
+    const entry = this.levies.get(key) ?? { account: levy.row.abacusAccount, mwstCode, ratePercent, grossCents: 0, vatCents: 0 };
+    entry.grossCents += creditedAmount(line, levy.ref.type);
+    // The levy side is the Single account: credited (owed) with a negative tax.
+    entry.vatCents -= tax?.taxCents ?? 0;
+    this.levies.set(key, entry);
   }
 
   addSkipped(reason: SkipReason, line: LedgerLine): void {
@@ -110,6 +125,7 @@ export class SummaryBuilder {
       depositVatByRate: vatTotals(this.depositVat),
       writeOffsByRate: vatTotals(this.writeOffs),
       cityTaxCents: this.cityTax,
+      levies: [...this.levies.values()].sort((a, b) => byNumber(a.account, b.account) || a.ratePercent - b.ratePercent || a.mwstCode.localeCompare(b.mwstCode)),
       payments: [...this.payments].sort(([a], [b]) => byNumber(a, b)).map(([account, cents]) => ({ account, cents })),
       deposits: { ...this.deposits },
       accountsReceivableCents: this.accountsReceivable,

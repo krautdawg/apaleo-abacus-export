@@ -260,6 +260,28 @@ export function sharedMandantFindings(config: Pick<Config, 'abacus' | 'propertie
     }));
 }
 
+/**
+ * `W-ABRECHNUNGSART-VEREINNAHMT` when the Mandant accounts by vereinnahmte Entgelte
+ * (a05 design decision 6): Abacus parks the tax of these bookings on the Hilfskonto
+ * until a payment is recorded, normally in the Debitorenbuchhaltung, which this tool
+ * does not feed. None with `vereinbart`.
+ */
+export function abrechnungsartFindings(abacus: Pick<AbacusConfig, 'abrechnungsart' | 'mwstHilfskonto'>): Finding[] {
+  if (abacus.abrechnungsart !== 'vereinnahmt') return [];
+  return [
+    {
+      code: 'W-ABRECHNUNGSART-VEREINNAHMT',
+      message:
+        `abacus.abrechnungsart is vereinnahmt: Abacus books the MWST of these bookings to the Hilfskonto ${abacus.mwstHilfskonto} (abacus.mwstHilfskonto) ` +
+        'and moves it to the Steuerkonto only when a payment is recorded, normally in the Debitorenbuchhaltung, which this tool does not feed. ' +
+        'The file books the MWST on the charge date, while under vereinnahmte Entgelte it arises with the payment (MWSTG Art. 40 Abs. 2), ' +
+        'which matters for charges on accounts receivable that are unpaid at period end. Have your Treuhänder correct the Hilfskonto ' +
+        `${abacus.mwstHilfskonto} at period end as docs/mapping-guide.md describes, until a test import shows how Abacus treats these bookings`,
+      value: abacus.mwstHilfskonto,
+    },
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Environment. Overrides are an explicit allow-list of scalar keys; there is
 // no generic mapper. This table is the single source for code and docs.
