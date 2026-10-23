@@ -199,6 +199,20 @@ describe('injected context', () => {
     expect(own.out()).not.toContain('W-BUCHSYMBOL-SHARED');
   });
 
+  it('doctor shows the abacus section and warns W-MANDANT-SHARED when two properties share a Mandant', async () => {
+    const config = 'bmd:\n  buchsymbol: HO\nabacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n    buchsymbol: HO2\n';
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': config } });
+    expect(await runCli(['doctor'], ctx)).toBe(0);
+    expect(ctx.out()).toContain('Abacus:        Mandant 1234, Leitwährung CHF, vereinbart, version 2015.00');
+    expect(ctx.out()).toContain('W-MANDANT-SHARED');
+    expect(ctx.out()).toContain('the properties BSP, BS2 all book into the Abacus Mandant 1234, Geschäftsbereich 0');
+    expect(ctx.out()).toContain('Belegnummern could repeat there; give each property its own Geschäftsbereich');
+    expect(ctx.out()).not.toContain('W-BUCHSYMBOL-SHARED');
+    const own = createTestContext({ files: { 'apaleo-abacus.config.yaml': `${config}    geschaeftsbereich: 2\n` } });
+    expect(await runCli(['doctor'], own)).toBe(0);
+    expect(own.out()).not.toContain('W-MANDANT-SHARED');
+  });
+
   it('doctor exits 1 for an invalid config, and for an old DATEV config naming the bmd section', async () => {
     const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n  sachkontenlaenge: 3\n' } });
     expect(await runCli(['doctor'], ctx)).toBe(1);

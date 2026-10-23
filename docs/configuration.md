@@ -52,6 +52,28 @@ Diese Werte legt die Kanzlei in ihrem BMD-Mandanten fest. Frag sie, bevor du den
 | `bmd.personenkontenlaenge` | `6` | Stellen eines Personenkontos (Debitor), 5 bis 9, zum Beispiel 6 für den Sammeldebitor `200000`. |
 | `bmd.dialect` | `ntcs` | `ntcs` für BMD NTCS oder `bmd55` für BMD 5.5. Der Dialekt bestimmt die Spaltennamen, das Datumsformat und die Steuercodes (in NTCS ist `1` die Umsatzsteuer, in BMD 5.5 `3`); siehe [bmd-format.md](bmd-format.md). |
 
+### `abacus`
+
+Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du die erste Datei schickst. Der Abschnitt ist noch freiwillig, solange das Tool BMD-Dateien schreibt; sobald der Export die Abacus-Datei schreibt, wird er Pflicht. Was jedes Feld in der Datei bewirkt: [abacus-format.md](abacus-format.md).
+
+| Schlüssel | Standard | Bedeutung |
+|---|---|---|
+| `abacus.mandant` | Pflicht im Abschnitt | Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Sie steht im Block `Parameter` und in jeder Buchung (`Client`); mit der Importeinstellung „nur Buchungen mit gleicher Mandantennummer“ lehnt Abacus die Datei in einem anderen Mandanten ab. |
+| `abacus.leitwaehrung` | `CHF` | Die Leitwährung des Mandanten, `CHF` oder `EUR`. Jedes Hotel muss in dieser Währung buchen; das Tool rechnet nicht um. |
+| `abacus.abrechnungsart` | `vereinbart` | Die MWST-Abrechnungsart: `vereinbart` oder `vereinnahmt`. Sie bestimmt den `UseCode` (0 oder 1) und das Steuer- oder Hilfskonto in der Buchung. |
+| `abacus.version` | `2015.00` | Die Version der AbaConnect-Schnittstelle: `2015.00`, `2020.00`, `2022.00` oder `2024.00`. Ändere sie nur, wenn Abacus die Datei mit der Standardversion ablehnt. |
+| `abacus.mwstKonto` | `2200` | Das Steuerkonto der MWST-Codes (Umsatzsteuer), 1 bis 11 Ziffern; der Wert für die vereinbarte Abrechnung. |
+| `abacus.mwstHilfskonto` | `2202` | Das Hilfskonto der MWST-Codes (Umsatzsteuerausgleich Abrechnungsmethode), 1 bis 11 Ziffern; der Wert für die vereinnahmte Abrechnung. |
+| `abacus.mwstCodes` | | Die MWST-Codes des Mandanten für die drei Schweizer MWST-Sätze. |
+| `abacus.mwstCodes.normal` | `311` | Der MWST-Code für den Normalsatz in der MWST-Tabelle des Mandanten, 1 bis 3 Zeichen `A-Z`, `a-z` und `0-9`. |
+| `abacus.mwstCodes.reduziert` | `312` | Der MWST-Code für den reduzierten Satz. |
+| `abacus.mwstCodes.beherbergung` | `313` | Der MWST-Code für den Sondersatz Beherbergung. |
+| `abacus.geschaeftsbereich` | `0` | Der Geschäftsbereich (`Division`), 0 bis 99999999; `0`, wenn der Mandant keine Geschäftsbereiche nutzt. |
+
+Die Standardwerte der Konten und Codes sind die des KMU-Mustermandanten von Abacus. Viele Mandanten nutzen dieselben; prüf sie trotzdem mit deinem Treuhänder in der MWST-Tabelle des Mandanten.
+
+Schreib einen Code mit führender Null, Buchstaben `x` oder `e` in Anführungszeichen, zum Beispiel `normal: "011"`. Ohne Anführungszeichen liest YAML `011` als Zahl 11, `0x1F` als 31 und `1e2` als 100, und `011` und `11` sind verschiedene MWST-Codes. Das Tool lehnt solche Werte bei Mandant, Konten und MWST-Codes ab und nennt den Schlüssel.
+
 ### `posting`
 
 | Schlüssel | Standard | Bedeutung |
@@ -69,8 +91,12 @@ Die apaleo-Hotels, mit denen das Tool arbeitet. `export` und `schedule --once` e
 | `properties[].mapping` | `./mapping-<id>.csv` | Die Kontenzuordnung (CSV) des Hotels, relativ zum Arbeitsverzeichnis. |
 | `properties[].buchsymbol` | `bmd.buchsymbol` | Ein eigenes Buchungssymbol für dieses Hotel. |
 | `properties[].buchsymbolZahlung` | `bmd.buchsymbolZahlung` | Ein eigenes Buchungssymbol für die Zahlungen dieses Hotels. |
+| `properties[].mandant` | `abacus.mandant` | Ein eigener Abacus-Mandant für dieses Hotel. |
+| `properties[].geschaeftsbereich` | `abacus.geschaeftsbereich` | Ein eigener Geschäftsbereich für dieses Hotel im Abacus-Mandanten. |
 
 Bucht die Kanzlei zwei Hotels in einen Mandanten, braucht jedes ein eigenes Buchungssymbol: Die Belegnummern zweier Dateien desselben Zeitraums beginnen gleich, und BMD prüft sie je Buchungssymbol. Teilen sich zwei Hotels ein Symbol, warnen `doctor` und das Protokoll mit `W-BUCHSYMBOL-SHARED`.
+
+Bucht dein Treuhänder zwei Hotels in denselben Abacus-Mandanten, braucht jedes einen eigenen Geschäftsbereich (`properties[].geschaeftsbereich`) oder einen eigenen Mandanten (`properties[].mandant`), sonst können sich ihre Belegnummern wiederholen. Teilen sich zwei Hotels Mandant und Geschäftsbereich, warnen `doctor` und das Protokoll mit `W-MANDANT-SHARED`.
 
 ```yaml
 properties:

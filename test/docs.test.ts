@@ -187,7 +187,9 @@ describe('the docs checks', () => {
       'docs/x.md: `properties[].kanzlei` is not a config key',
     ]);
     expect(checkConfigKeys('docs/configuration.md', 'Trag `bmd.beraternummer` ein.')).toEqual(['docs/configuration.md: `bmd.beraternummer` is not a config key']);
-    expect(checkConfigKeys('docs/x.md', 'Setz `abacus.leitwaehrung` auf CHF.')).toEqual(['docs/x.md: `abacus.leitwaehrung` is not a config key']);
+    expect(checkConfigKeys('docs/x.md', 'Setz `abacus.leitwaehrung` auf CHF.')).toEqual([]);
+    expect(checkConfigKeys('docs/x.md', 'Setz `abacus.beraternummer` ein.')).toEqual(['docs/x.md: `abacus.beraternummer` is not a config key']);
+    for (const key of ['abacus.mandant', 'abacus.mwstCodes.beherbergung', 'properties[].geschaeftsbereich']) expect(paths.has(key), key).toBe(true);
   });
 
   it('ignores other backticked text and keys inside code fences', () => {

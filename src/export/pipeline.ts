@@ -2,7 +2,7 @@ import { basename, join, resolve } from 'node:path';
 import type { CommandContext } from '../cli/context.js';
 import { VERSION } from '../cli/version.js';
 import { ChartIndex } from '../core/chart.js';
-import { buchsymboleOf, sharedBuchsymbolFindings, type Config, type LoadedConfig } from '../core/config.js';
+import { abacusUnitKey, abacusUnitOf, buchsymboleOf, sharedBuchsymbolFindings, sharedMandantFindings, type Config, type LoadedConfig } from '../core/config.js';
 import { localDateIn, nextDay } from '../core/date.js';
 import { FindingsError, UserError } from '../core/errors.js';
 import { isErrorFinding, type Finding } from '../core/findings.js';
@@ -85,13 +85,13 @@ export interface PartOutcome {
  */
 export async function runExport(request: ExportRequest, deps: ExportDeps): Promise<PartOutcome[]> {
   const parts = splitPeriod(request.period, CALENDAR_YEAR_START);
-  const shared = sharedBuchsymbolFindings(deps.loaded.config);
+  const shared = [...sharedBuchsymbolFindings(deps.loaded.config), ...sharedMandantFindings(deps.loaded.config)];
   const properties = await deps.source.listProperties();
   const outcomes: PartOutcome[] = [];
   for (const propertyId of request.propertyIds) {
     const inputs = new PropertyInputs(propertyId, properties.find((p) => p.id === propertyId), deps);
     for (const part of parts) {
-      const outcome = await exportPart(part, inputs, request, deps, shared.filter((finding) => sharesSymbol(finding, propertyId, deps)));
+      const outcome = await exportPart(part, inputs, request, deps, shared.filter((finding) => concernsProperty(finding, propertyId, deps.loaded.config)));
       outcomes.push(outcome);
       deps.onOutcome?.(outcome);
     }
@@ -149,9 +149,15 @@ export function notFinalFinding(part: DateRange, timeZone: string, finalAfter: s
   };
 }
 
-/** A `W-BUCHSYMBOL-SHARED` finding concerns the property when the shared symbol is one of its own. */
-function sharesSymbol(finding: Finding, propertyId: string, deps: ExportDeps): boolean {
-  const { buchsymbol, buchsymbolZahlung } = buchsymboleOf(deps.loaded.config, propertyId);
+/**
+ * A `W-BUCHSYMBOL-SHARED` finding concerns the property when the shared symbol is one of its own,
+ * a `W-MANDANT-SHARED` finding when the shared Mandant and Geschäftsbereich are its own.
+ */
+function concernsProperty(finding: Finding, propertyId: string, config: Config): boolean {
+  if (finding.code === 'W-MANDANT-SHARED') {
+    return config.abacus !== undefined && finding.value === abacusUnitKey(abacusUnitOf(config.abacus, config.properties, propertyId));
+  }
+  const { buchsymbol, buchsymbolZahlung } = buchsymboleOf(config, propertyId);
   return finding.value === buchsymbol || finding.value === buchsymbolZahlung;
 }
 

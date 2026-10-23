@@ -1,5 +1,5 @@
 import { extname, resolve } from 'node:path';
-import { LineCounter, parseDocument, type ErrorCode } from 'yaml';
+import { isMap, isScalar, isSeq, LineCounter, parseDocument, type ErrorCode } from 'yaml';
 import { z } from 'zod';
 import { UserError } from './errors.js';
 import type { Finding } from './findings.js';
@@ -77,6 +77,64 @@ export const bmdSection = z.strictObject({
   buchsymbolZahlung: buchsymbol.optional(),
 });
 
+/**
+ * Digits or letters written as YAML numbers (`mandant: 1234`, `mwstKonto: 2200`,
+ * `normal: 311`) are read as text, so `pattern` decides alone and a number with
+ * a sign, a decimal point or too many digits is refused. A number whose source
+ * text is not its decimal form (`011`, `0x1F`, `1e2`) never gets here: the YAML
+ * parser would already have lost the digits, so `rejectRewrittenCodes` refuses it
+ * at one of the `CODE_KEYS` before the schema runs.
+ */
+function codeText(pattern: RegExp, message: string) {
+  return z.preprocess((value) => (typeof value === 'number' ? String(value) : value), z.string({ error: message }).regex(pattern, message));
+}
+
+const MANDANT_MESSAGE = 'must be the Mandantennummer in Abacus: 1 to 6 digits';
+const mandant = codeText(/^\d{1,6}$/, MANDANT_MESSAGE);
+const ABACUS_ACCOUNT_MESSAGE = 'must be an Abacus account number: 1 to 11 digits';
+const abacusAccount = codeText(/^\d{1,11}$/, ABACUS_ACCOUNT_MESSAGE);
+const MWST_CODE_MESSAGE = 'must be an MWST-Code of the Mandant: 1 to 3 characters of A-Z, a-z and 0-9';
+const mwstCode = codeText(/^[A-Za-z0-9]{1,3}$/, MWST_CODE_MESSAGE);
+const geschaeftsbereich = wholeNumber(0, 99_999_999);
+
+export const ABACUS_LEITWAEHRUNGEN = ['CHF', 'EUR'] as const;
+export const ABRECHNUNGSARTEN = ['vereinbart', 'vereinnahmt'] as const;
+export const ABACUS_VERSIONS = ['2015.00', '2020.00', '2022.00', '2024.00'] as const;
+
+const VERSION_MESSAGE = `must be an AbaConnect interface version: ${ABACUS_VERSIONS.map((v) => `"${v}"`).join(', ')}`;
+
+/** `version: 2015.00` without quotes is the YAML number 2015; it means the text "2015.00". */
+const abacusVersion = z.preprocess(
+  (value) => (typeof value === 'number' ? value.toFixed(2) : value),
+  z.enum(ABACUS_VERSIONS, { error: VERSION_MESSAGE }),
+);
+
+/** What the Treuhänder's Abacus Mandant decides about every file (docs/abacus-format.md). */
+export const abacusSection = z.strictObject({
+  /** The Mandantennummer, written into `Parameter/Mandant` and every `Client`. No default. */
+  mandant,
+  /** The Mandant's Leitwährung: every property must book in it, the tool does not convert. */
+  leitwaehrung: z.enum(ABACUS_LEITWAEHRUNGEN, { error: 'must be "CHF" or "EUR" (the Leitwährung of the Mandant)' }).default('CHF'),
+  /** MWST-Abrechnungsart: `UseCode` 0 or 1 and the Collective `TaxAccount`. */
+  abrechnungsart: z.enum(ABRECHNUNGSARTEN, { error: 'must be "vereinbart" or "vereinnahmt"' }).default('vereinbart'),
+  /** The AbaConnect interface version in `Parameter/Version`. */
+  version: abacusVersion.default('2015.00'),
+  /** Steuerkonto of the MWST-Codes (KMU sample Mandant: 2200), the Collective `TaxAccount` with `vereinbart`. */
+  mwstKonto: abacusAccount.default('2200'),
+  /** Hilfskonto of the MWST-Codes (KMU sample Mandant: 2202), the Collective `TaxAccount` with `vereinnahmt`. */
+  mwstHilfskonto: abacusAccount.default('2202'),
+  /** The MWST-Codes of the Mandant's MWST-Tabelle that the template writes (KMU sample Mandant: 311, 312, 313). */
+  mwstCodes: z
+    .strictObject({
+      normal: mwstCode.default('311'),
+      reduziert: mwstCode.default('312'),
+      beherbergung: mwstCode.default('313'),
+    })
+    .prefault({}),
+  /** Geschäftsbereich (`Division`), 0 when the Mandant uses none. */
+  geschaeftsbereich: geschaeftsbereich.default(0),
+});
+
 /** How the posting rules fill BMD fields. */
 export const postingSection = z.strictObject({
   /** extbelegnr: the receipt (invoice) number when there is one (default), or always the reservation reference. */
@@ -92,6 +150,10 @@ export const propertyEntry = z.strictObject({
   buchsymbol: buchsymbol.optional(),
   /** Overrides `bmd.buchsymbolZahlung` for this property's payment lines. */
   buchsymbolZahlung: buchsymbol.optional(),
+  /** Overrides `abacus.mandant` for this property's file. */
+  mandant: mandant.optional(),
+  /** Overrides `abacus.geschaeftsbereich` for this property's file. */
+  geschaeftsbereich: geschaeftsbereich.optional(),
 });
 
 export const propertiesSection = z
@@ -172,6 +234,8 @@ export const configSections = {
   apaleo: apaleoSection.prefault({}),
   output: outputSection.prefault({}),
   bmd: bmdSection,
+  /** Optional until the export switches to the Abacus target (a03). */
+  abacus: abacusSection.optional(),
   posting: postingSection.prefault({}),
   properties: propertiesSection.default([]),
   checks: checksSection.prefault({}),
@@ -199,6 +263,7 @@ export const configSchema = z.strictObject(configSections).superRefine((config, 
 export type Config = z.infer<typeof configSchema>;
 export type PostingConfig = z.infer<typeof postingSection>;
 export type BmdConfig = z.infer<typeof bmdSection>;
+export type AbacusConfig = z.infer<typeof abacusSection>;
 export type PropertyConfig = z.infer<typeof propertyEntry>;
 export type ScheduleConfig = z.infer<typeof scheduleSection>;
 
@@ -233,6 +298,49 @@ export function sharedBuchsymbolFindings(config: Pick<Config, 'bmd' | 'propertie
         `the properties ${ids.join(', ')} all book under the Buchungssymbol ${symbol}. If the Kanzlei imports them into one BMD Mandant, ` +
         'their Belegnummern would repeat; give each property its own symbol (properties[].buchsymbol) or its own Mandant',
       value: symbol,
+    }));
+}
+
+/** The Abacus Mandant and Geschäftsbereich a property's file books into: its own, else the `abacus` section's. */
+export interface AbacusUnit {
+  mandant: string;
+  geschaeftsbereich: number;
+}
+
+export function abacusUnitOf(abacus: Pick<AbacusConfig, 'mandant' | 'geschaeftsbereich'>, properties: Config['properties'], propertyId: string): AbacusUnit {
+  const property = properties.find((p) => p.id === propertyId);
+  return { mandant: property?.mandant ?? abacus.mandant, geschaeftsbereich: property?.geschaeftsbereich ?? abacus.geschaeftsbereich };
+}
+
+/** The `value` of a `W-MANDANT-SHARED` finding: Mandant and Geschäftsbereich. */
+export function abacusUnitKey({ mandant, geschaeftsbereich }: AbacusUnit): string {
+  return `${mandant}/${geschaeftsbereich}`;
+}
+
+/**
+ * `W-MANDANT-SHARED` for each Mandant and Geschäftsbereich that two or more
+ * configured properties book into: the Belegnummern of their files start alike
+ * (`MMDD` and a counter), so in one Mandant and Geschäftsbereich they could repeat.
+ * No finding without an `abacus` section.
+ */
+export function sharedMandantFindings(config: Pick<Config, 'abacus' | 'properties'>): Finding[] {
+  const { abacus } = config;
+  if (!abacus) return [];
+  const users = new Map<string, { unit: AbacusUnit; ids: string[] }>();
+  for (const { id } of config.properties) {
+    const unit = abacusUnitOf(abacus, config.properties, id);
+    const key = abacusUnitKey(unit);
+    users.set(key, { unit, ids: [...(users.get(key)?.ids ?? []), id] });
+  }
+  return [...users]
+    .filter(([, { ids }]) => ids.length > 1)
+    .map(([key, { unit, ids }]) => ({
+      code: 'W-MANDANT-SHARED',
+      message:
+        `the properties ${ids.join(', ')} all book into the Abacus Mandant ${unit.mandant}, Geschäftsbereich ${unit.geschaeftsbereich}. ` +
+        'Their Belegnummern could repeat there; give each property its own Geschäftsbereich (properties[].geschaeftsbereich) ' +
+        'or its own Mandant (properties[].mandant)',
+      value: key,
     }));
 }
 
@@ -301,9 +409,10 @@ export interface LoadConfigOptions {
 
 export async function loadConfig({ path, env, readFile }: LoadConfigOptions): Promise<LoadedConfig> {
   checkEnvVariables(env);
-  const raw = parseConfigText(await readConfigFile(path, readFile), path);
+  const { raw, numberSources } = parseConfigText(await readConfigFile(path, readFile), path);
   rejectSecretsInFile(raw, path);
   rejectDatevSection(raw, path);
+  rejectRewrittenCodes(numberSources, path);
   const fromEnv = applyEnvOverrides(raw, env);
 
   const result = configSchema.safeParse(raw);
@@ -327,13 +436,63 @@ async function readConfigFile(path: string, readFile: LoadConfigOptions['readFil
   }
 }
 
-function parseConfigText(text: string, path: string): Record<string, unknown> {
-  const parsed = extname(path).toLowerCase() === '.json' ? parseJson(text, path) : parseYamlText(text, path);
-  if (parsed === null || parsed === undefined) return {};
+/**
+ * Dotted key paths (`abacus.mwstCodes.normal`, `properties.0.mandant`) of the
+ * numbers in the file whose source text differs from their decimal form, each
+ * with that source text: `011` (read as 11), `0x1F` (31), `1e2` (100), `311.0` (311).
+ */
+type NumberSources = Map<string, string>;
+
+interface ParsedConfigText {
+  raw: Record<string, unknown>;
+  numberSources: NumberSources;
+}
+
+function parseConfigText(text: string, path: string): ParsedConfigText {
+  const isJson = extname(path).toLowerCase() === '.json';
+  const { value: parsed, numberSources } = isJson ? parseJson(text, path) : parseYamlText(text, path);
+  if (parsed === null || parsed === undefined) return { raw: {}, numberSources };
   if (typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new UserError(`Config file ${path} must contain key/value settings at the top level.`);
   }
-  return dropNullValues(parsed as Record<string, unknown>);
+  return { raw: dropNullValues(parsed as Record<string, unknown>), numberSources };
+}
+
+/**
+ * The keys whose value is a code written as text (Mandantennummer, account,
+ * MWST-Code). `011` and `11` are different MWST-Codes in the Mandant's MWST-Tabelle,
+ * so a number there is accepted only when its source text is its decimal form.
+ */
+const CODE_KEYS = [/^abacus\.(mandant|mwstKonto|mwstHilfskonto|mwstCodes\.(normal|reduziert|beherbergung))$/, /^properties\.\d+\.mandant$/];
+
+/** A code written as `011`, `0x1F` or `1e2` without quotes: the parser has already changed its digits, so refuse it and ask for quotes. */
+function rejectRewrittenCodes(numberSources: NumberSources, path: string): void {
+  const isJson = extname(path).toLowerCase() === '.json';
+  const problems = [...numberSources]
+    .filter(([key]) => CODE_KEYS.some((pattern) => pattern.test(key)))
+    .map(([key, source]) => {
+      const name = key.split('.').at(-1) ?? key;
+      const quoted = isJson ? `"${name}": "${source}"` : `${name}: "${source}"`;
+      return `${key}: ${source} is read as the number ${Number(source)}, not as the text "${source}"; write it in quotes, for example ${quoted}`;
+    });
+  if (problems.length > 0) {
+    throw new UserError(`Invalid config in ${path}:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+  }
+}
+
+/** The numbers below `node` whose source text is not their decimal form (see `NumberSources`). */
+function yamlNumberSources(node: unknown, keyPath: readonly string[], out: NumberSources): NumberSources {
+  if (isMap(node)) {
+    for (const pair of node.items) {
+      const key = isScalar(pair.key) ? String(pair.key.value) : String(pair.key);
+      yamlNumberSources(pair.value, [...keyPath, key], out);
+    }
+  } else if (isSeq(node)) {
+    node.items.forEach((item, index) => yamlNumberSources(item, [...keyPath, String(index)], out));
+  } else if (isScalar(node) && typeof node.value === 'number' && node.source !== undefined && node.source !== String(node.value)) {
+    out.set(keyPath.join('.'), node.source);
+  }
+  return out;
 }
 
 // Parse errors are reported by position and error kind only. The messages of the
@@ -354,7 +513,7 @@ const YAML_ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
   UNEXPECTED_TOKEN: 'unexpected character',
 };
 
-function parseYamlText(text: string, path: string): unknown {
+function parseYamlText(text: string, path: string): { value: unknown; numberSources: NumberSources } {
   const lineCounter = new LineCounter();
   const doc = parseDocument(text, { prettyErrors: false, lineCounter });
   const [error] = doc.errors;
@@ -364,15 +523,28 @@ function parseYamlText(text: string, path: string): unknown {
     throw new UserError(`Cannot parse config file ${path}: line ${line}, column ${col}: ${what}.`);
   }
   try {
-    return doc.toJS();
+    return { value: doc.toJS(), numberSources: yamlNumberSources(doc.contents, [], new Map()) };
   } catch {
     throw new UserError(`Cannot parse config file ${path}: invalid YAML (aliases or tags).`);
   }
 }
 
-function parseJson(text: string, path: string): unknown {
+function parseJson(text: string, path: string): { value: unknown; numberSources: NumberSources } {
+  // The reviver sees each number's source text (`1e2`) but not its key path, so it
+  // records the number by its holder object and key; the walk below adds the paths.
+  const rewritten = new WeakMap<object, Map<string, string>>();
+  function reviver(this: unknown, key: string, value: unknown, context?: { source?: string }): unknown {
+    const source = context?.source;
+    if (typeof value === 'number' && source !== undefined && source !== String(value) && typeof this === 'object' && this !== null) {
+      const keys = rewritten.get(this) ?? new Map<string, string>();
+      keys.set(key, source);
+      rewritten.set(this, keys);
+    }
+    return value;
+  }
+  let value: unknown;
   try {
-    return JSON.parse(text);
+    value = JSON.parse(text, reviver);
   } catch (error) {
     const message = (error as Error).message;
     const lineCol = /\(line (\d+) column (\d+)\)/.exec(message);
@@ -383,6 +555,14 @@ function parseJson(text: string, path: string): unknown {
     else if (/end of (JSON|data) input/i.test(message)) where = 'end of file: ';
     throw new UserError(`Cannot parse config file ${path}: ${where}invalid JSON.`);
   }
+  const numberSources: NumberSources = new Map();
+  const walk = (node: unknown, keyPath: readonly string[]) => {
+    if (typeof node !== 'object' || node === null) return;
+    for (const [key, source] of rewritten.get(node) ?? []) numberSources.set([...keyPath, key].join('.'), source);
+    for (const [key, child] of Object.entries(node)) walk(child, [...keyPath, key]);
+  };
+  walk(value, []);
+  return { value, numberSources };
 }
 
 function lineAndColumn(text: string, offset: number): string {
@@ -450,6 +630,7 @@ function rejectDatevSection(raw: Record<string, unknown>, path: string): void {
 const REQUIRED_HINTS: Readonly<Record<string, string>> = {
   bmd: `add a bmd section with bmd.buchsymbol, the Buchungssymbol the Kanzlei created in BMD (see ${BUCHSYMBOL_DOC})`,
   'bmd.buchsymbol': `name the Buchungssymbol the Kanzlei created in BMD for these bookings, for example HO (see ${BUCHSYMBOL_DOC})`,
+  'abacus.mandant': 'name the Mandantennummer of the hotel in Abacus, for example 1234 (the Treuhänder knows it)',
 };
 
 /** Writes env values into the raw object and returns which key paths they set. */
