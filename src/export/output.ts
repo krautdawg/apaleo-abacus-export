@@ -4,7 +4,7 @@ import { UserError } from '../core/errors.js';
 import type { Finding } from '../core/findings.js';
 import type { LocalDate } from '../core/date.js';
 import type { DateRange } from './period.js';
-import type { FolderTarget } from './target.js';
+import type { FolderTarget, TargetManifestFields } from './target.js';
 import type { CommandContext } from '../cli/context.js';
 import { readIfExists, replaceKeepingBackup, withFolderLock, writeFileAtomic } from '../cli/files.js';
 
@@ -31,7 +31,8 @@ function matchTargetFile(target: FolderTarget, name: string): RegExpExecArray | 
 }
 
 /** One file the export wrote or replaced. Entries for replaced files keep only what is known about them. */
-export interface ManifestEntry {
+/** The target's own fields (where the file books into) come from `TargetWriter.manifestFields`. */
+export interface ManifestEntry extends TargetManifestFields {
   file: string;
   status: 'current' | 'replaced';
   from: LocalDate;
@@ -46,11 +47,12 @@ export interface ManifestEntry {
   journalTotalCents?: number;
   /** The currency of every amount of the file (the Leitwährung). */
   currency?: string;
-  /** The tax of the bookings per MWST-Code and rate in cents, signed as owed (a correction that reduces it is negative). */
+  /**
+   * The tax of the bookings per MWST-Code and rate in cents, signed as owed: positive for MWST the
+   * hotel owes, negative for a correction that reduces it. A target's import block may print the
+   * tax as signed in its file instead (docs/export.md says which sign each place uses).
+   */
   taxByMwstCode?: TaxAtCode[];
-  /** The Mandant and Geschäftsbereich the file books into. */
-  mandant?: string;
-  geschaeftsbereich?: number;
   mappingSha256?: string;
   toolVersion?: string;
   createdAt?: string;

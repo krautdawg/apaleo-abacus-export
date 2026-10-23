@@ -201,6 +201,7 @@ Jede Antwort ist eine Einstellung an einer Stelle: eine Konstante in `src/abacus
 13. Behält Abacus mit „MWST berechnen“ den `TaxCode` der Datei, oder ersetzt es ihn durch den MWST-Code des Kontos in F21? Passt das MWST-Journal zu den Paaren „Konto -> MWST-Code“ im Protokoll?
 14. Nimmt Abacus ohne „MWST berechnen“ `TaxIncluded` `I` bei Codes mit Satz 0 an, deren Muster-Flag `Inclusive` `0` (491, 490) oder `1` (400) ist, oder muss `TAX_INCLUDED_AT_RATE_ZERO` `E` sein?
 15. Vereinnahmte Entgelte: Wie behandelt Abacus reine FIBU-Buchungen mit `UseCode` `1` auf dem Hilfskonto `2202`, wenn in der Debitorenbuchhaltung keine Zahlung erfasst wird, und welche Korrektur macht der Treuhänder am Periodenende?
+16. Journalsumme: Zeigt das Journal des Imports im Soll und im Haben je die Summe der Bruttobeträge der Einzelbuchungen (Zeile `Journal total` im Protokoll, `journalTotalCents` im Manifest), oder zählt Abacus die MWST-Buchungen mit, die es selbst dazu bucht? Eine Antwort ändert nur den Text dieser Zeile und der Dokumentation, nicht die Datei.
 
 ## Quellen
 

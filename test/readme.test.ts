@@ -359,10 +359,12 @@ describe('docs folder', () => {
       'MWST-Code für Vorauszahlungen',
       '**Vereinnahmt**',
       'Hilfskonto',
+      '**Journalsumme**',
+      'journalTotalCents',
     ]) {
       expect(questions, item).toContain(item);
     }
-    expect(questions.match(/^- \[ \]/gm)).toHaveLength(13);
+    expect(questions.match(/^- \[ \]/gm)).toHaveLength(14);
   });
 
   it('links docs/abacus-import.md from the README and docs/configuration.md', () => {

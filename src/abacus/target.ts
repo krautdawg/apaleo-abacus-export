@@ -54,6 +54,10 @@ export function createAbacusTarget(settingsOf: (meta: TargetFileMeta) => AbacusT
       return { bytes, findings: notes };
     },
     importBlock: (bookings, meta) => importBlock(bookings, optionsOf(meta), fileName(meta)),
+    manifestFields: (meta) => {
+      const { mandant, geschaeftsbereich } = settingsOf(meta);
+      return { mandant, geschaeftsbereich };
+    },
     // The file has no creation time: unchanged means byte-identical.
     sameContent: (existing, next) => existing.length === next.length && existing.every((byte, i) => byte === next[i]),
     movements: abacusMovements,

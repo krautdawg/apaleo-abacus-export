@@ -15,4 +15,4 @@ export {
 } from './period.js';
 export { CALENDAR_YEAR_START, DEFAULT_TARGET, DEMO_MARKER, DEMO_NOTICE, fileSystemFinding, isSystemError, notFinalFinding, runExport, type ExportDeps, type ExportRequest, type PartOutcome, type PartStatus } from './pipeline.js';
 export { renderSummary, type SummaryInput } from './summary.js';
-export { DEMO_FILE_MARKER, fileTag, type FolderTarget, type RenderedFile, type TargetFileMeta, type TargetWriter } from './target.js';
+export { DEMO_FILE_MARKER, fileTag, type FolderTarget, type RenderedFile, type TargetFileMeta, type TargetManifestFields, type TargetWriter } from './target.js';

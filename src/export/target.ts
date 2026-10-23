@@ -65,6 +65,13 @@ export interface TargetWriter<B> {
    * undefined for a rate the target knows no line for.
    */
   taxReturnLine(ratePercent: number): string | undefined;
+  /**
+   * The target's own fields of the file's manifest entry: where the file books
+   * into in the target program (for Abacus the Mandant and Geschäftsbereich).
+   * Read from the same settings as `importBlock`, so the manifest and the
+   * protocol name the same unit. A target without such settings returns `{}`.
+   */
+  manifestFields(meta: TargetFileMeta): TargetManifestFields;
   /** The target's own words in the refusals of the output folder logic, which names no accounting program. */
   readonly advice: TargetAdvice;
 }
@@ -84,6 +91,18 @@ export interface TargetAdvice {
   reimport: string;
   /** After the `--overwrite` hint, when the target has a case in which an imported file cannot be undone. */
   afterOverwrite?: string;
+}
+
+/**
+ * The manifest fields a target may fill (`TargetWriter.manifestFields`). They
+ * are named after the Abacus settings because Abacus is the only target; a
+ * new target with other settings adds its own optional fields here.
+ */
+export interface TargetManifestFields {
+  /** The Abacus Mandant the file books into. */
+  mandant?: string;
+  /** The Abacus Geschäftsbereich the file books into. */
+  geschaeftsbereich?: number;
 }
 
 /** The part of a target the output folder logic uses. */

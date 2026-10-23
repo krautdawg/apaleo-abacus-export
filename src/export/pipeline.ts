@@ -236,7 +236,6 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     if (plan.action === 'refuse') findings.push(plan.finding);
     if (hasError(findings)) return outcome('failed', { path });
     if (request.dryRun) return outcome('checked', { path, plan: plan.action });
-    const { mandant, geschaeftsbereich } = abacusUnitOf(deps.loaded.config.abacus, deps.loaded.config.properties, inputs.id);
     const companions = (status: PartStatus, fileBytes: Uint8Array): WrittenFile => ({
       path,
       bytes: fileBytes,
@@ -248,8 +247,7 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
         journalTotalCents: journalTotalCents(result?.bookings ?? []),
         currency: target.currency(deps.loaded.config),
         taxByMwstCode: taxByMwstCode(result?.bookings ?? []),
-        mandant,
-        geschaeftsbereich,
+        ...target.manifestFields(meta),
         mappingSha256,
         toolVersion: VERSION,
         createdAt: deps.ctx.now().toISOString(),
