@@ -45,7 +45,7 @@ Every subcommand SHALL receive a `CommandContext` (`env`, `stdout`, `stderr`, `c
 - **THEN** its output depends only on that instant, not on the machine clock
 
 ### Requirement: Config file and environment loading
-The CLI SHALL load configuration from the file given by `--config`, else from `APALEO_ABACUS_CONFIG`, else from `./apaleo-abacus.config.yaml`, accepting YAML or JSON. Values SHALL be validated against a schema, and every validation error SHALL name the offending key path. Secrets SHALL only be read from environment variables, and a secret key present in the config file SHALL be rejected. Environment overrides SHALL be limited to a documented allow-list of scalar keys; any other `APALEO_ABACUS_*` variable SHALL be rejected with an error naming it. A `datev` section SHALL be rejected with an error that names the `bmd` section. The `bmd` section SHALL accept `dialect` (`ntcs` or `bmd55`, default `ntcs`), `sachkontenlaenge`, `personenkontenlaenge`, `buchsymbol` (required, no default) and `buchsymbolZahlung` (optional), and each property MAY override `buchsymbol` and `buchsymbolZahlung`; a Buchungssymbol SHALL be 1 to 4 characters of `A-Z` and `0-9`, at most 2 with `bmd55`. `doctor` and the export protocol SHALL warn `W-BUCHSYMBOL-SHARED` when two configured properties have the same effective Buchungssymbol. Variables of the former names (`APALEO_BMD_*`, `APALEO_DATEV_*`) SHALL NOT be read.
+The CLI SHALL load configuration from the file given by `--config`, else from `APALEO_ABACUS_CONFIG`, else from `./apaleo-abacus.config.yaml`, accepting YAML or JSON. Values SHALL be validated against a schema, and every validation error SHALL name the offending key path. Secrets SHALL only be read from environment variables, and a secret key present in the config file SHALL be rejected. Environment overrides SHALL be limited to a documented allow-list of scalar keys; any other `APALEO_ABACUS_*` variable SHALL be rejected with an error naming it. A `datev` section SHALL be rejected with an error that names the `bmd` section. The `bmd` section SHALL accept `dialect` (`ntcs` or `bmd55`, default `ntcs`), `sachkontenlaenge`, `personenkontenlaenge`, `buchsymbol` (required, no default) and `buchsymbolZahlung` (optional), and each property MAY override `buchsymbol` and `buchsymbolZahlung`; a Buchungssymbol SHALL be 1 to 4 characters of `A-Z` and `0-9`, at most 2 with `bmd55`. `doctor` and the export protocol SHALL warn `W-BUCHSYMBOL-SHARED` when two configured properties have the same effective Buchungssymbol. The `abacus` section SHALL accept `mandant` (required in the section, 1 to 6 digits, no default), `leitwaehrung` (`CHF` or `EUR`, default `CHF`), `abrechnungsart` (`vereinbart` or `vereinnahmt`, default `vereinbart`), `version` (`2015.00`, `2020.00`, `2022.00` or `2024.00`, default `2015.00`), `mwstKonto` (1 to 11 digits, default `2200`), `mwstHilfskonto` (1 to 11 digits, default `2202`), `mwstCodes.normal`, `mwstCodes.reduziert` and `mwstCodes.beherbergung` (1 to 3 characters of `A-Z`, `a-z`, `0-9`, defaults `311`, `312` and `313`) and `geschaeftsbereich` (0 to 99999999, default `0`), and each property MAY override `mandant` and `geschaeftsbereich`. `doctor` and the export protocol SHALL warn `W-MANDANT-SHARED` when two configured properties have the same effective Mandant and Geschäftsbereich. Variables of the former names (`APALEO_BMD_*`, `APALEO_DATEV_*`) SHALL NOT be read.
 
 #### Scenario: Invalid config value
 - **WHEN** the config file sets `bmd.sachkontenlaenge: 3`
@@ -62,6 +62,22 @@ The CLI SHALL load configuration from the file given by `--config`, else from `A
 #### Scenario: Two properties share a symbol
 - **WHEN** properties `BSP` and `BS2` are configured and neither overrides `bmd.buchsymbol`
 - **THEN** `doctor` warns `W-BUCHSYMBOL-SHARED` naming both properties and the symbol, and explains that in one Mandant their Belegnummern would repeat
+
+#### Scenario: Mandant missing
+- **WHEN** the config file has an `abacus` section without `mandant`
+- **THEN** loading fails with an error that names `abacus.mandant` as required and says that it is the Mandantennummer in Abacus
+
+#### Scenario: Invalid Leitwährung
+- **WHEN** the config file sets `abacus.leitwaehrung: USD`
+- **THEN** loading fails with an error that names `abacus.leitwaehrung` and the allowed values `CHF` and `EUR`
+
+#### Scenario: Abacus defaults
+- **WHEN** the `abacus` section sets only `mandant: 1234`
+- **THEN** the effective values are `leitwaehrung` `CHF`, `abrechnungsart` `vereinbart`, `version` `2015.00`, `mwstKonto` `2200`, `mwstHilfskonto` `2202`, `mwstCodes` `311`, `312`, `313` and `geschaeftsbereich` `0`
+
+#### Scenario: Two properties share a Mandant
+- **WHEN** properties `BSP` and `BS2` are configured with the same `abacus.mandant` and neither sets `geschaeftsbereich`
+- **THEN** `doctor` warns `W-MANDANT-SHARED` naming both properties, and explains that their Belegnummern could repeat and that each property needs its own Geschäftsbereich or Mandant
 
 #### Scenario: Old DATEV section
 - **WHEN** the config file contains `datev.beraternummer`

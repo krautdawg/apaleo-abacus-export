@@ -1,5 +1,8 @@
-## ADDED Requirements
+# abacus-xml-writer Specification
 
+## Purpose
+The AbaConnect "XML Buchungen" file (Application FIBU, mapping AbaDefault) that a Swiss Treuhänder imports into Abacus Finanzbuchhaltung: container, Einzelbuchung layout with MWST in `SingleInformation`, number formats, Belegnummern, encoding, validation, sanitising, file name, the Abacus target writer with its import block, and golden tests.
+## Requirements
 ### Requirement: AbaConnect container
 The writer SHALL emit `<?xml version='1.0' encoding='UTF-8'?>` followed by one `AbaConnectContainer` with `TaskCount` `1` and one `Task` whose `Parameter` holds, in this order, `Application` `FIBU`, `Id` `XML Buchungen`, `MapId` `AbaDefault`, `Version` (the configured interface version, default `2015.00`) and `Mandant` (the property's Mandantennummer), and SHALL write one `Transaction id='<n>'` per booking in file order, numbered from 1, each with one `Entry mode='SAVE'`.
 
@@ -144,3 +147,4 @@ The test suite SHALL compare rendered files byte by byte with golden files in `t
 #### Scenario: Unintended change
 - **WHEN** a code change alters one byte of the output
 - **THEN** `pnpm test` fails and shows the differing line
+
