@@ -42,6 +42,34 @@ bmd:
   # Datum JJJJMMTT und Steuercode 3 statt 1 für die Umsatzsteuer).
   dialect: ntcs
 
+# Was der Abacus-Mandant deines Treuhänders festlegt. Frag deinen Treuhänder.
+# Der Abschnitt ist noch freiwillig, solange das Tool BMD-Dateien schreibt.
+# Entferne die # vor den Zeilen, die du brauchst; siehe docs/configuration.md
+# und docs/abacus-format.md.
+# abacus:
+#   # Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Ohne Standardwert.
+#   mandant: 1234
+#   # Die Leitwährung des Mandanten: CHF (Standard) oder EUR. Jedes Hotel muss
+#   # in dieser Währung buchen, das Tool rechnet nicht um.
+#   leitwaehrung: CHF
+#   # Die MWST-Abrechnungsart: vereinbart (Standard) oder vereinnahmt.
+#   abrechnungsart: vereinbart
+#   # Die Version der AbaConnect-Schnittstelle: "2015.00" (Standard), "2020.00",
+#   # "2022.00" oder "2024.00". Nur ändern, wenn Abacus die Datei ablehnt.
+#   version: "2015.00"
+#   # Steuerkonto und Hilfskonto der MWST-Codes, wie im KMU-Mustermandanten.
+#   mwstKonto: 2200
+#   mwstHilfskonto: 2202
+#   # Die MWST-Codes aus der MWST-Tabelle des Mandanten.
+#   mwstCodes:
+#     normal: 311        # Normalsatz 8,1 %
+#     reduziert: 312     # reduzierter Satz 2,6 %
+#     beherbergung: 313  # Sondersatz Beherbergung 3,8 %
+#   # Der Geschäftsbereich, 0 ohne Geschäftsbereiche. Bucht dein Treuhänder zwei
+#   # Hotels in denselben Mandanten, gib jedem einen eigenen Geschäftsbereich
+#   # (properties[].geschaeftsbereich), sonst warnt das Tool mit W-MANDANT-SHARED.
+#   geschaeftsbereich: 0
+
 posting:
   # Was in extbelegnr steht, der externen Belegnummer, mit der BMD offene Posten
   # zuordnet: "receipt" nimmt den Beleg aus apaleo (Rechnung, Zahlungsreferenz)

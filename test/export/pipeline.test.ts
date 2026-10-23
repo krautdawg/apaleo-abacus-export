@@ -100,6 +100,22 @@ describe('the period-part runner', () => {
     );
   });
 
+  it('warns W-MANDANT-SHARED in the protocol of each property that shares a Mandant and Geschäftsbereich', async () => {
+    const config = (...lines: string[]) => `abacus:\n  mandant: 1234\n${exportConfig('  - id: BS2', '    buchsymbol: HO2', ...lines)}`;
+    const setup = (text: string) => exportSetup({ config: text, files: { 'mapping-BS2.csv': readMapping() }, data: (data) => addSecondProperty(data, 'BS2') });
+    const shared = setup(config());
+    const both = await run(shared, { propertyIds: [BSP, 'BS2'] });
+    expect(both.map((o) => [o.propertyId, o.status, o.findings.map((f) => f.code)])).toEqual([
+      [BSP, 'written', ['W-MANDANT-SHARED']],
+      ['BS2', 'written', ['W-MANDANT-SHARED']],
+    ]);
+    expect(readFileSync(join(exportsOf(shared), 'BS2', '2026-09', 'BMD_Buchungsimport_20260901-20260930_BS2.protokoll.txt'), 'utf8')).toContain(
+      'the properties BSP, BS2 all book into the Abacus Mandant 1234, Geschäftsbereich 0',
+    );
+    const own = await run(setup(config('    geschaeftsbereich: 2')), { propertyIds: [BSP, 'BS2'] });
+    expect(own.map((o) => o.findings.map((f) => f.code))).toEqual([[], []]);
+  });
+
   it('stops a part on an E- finding of the coverage check or the posting rules, before writing', async () => {
     const unmapped = exportSetup({ files: { 'mapping-BSP.csv': readMapping().replace(/^RevenueFoodAndBeverages_Normal:20\.00;.*\r?\n/m, '') } });
     const [first] = await run(unmapped);

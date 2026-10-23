@@ -8,6 +8,7 @@ import {
   loadConfig,
   resolveConfigPath,
   sharedBuchsymbolFindings,
+  sharedMandantFindings,
   type Env,
 } from '../../src/core/config.js';
 import { UserError } from '../../src/core/errors.js';
@@ -236,6 +237,130 @@ describe('validation errors name the key path', () => {
   it('rejects a top level that is not key/value settings', async () => {
     const error = await loadError('- a\n- b\n');
     expect(error.message).toContain('must contain key/value settings');
+  });
+});
+
+describe('abacus section', () => {
+  const ABACUS_DEFAULTS = {
+    mandant: '1234',
+    leitwaehrung: 'CHF',
+    abrechnungsart: 'vereinbart',
+    version: '2015.00',
+    mwstKonto: '2200',
+    mwstHilfskonto: '2202',
+    mwstCodes: { normal: '311', reduziert: '312', beherbergung: '313' },
+    geschaeftsbereich: 0,
+  };
+
+  it('is optional while BMD is the default target', async () => {
+    expect((await load(VALID)).config.abacus).toBeUndefined();
+    expect((await load(`${VALID}abacus:\n  # mandant: 1234\n`)).config.abacus).toBeUndefined();
+  });
+
+  it('Abacus defaults: only mandant set', async () => {
+    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\n`);
+    expect(config.abacus).toEqual(ABACUS_DEFAULTS);
+  });
+
+  it('Mandant missing: names abacus.mandant as required and says it is the Mandantennummer in Abacus', async () => {
+    const error = await loadError(`${VALID}abacus:\n  leitwaehrung: CHF\n`);
+    expect(error.message).toContain('abacus.mandant: is required');
+    expect(error.message).toContain('Mandantennummer of the hotel in Abacus');
+  });
+
+  it('Invalid Leitwährung: names abacus.leitwaehrung and the allowed values CHF and EUR', async () => {
+    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  leitwaehrung: USD\n`);
+    expect(error.message).toContain('abacus.leitwaehrung: must be "CHF" or "EUR"');
+    expect(error.message).toContain('(got "USD")');
+  });
+
+  it('reads every key, numbers and quoted text alike, and the version written as a YAML number', async () => {
+    const { config } = await load(
+      `${VALID}abacus:\n  mandant: "7777"\n  leitwaehrung: EUR\n  abrechnungsart: vereinnahmt\n  version: 2024.00\n` +
+        '  mwstKonto: "2200"\n  mwstHilfskonto: 2209\n  mwstCodes:\n    normal: V81\n    reduziert: 312\n    beherbergung: V38\n  geschaeftsbereich: 12\n',
+    );
+    expect(config.abacus).toEqual({
+      mandant: '7777',
+      leitwaehrung: 'EUR',
+      abrechnungsart: 'vereinnahmt',
+      version: '2024.00',
+      mwstKonto: '2200',
+      mwstHilfskonto: '2209',
+      mwstCodes: { normal: 'V81', reduziert: '312', beherbergung: 'V38' },
+      geschaeftsbereich: 12,
+    });
+    expect((await load(`${VALID}abacus:\n  mandant: 1\n  version: "2020.00"\n`)).config.abacus?.version).toBe('2020.00');
+  });
+
+  it.each([
+    ['mandant: 1234567', 'abacus.mandant: must be the Mandantennummer in Abacus: 1 to 6 digits'],
+    ['mandant: -12', 'abacus.mandant: must be the Mandantennummer in Abacus'],
+    ['mandant: 12.5', 'abacus.mandant: must be the Mandantennummer in Abacus'],
+    ['abrechnungsart: saldo', 'abacus.abrechnungsart: must be "vereinbart" or "vereinnahmt"'],
+    ['version: 2019.00', 'abacus.version: must be an AbaConnect interface version: "2015.00", "2020.00", "2022.00", "2024.00"'],
+    ['mwstKonto: 123456789012', 'abacus.mwstKonto: must be an Abacus account number: 1 to 11 digits'],
+    ['mwstHilfskonto: "22 02"', 'abacus.mwstHilfskonto: must be an Abacus account number'],
+    ['geschaeftsbereich: 100000000', 'abacus.geschaeftsbereich: must be a whole number between 0 and 99999999'],
+    ['geschaeftsbereich: -1', 'abacus.geschaeftsbereich: must be a whole number between 0 and 99999999'],
+  ])('rejects %s', async (line, message) => {
+    const section = line.startsWith('mandant:') ? `  ${line}\n` : `  mandant: 1234\n  ${line}\n`;
+    const error = await loadError(`${VALID}abacus:\n${section}`);
+    expect(error.message).toContain(message);
+  });
+
+  it('rejects an MWST-Code that is not 1 to 3 characters of A-Z, a-z and 0-9, and an unknown key', async () => {
+    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "3111"\n    reduziert: "V-2"\n  mwstcode: 311\n`);
+    expect(error.message).toContain('abacus.mwstCodes.normal: must be an MWST-Code of the Mandant: 1 to 3 characters of A-Z, a-z and 0-9');
+    expect(error.message).toContain('abacus.mwstCodes.reduziert: must be an MWST-Code');
+    expect(error.message).toContain('abacus.mwstcode: unknown key');
+  });
+
+  it('the commented abacus block of the example config, uncommented, holds the defaults and has no "ß"', async () => {
+    const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
+    const lines = example.split('\n');
+    const start = lines.indexOf('# abacus:');
+    const end = lines.findIndex((line, i) => i > start && !line.startsWith('#'));
+    const block = lines.slice(start, end);
+    expect(block.join('\n')).not.toContain('ß');
+    const { config } = await load(`${VALID}${block.map((line) => line.replace(/^# ?/, '')).join('\n')}\n`);
+    expect(config.abacus).toEqual(ABACUS_DEFAULTS);
+  });
+
+  it('lets each property override mandant and geschaeftsbereich', async () => {
+    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n    mandant: 4711\n    geschaeftsbereich: 2\n`);
+    expect(config.properties).toEqual([{ id: 'BSP' }, { id: 'BS2', mandant: '4711', geschaeftsbereich: 2 }]);
+    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n    mandant: 12A\n`);
+    expect(error.message).toContain('properties.0.mandant: must be the Mandantennummer in Abacus');
+  });
+});
+
+describe('Abacus Mandanten of the properties', () => {
+  const abacus = {
+    mandant: '1234',
+    leitwaehrung: 'CHF',
+    abrechnungsart: 'vereinbart',
+    version: '2015.00',
+    mwstKonto: '2200',
+    mwstHilfskonto: '2202',
+    mwstCodes: { normal: '311', reduziert: '312', beherbergung: '313' },
+    geschaeftsbereich: 0,
+  } as const;
+
+  it('Two properties share a Mandant: W-MANDANT-SHARED names both, the Belegnummern and the fix', () => {
+    const [finding, ...rest] = sharedMandantFindings({ abacus, properties: [{ id: 'BSP' }, { id: 'BS2' }] });
+    expect(rest).toEqual([]);
+    expect(finding).toMatchObject({ code: 'W-MANDANT-SHARED', value: '1234/0' });
+    expect(finding?.message).toContain('the properties BSP, BS2 all book into the Abacus Mandant 1234, Geschäftsbereich 0');
+    expect(finding?.message).toContain('Belegnummern could repeat');
+    expect(finding?.message).toContain('its own Geschäftsbereich (properties[].geschaeftsbereich) or its own Mandant (properties[].mandant)');
+  });
+
+  it('does not warn when each property has its own Geschäftsbereich or Mandant, or without an abacus section', () => {
+    const own = (properties: { id: string; mandant?: string; geschaeftsbereich?: number }[]) => sharedMandantFindings({ abacus, properties });
+    expect(own([{ id: 'BSP' }, { id: 'BS2', geschaeftsbereich: 2 }])).toEqual([]);
+    expect(own([{ id: 'BSP' }, { id: 'BS2', mandant: '4711' }])).toEqual([]);
+    expect(own([{ id: 'BSP', geschaeftsbereich: 2 }, { id: 'BS2' }, { id: 'BS3', geschaeftsbereich: 2 }]).map((f) => f.value)).toEqual(['1234/2']);
+    expect(sharedMandantFindings({ properties: [{ id: 'BSP' }, { id: 'BS2' }] })).toEqual([]);
   });
 });
 

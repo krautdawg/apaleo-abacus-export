@@ -77,6 +77,61 @@ export const bmdSection = z.strictObject({
   buchsymbolZahlung: buchsymbol.optional(),
 });
 
+/**
+ * Digits or letters written as YAML numbers (`mandant: 1234`, `mwstKonto: 2200`,
+ * `normal: 311`) are read as text, so `pattern` decides alone and a number with
+ * a sign, a decimal point or too many digits is refused.
+ */
+function codeText(pattern: RegExp, message: string) {
+  return z.preprocess((value) => (typeof value === 'number' ? String(value) : value), z.string({ error: message }).regex(pattern, message));
+}
+
+const MANDANT_MESSAGE = 'must be the Mandantennummer in Abacus: 1 to 6 digits';
+const mandant = codeText(/^\d{1,6}$/, MANDANT_MESSAGE);
+const ABACUS_ACCOUNT_MESSAGE = 'must be an Abacus account number: 1 to 11 digits';
+const abacusAccount = codeText(/^\d{1,11}$/, ABACUS_ACCOUNT_MESSAGE);
+const MWST_CODE_MESSAGE = 'must be an MWST-Code of the Mandant: 1 to 3 characters of A-Z, a-z and 0-9';
+const mwstCode = codeText(/^[A-Za-z0-9]{1,3}$/, MWST_CODE_MESSAGE);
+const geschaeftsbereich = wholeNumber(0, 99_999_999);
+
+export const ABACUS_LEITWAEHRUNGEN = ['CHF', 'EUR'] as const;
+export const ABRECHNUNGSARTEN = ['vereinbart', 'vereinnahmt'] as const;
+export const ABACUS_VERSIONS = ['2015.00', '2020.00', '2022.00', '2024.00'] as const;
+
+const VERSION_MESSAGE = `must be an AbaConnect interface version: ${ABACUS_VERSIONS.map((v) => `"${v}"`).join(', ')}`;
+
+/** `version: 2015.00` without quotes is the YAML number 2015; it means the text "2015.00". */
+const abacusVersion = z.preprocess(
+  (value) => (typeof value === 'number' ? value.toFixed(2) : value),
+  z.enum(ABACUS_VERSIONS, { error: VERSION_MESSAGE }),
+);
+
+/** What the Treuhänder's Abacus Mandant decides about every file (docs/abacus-format.md). */
+export const abacusSection = z.strictObject({
+  /** The Mandantennummer, written into `Parameter/Mandant` and every `Client`. No default. */
+  mandant,
+  /** The Mandant's Leitwährung: every property must book in it, the tool does not convert. */
+  leitwaehrung: z.enum(ABACUS_LEITWAEHRUNGEN, { error: 'must be "CHF" or "EUR" (the Leitwährung of the Mandant)' }).default('CHF'),
+  /** MWST-Abrechnungsart: `UseCode` 0 or 1 and the Collective `TaxAccount`. */
+  abrechnungsart: z.enum(ABRECHNUNGSARTEN, { error: 'must be "vereinbart" or "vereinnahmt"' }).default('vereinbart'),
+  /** The AbaConnect interface version in `Parameter/Version`. */
+  version: abacusVersion.default('2015.00'),
+  /** Steuerkonto of the MWST-Codes (KMU sample Mandant: 2200), the Collective `TaxAccount` with `vereinbart`. */
+  mwstKonto: abacusAccount.default('2200'),
+  /** Hilfskonto of the MWST-Codes (KMU sample Mandant: 2202), the Collective `TaxAccount` with `vereinnahmt`. */
+  mwstHilfskonto: abacusAccount.default('2202'),
+  /** The MWST-Codes of the Mandant's MWST-Tabelle that the template writes (KMU sample Mandant: 311, 312, 313). */
+  mwstCodes: z
+    .strictObject({
+      normal: mwstCode.default('311'),
+      reduziert: mwstCode.default('312'),
+      beherbergung: mwstCode.default('313'),
+    })
+    .prefault({}),
+  /** Geschäftsbereich (`Division`), 0 when the Mandant uses none. */
+  geschaeftsbereich: geschaeftsbereich.default(0),
+});
+
 /** How the posting rules fill BMD fields. */
 export const postingSection = z.strictObject({
   /** extbelegnr: the receipt (invoice) number when there is one (default), or always the reservation reference. */
@@ -92,6 +147,10 @@ export const propertyEntry = z.strictObject({
   buchsymbol: buchsymbol.optional(),
   /** Overrides `bmd.buchsymbolZahlung` for this property's payment lines. */
   buchsymbolZahlung: buchsymbol.optional(),
+  /** Overrides `abacus.mandant` for this property's file. */
+  mandant: mandant.optional(),
+  /** Overrides `abacus.geschaeftsbereich` for this property's file. */
+  geschaeftsbereich: geschaeftsbereich.optional(),
 });
 
 export const propertiesSection = z
@@ -172,6 +231,8 @@ export const configSections = {
   apaleo: apaleoSection.prefault({}),
   output: outputSection.prefault({}),
   bmd: bmdSection,
+  /** Optional until the export switches to the Abacus target (a03). */
+  abacus: abacusSection.optional(),
   posting: postingSection.prefault({}),
   properties: propertiesSection.default([]),
   checks: checksSection.prefault({}),
@@ -199,6 +260,7 @@ export const configSchema = z.strictObject(configSections).superRefine((config, 
 export type Config = z.infer<typeof configSchema>;
 export type PostingConfig = z.infer<typeof postingSection>;
 export type BmdConfig = z.infer<typeof bmdSection>;
+export type AbacusConfig = z.infer<typeof abacusSection>;
 export type PropertyConfig = z.infer<typeof propertyEntry>;
 export type ScheduleConfig = z.infer<typeof scheduleSection>;
 
@@ -233,6 +295,49 @@ export function sharedBuchsymbolFindings(config: Pick<Config, 'bmd' | 'propertie
         `the properties ${ids.join(', ')} all book under the Buchungssymbol ${symbol}. If the Kanzlei imports them into one BMD Mandant, ` +
         'their Belegnummern would repeat; give each property its own symbol (properties[].buchsymbol) or its own Mandant',
       value: symbol,
+    }));
+}
+
+/** The Abacus Mandant and Geschäftsbereich a property's file books into: its own, else the `abacus` section's. */
+export interface AbacusUnit {
+  mandant: string;
+  geschaeftsbereich: number;
+}
+
+export function abacusUnitOf(abacus: Pick<AbacusConfig, 'mandant' | 'geschaeftsbereich'>, properties: Config['properties'], propertyId: string): AbacusUnit {
+  const property = properties.find((p) => p.id === propertyId);
+  return { mandant: property?.mandant ?? abacus.mandant, geschaeftsbereich: property?.geschaeftsbereich ?? abacus.geschaeftsbereich };
+}
+
+/** The `value` of a `W-MANDANT-SHARED` finding: Mandant and Geschäftsbereich. */
+export function abacusUnitKey({ mandant, geschaeftsbereich }: AbacusUnit): string {
+  return `${mandant}/${geschaeftsbereich}`;
+}
+
+/**
+ * `W-MANDANT-SHARED` for each Mandant and Geschäftsbereich that two or more
+ * configured properties book into: the Belegnummern of their files start alike
+ * (`MMDD` and a counter), so in one Mandant and Geschäftsbereich they could repeat.
+ * No finding without an `abacus` section.
+ */
+export function sharedMandantFindings(config: Pick<Config, 'abacus' | 'properties'>): Finding[] {
+  const { abacus } = config;
+  if (!abacus) return [];
+  const users = new Map<string, { unit: AbacusUnit; ids: string[] }>();
+  for (const { id } of config.properties) {
+    const unit = abacusUnitOf(abacus, config.properties, id);
+    const key = abacusUnitKey(unit);
+    users.set(key, { unit, ids: [...(users.get(key)?.ids ?? []), id] });
+  }
+  return [...users]
+    .filter(([, { ids }]) => ids.length > 1)
+    .map(([key, { unit, ids }]) => ({
+      code: 'W-MANDANT-SHARED',
+      message:
+        `the properties ${ids.join(', ')} all book into the Abacus Mandant ${unit.mandant}, Geschäftsbereich ${unit.geschaeftsbereich}. ` +
+        'Their Belegnummern could repeat there; give each property its own Geschäftsbereich (properties[].geschaeftsbereich) ' +
+        'or its own Mandant (properties[].mandant)',
+      value: key,
     }));
 }
 
@@ -450,6 +555,7 @@ function rejectDatevSection(raw: Record<string, unknown>, path: string): void {
 const REQUIRED_HINTS: Readonly<Record<string, string>> = {
   bmd: `add a bmd section with bmd.buchsymbol, the Buchungssymbol the Kanzlei created in BMD (see ${BUCHSYMBOL_DOC})`,
   'bmd.buchsymbol': `name the Buchungssymbol the Kanzlei created in BMD for these bookings, for example HO (see ${BUCHSYMBOL_DOC})`,
+  'abacus.mandant': 'name the Mandantennummer of the hotel in Abacus, for example 1234 (the Treuhänder knows it)',
 };
 
 /** Writes env values into the raw object and returns which key paths they set. */
