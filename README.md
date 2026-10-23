@@ -10,7 +10,7 @@ Kostenloser apaleo BMD Export: Buchungsimport für BMD NTCS aus apaleo, Open Sou
 
 apaleo-abacus-export ist ein kostenloser BMD-Export für Hotels in Österreich, die mit apaleo arbeiten, und für ihre Kanzlei. Er liest das apaleo-Buchungsjournal eines Monats und schreibt pro Hotel eine Datei im BMD Buchungsimport, die deine Steuerberaterin, dein Steuerberater oder deine Buchhaltung in BMD NTCS einliest, mit einer Vorlage für die Kontenzuordnung nach dem Einheitskontenrahmen (EKR). Das Tool ist Open Source (MIT-Lizenz) und läuft auf deinem eigenen Rechner mit deinem eigenen apaleo-Konto. Kein Abo, kein gehosteter Dienst, kein Konto bei uns.
 
-**Stand:** Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A); ein erster Testimport mit einer Kanzlei steht noch aus. Was der Treuhänder dabei prüft, steht in [docs/abacus-import.md](docs/abacus-import.md).
+**Stand:** Die Datei folgt der dokumentierten AbaConnect-Schnittstelle „XML Buchungen“; ein erster Testimport mit einem Treuhänder steht noch aus. Was der Treuhänder dabei prüft, steht in [docs/abacus-import.md](docs/abacus-import.md).
 
 > **Keine Gewähr, keine Steuerberatung.** Lass deine Kontenzuordnung von deiner Steuerberatung prüfen, ebenso die ersten Importe in BMD. Lies den [Haftungsausschluss](DISCLAIMER.md).
 
@@ -157,7 +157,7 @@ Selbst betreiben heißt: Du behältst die Daten und zahlst nichts, aber du spiel
 
 **Wohin gehen meine Daten?** Nur auf deine eigene Festplatte. Das Tool liest apaleo mit deiner Custom App und schreibt Dateien in einen lokalen Ordner. Es schickt nichts an uns oder an andere. Die Datei enthält keine Gästenamen: Buchungstexte nutzen Kontobezeichnungen, nie die Namen von Gastfolios.
 
-**Kann es direkt an BMD übertragen, etwa über BMD Com?** Nein. Dein Treuhänder importiert die Abacus-Datei in Abacus; siehe [docs/abacus-import.md](docs/abacus-import.md).
+**Kann es direkt an Abacus übertragen, etwa über AbaConnect-Webservices?** Nein. Dein Treuhänder importiert die Abacus-Datei in Abacus; siehe [docs/abacus-import.md](docs/abacus-import.md).
 
 **Hat ein Treuhänder die Datei schon importiert?** Noch nicht. Die Datei folgt der veröffentlichten Beschreibung der AbaConnect-Schnittstelle „XML Buchungen“; die Quellen stehen in [docs/abacus-format.md](docs/abacus-format.md). Der erste Testimport wird mit Datum und Ergebnis in [docs/maintainers.md](docs/maintainers.md#testimporte) festgehalten.
 

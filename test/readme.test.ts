@@ -12,7 +12,7 @@ const ENGLISH_README = readRepoFile('README.en.md');
 const MAINTAINERS = readRepoFile('docs/maintainers.md');
 const GERMAN_TAGLINE = 'Kostenloser apaleo BMD Export: Buchungsimport für BMD NTCS aus apaleo, Open Source';
 const PRICE = '18-51 EUR pro Monat (je nach Anbieter und Anzahl der Betriebe), laut apaleo Store, Oktober 2026';
-const PENDING_IMPORT = 'Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A); ein erster Testimport mit einer Kanzlei steht noch aus.';
+const PENDING_IMPORT = 'Die Datei folgt der dokumentierten AbaConnect-Schnittstelle „XML Buchungen“; ein erster Testimport mit einem Treuhänder steht noch aus.';
 /** The install block of the German quick start (s09 design decision 3), which CI runs. */
 const INSTALL_BLOCK = [
   'git clone https://github.com/krautdawg/apaleo-abacus-export.git',
@@ -175,7 +175,7 @@ describe('README scope and comparison', () => {
 
   it('answers the FAQ questions', () => {
     const faq = section(README, '## Häufige Fragen');
-    for (const topic of ['Was kostet es', 'Wohin gehen meine Daten', 'BMD Com', 'Testimport', 'rückgängig', 'Mehrere Hotels', 'wechseln', 'BMD 5.5', 'DATEV']) {
+    for (const topic of ['Was kostet es', 'Wohin gehen meine Daten', 'direkt an Abacus', 'Testimport', 'rückgängig', 'Mehrere Hotels', 'wechseln', 'BMD 5.5', 'DATEV']) {
       expect(faq, topic).toContain(topic);
     }
   });
@@ -270,6 +270,19 @@ describe('docs folder', () => {
     expect(headings(guide, '##').at(-1)).toBe('Checkliste zur Freigabe durch den Treuhänder');
     expect(guide).not.toContain('## Checkliste zur Freigabe durch die Kanzlei');
     expect(section(guide, '## Checkliste zur Freigabe durch den Treuhänder').match(/^- \[ \]/gm)?.length).toBeGreaterThanOrEqual(5);
+  });
+
+  // Skipped until a05 task 3.2 rewrites docs/mapping-guide.md for the KMU template; that task turns this test on again.
+  it.skip('a05: explains the Swiss MWST rates and lists every account of the KMU template in the mapping guide', () => {
+    const guide = readRepoFile('docs/mapping-guide.md');
+    for (const rate of ['3,8 %', '8,1 %', '2,6 %', 'Art. 25 Abs. 4']) expect(guide, rate).toContain(rate);
+    expect(guide).not.toContain('## Steuersätze in Österreich');
+    expect(guide).not.toContain('## Die EKR-Vorlage');
+    const rules = readRepoFile('templates/kmu-hotel.rules.csv')
+      .split(/\r?\n/)
+      .filter((line) => line !== '' && !line.startsWith('#') && !line.startsWith('apaleo_type;'));
+    for (const line of rules) expect(line, line).toContain('Vorschlag (ungeprüft)');
+    for (const account of new Set(rules.map((line) => line.split(';')[3]).filter(Boolean))) expect(guide, account).toContain(`\`${account}\``);
   });
 
   it('Contributor adds a target: explains the SourceAdapter contract, the TargetWriter boundary with AbacusBooking and where golden files go, announcing no other target', () => {

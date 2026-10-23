@@ -172,13 +172,13 @@ The repository SHALL contain `README.en.md` of at most 80 lines with: what the t
 - **THEN** it fails if `README.en.md` exceeds 80 lines, contains the quickstart marker, or lists install commands that differ from the German quick-start block apart from shell comments
 
 ### Requirement: No unverified compatibility claim
-README and docs SHALL describe the file as following the documented BMD import layout (PR08/PR08A, dvo) and SHALL say that a first test import with a Kanzlei is pending, and SHALL NOT claim that the file was tested with or is accepted by BMD NTCS or BMD 5.5 ("getestet mit BMD", "kompatibel mit BMD NTCS", "BMD-zertifiziert") until `docs/maintainers.md` records a test import under `## Testimporte` with date, BMD version, dialect and result.
+README and docs SHALL describe the file as following the documented AbaConnect interface "XML Buchungen" and SHALL say that a first test import with a Treuhänder is pending, and SHALL NOT claim that the file was tested with or is accepted by BMD NTCS or BMD 5.5 ("getestet mit BMD", "kompatibel mit BMD NTCS", "BMD-zertifiziert") until `docs/maintainers.md` records a test import under `## Testimporte` with date, BMD version, dialect and result.
 
 #### Scenario: Claim without a recorded import
 - **WHEN** the README says "getestet mit BMD NTCS" and `## Testimporte` in `docs/maintainers.md` lists no import
 - **THEN** `pnpm test` fails naming the README and the phrase
 
 #### Scenario: Pending test import
-- **WHEN** a Kanzlei reads the README first screen before any test import
-- **THEN** it says that the file follows the documented BMD import layout and that the first test import is pending
+- **WHEN** a Treuhänder reads the README first screen before any test import
+- **THEN** it says that the file follows the documented AbaConnect interface "XML Buchungen" and that the first test import with a Treuhänder is pending
 
