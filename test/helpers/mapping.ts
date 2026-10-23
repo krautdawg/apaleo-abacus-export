@@ -6,9 +6,9 @@ export function mappingRow(values: Partial<MappingRowValues> & Pick<MappingRowVa
   return {
     apaleoName: '',
     apaleoVatPercent: '',
-    bmdAccount: '',
-    steuercode: '',
-    bmdVatPercent: '',
+    abacusAccount: '',
+    mwstCode: '',
+    mwstPercent: '',
     kost: '',
     comment: '',
     ...values,
@@ -16,8 +16,8 @@ export function mappingRow(values: Partial<MappingRowValues> & Pick<MappingRowVa
 }
 
 /** A mapping as `loadMapping` returns it for a file written from these rows. */
-export function mappingOf(rows: readonly MappingRowValues[], sachkontenlaenge = 4, comments: string[] = []): Mapping {
-  return parseMapping(renderMappingFile(comments, rows), { path: 'mapping.csv', sachkontenlaenge });
+export function mappingOf(rows: readonly MappingRowValues[], comments: string[] = []): Mapping {
+  return parseMapping(renderMappingFile(comments, rows), { path: 'mapping.csv' });
 }
 
 /** Mapping CSV text with `;` and CRLF, as UTF-8 bytes. */
@@ -30,18 +30,18 @@ export function readMappingFixture(name: string): Uint8Array {
 }
 
 /**
- * The rows written by `renderMappingFile` that `test/fixtures/mapping/excel-at-saved.csv`
- * holds after an Excel (AT) save: umlauts, an en dash, a separator and quotes inside
- * comments, a Kostenstelle, the rate 4.9, a rate wildcard and a class-0 account with a leading zero.
+ * The rows written by `renderMappingFile` that `test/fixtures/mapping/excel-ch-saved.csv`
+ * holds after an Excel (CH) save: umlauts, an en dash, a separator and quotes inside
+ * comments, a Kostenstelle, the rates 3.8, 8.1 and 2.6, MWST-Codes and a rate wildcard.
  */
 export const EXCEL_ORIGINAL_ROWS: readonly MappingRowValues[] = [
-  mappingRow({ apaleoAccount: 'RevenueAccommodation_VeryReduced:10.00', apaleoType: 'Revenues', apaleoName: 'Revenues Accommodation (10%)', apaleoVatPercent: '10', bmdAccount: '4000', steuercode: '1', bmdVatPercent: '10', comment: 'Vorschlag (ungeprüft): Erlöse Beherbergung 10 %' }),
-  mappingRow({ apaleoAccount: 'RevenueFoodAndBeverages_VeryReduced:10.00', apaleoType: 'Revenues', apaleoName: 'Frühstück Speisen (10%)', apaleoVatPercent: '10', bmdAccount: '4010', steuercode: '1', bmdVatPercent: '10', comment: 'Speisen; eigenes Konto mit Kanzlei klären' }),
-  mappingRow({ apaleoAccount: 'RevenueFoodAndBeverages_Normal:20.00', apaleoType: 'Revenues', apaleoName: 'Getränke (20%)', apaleoVatPercent: '20', bmdAccount: '4020', steuercode: '1', bmdVatPercent: '20', kost: '20' }),
-  mappingRow({ apaleoAccount: 'RevenueOther_Special:4.90', apaleoType: 'Revenues', apaleoName: 'Revenues Other (4.9%)', apaleoVatPercent: '4.9', bmdAccount: '4050', steuercode: '1', bmdVatPercent: '4.9', comment: 'Grundnahrungsmittel 4,9 %' }),
-  mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', apaleoName: 'Visa Credit Card Payment', bmdAccount: '2890', comment: 'Karte "Visa" über Schwebende Geldbewegungen' }),
-  mappingRow({ apaleoAccount: '9000', apaleoType: 'House', apaleoName: 'House Account', bmdAccount: '0650', comment: 'Testwert – Klasse-0-Konto mit führender Null' }),
-  mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode: '1', bmdVatPercent: '10', comment: 'Anzahlungen 10 %' }),
-  mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', bmdAccount: '200000', comment: 'Sammeldebitor' }),
-  mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoName: 'City Tax (no VAT)', apaleoVatPercent: '0', comment: 'Gast schuldet: Gemeinde 3580 ohne Steuercode – mit Steuerberatung entscheiden.' }),
+  mappingRow({ apaleoAccount: 'RevenueAccommodation_Special:3.80', apaleoType: 'Revenues', apaleoName: 'Revenues Accommodation (3.8%)', apaleoVatPercent: '3.8', abacusAccount: '3400', mwstCode: '313', mwstPercent: '3.8', comment: 'Vorschlag (ungeprüft): Beherbergung 3,8 %' }),
+  mappingRow({ apaleoAccount: 'RevenueFoodAndBeverages_Normal:8.10', apaleoType: 'Revenues', apaleoName: 'Frühstück Speisen (8.1%)', apaleoVatPercent: '8.1', abacusAccount: '3200', mwstCode: '311', mwstPercent: '8.1', comment: 'Speisen; eigenes Konto mit dem Treuhänder klären' }),
+  mappingRow({ apaleoAccount: 'RevenueBeverages_Normal:8.10', apaleoType: 'Revenues', apaleoName: 'Getränke (8.1%)', apaleoVatPercent: '8.1', abacusAccount: '3100', mwstCode: '311', mwstPercent: '8.1', kost: '20' }),
+  mappingRow({ apaleoAccount: 'RevenueOther_Reduced:2.60', apaleoType: 'Revenues', apaleoName: 'Revenues Other (2.6%)', apaleoVatPercent: '2.6', abacusAccount: '3260', mwstCode: '312', mwstPercent: '2.6', comment: 'Take-away 2,6 %' }),
+  mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', apaleoName: 'Visa Credit Card Payment', abacusAccount: '1090', comment: 'Karte "Visa" über das Transferkonto' }),
+  mappingRow({ apaleoAccount: '9000', apaleoType: 'House', apaleoName: 'House Account', comment: 'Testwert – Hauskonto noch offen' }),
+  mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: '313', mwstPercent: '3.8', comment: 'Anzahlungen 3,8 %' }),
+  mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', abacusAccount: '1102', comment: 'Debitoren apaleo' }),
+  mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoName: 'City Tax (no VAT)', apaleoVatPercent: '0', comment: 'Gast schuldet: Gemeinde 2210 ohne MWST-Code – mit dem Treuhänder entscheiden.' }),
 ];

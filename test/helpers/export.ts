@@ -5,8 +5,8 @@ import { createTestContext, type TestContext } from './context.js';
 import { FakeSource, type FakeSourceData } from './fake-source.js';
 import { BEISPIEL } from './posting.js';
 
-/** The EKR mapping of Hotel Beispiel (`test/fixtures/mapping/ekr-beispiel.csv`) as text. */
-export const BEISPIEL_MAPPING = readFileSync(new URL('../fixtures/mapping/ekr-beispiel.csv', import.meta.url), 'utf8');
+/** The Abacus test mapping of Hotel Beispiel (`test/fixtures/mapping/abacus-beispiel.csv`) as text. */
+export const BEISPIEL_MAPPING_TEXT = readFileSync(new URL('../fixtures/mapping/abacus-beispiel.csv', import.meta.url), 'utf8');
 
 /** The fixture config with property BSP and the given lines appended. */
 export function exportConfig(...extra: string[]): string {
@@ -28,7 +28,7 @@ export interface ExportSetupOptions {
 }
 
 /**
- * A test context for the export: the fixture config, the Hotel Beispiel mapping
+ * A test context for the export: the fixture config (Abacus Mandant 1234, Leitwährung EUR), the Hotel Beispiel mapping
  * as `mapping-BSP.csv`, a `FakeSource` over the fixtures (shared by every call,
  * so a test can change `data` between runs) and the fixed clock 2026-10-20.
  */
@@ -37,7 +37,7 @@ export function exportSetup(options: ExportSetupOptions = {}): ExportSetup {
   options.data?.(data);
   const fake = new FakeSource(data);
   const ctx = createTestContext({
-    files: { 'apaleo-abacus.config.yaml': options.config ?? exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING, ...options.files },
+    files: { 'apaleo-abacus.config.yaml': options.config ?? exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING_TEXT, ...options.files },
     sourceFactory: () => fake,
     ...(options.now ? { now: options.now } : {}),
   });

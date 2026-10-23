@@ -15,6 +15,7 @@ export {
   type TaxIncluded,
 } from './format.js';
 export { importBlock } from './import-block.js';
+export { abacusMovements } from './movements.js';
 export { abacusTarget, createAbacusTarget, DEMO_TEXT_PREFIX, markDemo, settingsFromConfig, type AbacusTargetSettings } from './target.js';
 export type { AbacusBooking, AbacusRenderOptions, AbacusTax, Abrechnungsart, DebitCredit } from './types.js';
 export { validateBookings } from './validate.js';

@@ -1,14 +1,12 @@
 {
   "files": [
     {
-      "file": "BMD_Buchungsimport_20260901-20260930_BSP.csv",
+      "file": "ABACUS_Buchungen_20260901-20260930_BSP.xml",
       "status": "current",
-      "sha256": "e0a73a60ceab66bb700fef3783a46798e0144d028d2bd06395f93fa701f213a9",
+      "sha256": "9a9ebb5a9a95f9362a19242b1ad9bca4fa9c704363098c84f5a138731a0bb84c",
       "from": "2026-09-01",
       "to": "2026-09-30",
       "bookings": 24,
-      "sollTotal": "1828.40",
-      "habenTotal": "1828.40",
       "taxByRate": [
         {
           "ratePercent": 10,
@@ -19,7 +17,7 @@
           "taxCents": 767
         }
       ],
-      "mappingSha256": "9e87346223f0e6383078d23bf409fa39e1c0cdefec17b17648a2f0be98ee5673",
+      "mappingSha256": "96a03d3ece665c808b85746c7322ec23dea6789e8b70ce19adb05178859acdaa",
       "toolVersion": "0.0.0",
       "createdAt": "2026-10-20T08:00:00.000Z"
     }

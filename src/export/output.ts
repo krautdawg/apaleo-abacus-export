@@ -39,9 +39,6 @@ export interface ManifestEntry {
   /** SHA-256 of the whole file: the file is deterministic, so this alone identifies its content. */
   sha256: string;
   bookings?: number;
-  /** The Soll and Haben totals the Kanzlei's journal shows after the import, as decimal text. */
-  sollTotal?: string;
-  habenTotal?: string;
   /** The tax of the bookings per VAT rate in cents, signed as owed (a correction that reduces it is negative). */
   taxByRate?: TaxAtRate[];
   mappingSha256?: string;

@@ -146,7 +146,7 @@ describe('injected context', () => {
 
   it.each(['APALEO_BMD_CONFIG', 'APALEO_DATEV_CONFIG'])('reads ./apaleo-abacus.config.yaml and ignores the old %s', async (variable) => {
     const ctx = createTestContext({
-      files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n' },
+      files: { 'apaleo-abacus.config.yaml': 'abacus:\n  mandant: 1234\n' },
       env: { [variable]: '/x/old.yaml' },
     });
     expect(await runCli(['doctor'], ctx)).toBe(0);
@@ -168,7 +168,7 @@ describe('injected context', () => {
 
   it('doctor reports a valid config and whether the secret is set', async () => {
     const ctx = createTestContext({
-      files: { 'conf/my.yaml': 'bmd:\n  buchsymbol: HO\n' },
+      files: { 'conf/my.yaml': 'abacus:\n  mandant: 1234\n' },
       env: { APALEO_CLIENT_SECRET: 's3cr3t' },
     });
     expect(await runCli(['doctor', '--config', 'conf/my.yaml'], ctx)).toBe(0);
@@ -179,47 +179,37 @@ describe('injected context', () => {
     expect(ctx.out()).not.toContain('s3cr3t');
   });
 
-  it('doctor reports the example config valid with its Buchungssymbol HO', async () => {
+  it('doctor reports the example config valid with its Abacus Mandant 1234', async () => {
     const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
     const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': example } });
     expect(await runCli(['doctor'], ctx)).toBe(0);
     expect(ctx.out()).toContain('Config:        valid');
-    expect(ctx.out()).toContain('BMD:           ntcs, Buchungssymbol HO');
+    expect(ctx.out()).toContain('Abacus:        Mandant 1234, Leitwährung CHF, vereinbart, version 2015.00');
+    expect(ctx.out()).not.toContain('BMD');
   });
 
-  it('doctor warns W-BUCHSYMBOL-SHARED when two properties share the Buchungssymbol, naming both and the symbol', async () => {
-    const config = 'bmd:\n  buchsymbol: HO\nproperties:\n  - id: BSP\n  - id: BS2\n';
-    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': config } });
-    expect(await runCli(['doctor'], ctx)).toBe(0);
-    expect(ctx.out()).toContain('W-BUCHSYMBOL-SHARED');
-    expect(ctx.out()).toContain('the properties BSP, BS2 all book under the Buchungssymbol HO');
-    expect(ctx.out()).toContain('into one BMD Mandant, their Belegnummern would repeat');
-    const own = createTestContext({ files: { 'apaleo-abacus.config.yaml': `${config}    buchsymbol: HO2\n` } });
-    expect(await runCli(['doctor'], own)).toBe(0);
-    expect(own.out()).not.toContain('W-BUCHSYMBOL-SHARED');
-  });
-
-  it('doctor shows the abacus section and warns W-MANDANT-SHARED when two properties share a Mandant', async () => {
-    const config = 'bmd:\n  buchsymbol: HO\nabacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n    buchsymbol: HO2\n';
+  it('Two properties share a Mandant: doctor shows the abacus section and warns W-MANDANT-SHARED, naming both properties', async () => {
+    const config = 'abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n';
     const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': config } });
     expect(await runCli(['doctor'], ctx)).toBe(0);
     expect(ctx.out()).toContain('Abacus:        Mandant 1234, Leitwährung CHF, vereinbart, version 2015.00');
     expect(ctx.out()).toContain('W-MANDANT-SHARED');
     expect(ctx.out()).toContain('the properties BSP, BS2 all book into the Abacus Mandant 1234, Geschäftsbereich 0');
     expect(ctx.out()).toContain('Belegnummern could repeat there; give each property its own Geschäftsbereich');
-    expect(ctx.out()).not.toContain('W-BUCHSYMBOL-SHARED');
     const own = createTestContext({ files: { 'apaleo-abacus.config.yaml': `${config}    geschaeftsbereich: 2\n` } });
     expect(await runCli(['doctor'], own)).toBe(0);
     expect(own.out()).not.toContain('W-MANDANT-SHARED');
   });
 
-  it('doctor exits 1 for an invalid config, and for an old DATEV config naming the bmd section', async () => {
-    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n  sachkontenlaenge: 3\n' } });
+  it('doctor exits 1 for an invalid config, and for an old BMD or DATEV config naming the abacus section', async () => {
+    const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'abacus:\n  mandant: 1234\n  geschaeftsbereich: -1\n' } });
     expect(await runCli(['doctor'], ctx)).toBe(1);
-    expect(ctx.err()).toContain('bmd.sachkontenlaenge');
-    const datev = createTestContext({ files: { 'apaleo-abacus.config.yaml': 'datev:\n  beraternummer: 1234567\n  mandantennummer: 42\n' } });
-    expect(await runCli(['doctor'], datev)).toBe(1);
-    expect(datev.err()).toContain('datev is not a section of apaleo-abacus');
-    expect(datev.err()).toContain('bmd section');
+    expect(ctx.err()).toContain('abacus.geschaeftsbereich');
+    for (const [section, text] of [['datev', 'datev:\n  beraternummer: 1234567\n'], ['bmd', 'bmd:\n  buchsymbol: HO\n']] as const) {
+      const old = createTestContext({ files: { 'apaleo-abacus.config.yaml': text } });
+      expect(await runCli(['doctor'], old)).toBe(1);
+      expect(old.err()).toContain(`${section} is not a section of apaleo-abacus`);
+      expect(old.err()).toContain('abacus section');
+    }
   });
 });

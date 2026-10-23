@@ -1,7 +1,7 @@
-import { abacusUnitOf, type AbacusConfig, type Config } from '../core/config.js';
-import { UserError } from '../core/errors.js';
+import { abacusUnitOf } from '../core/config.js';
 import { fileTag, type TargetFileMeta, type TargetWriter } from '../export/target.js';
 import { importBlock } from './import-block.js';
+import { abacusMovements } from './movements.js';
 import type { AbacusBooking, AbacusRenderOptions } from './types.js';
 import { renderXmlBuchungen, xmlBuchungenFileName } from './writer.js';
 
@@ -11,17 +11,9 @@ const ABACUS_FILE = /^ABACUS_Buchungen_(\d{8})-(\d{8})_[A-Za-z0-9_-]+\.xml$/;
 /** What the Treuhänder's Abacus Mandant decides about one property's file. */
 export type AbacusTargetSettings = Omit<AbacusRenderOptions, 'from' | 'to' | 'propertyId'>;
 
-/** The `abacus` config section. Optional until the export switches to Abacus (a03); the Abacus file cannot be written without it. */
-function abacusSectionOf(config: Config): AbacusConfig {
-  if (config.abacus) return config.abacus;
-  throw new UserError(
-    'The Abacus file needs an abacus section in the config with abacus.mandant, the Mandantennummer of the hotel in Abacus; see docs/configuration.md.',
-  );
-}
-
 /** The settings of the config's `abacus` section, with the property's own Mandant and Geschäftsbereich. */
 export function settingsFromConfig({ config, propertyId }: Pick<TargetFileMeta, 'config' | 'propertyId'>): AbacusTargetSettings {
-  const abacus = abacusSectionOf(config);
+  const { abacus } = config;
   const { mandant, geschaeftsbereich } = abacusUnitOf(abacus, config.properties, propertyId);
   const { leitwaehrung, abrechnungsart, version, mwstKonto, mwstHilfskonto } = abacus;
   return { mandant, geschaeftsbereich, leitwaehrung, abrechnungsart, version, mwstKonto, mwstHilfskonto };
@@ -52,7 +44,7 @@ export function createAbacusTarget(settingsOf: (meta: TargetFileMeta) => AbacusT
   const fileName = (meta: TargetFileMeta) => xmlBuchungenFileName(optionsOf(meta), fileTag(meta));
   return {
     id: 'abacus',
-    currency: (config) => abacusSectionOf(config).leitwaehrung,
+    currency: (config) => config.abacus.leitwaehrung,
     protocolTitle: 'apaleo-abacus export protocol',
     filePattern: ABACUS_FILE,
     fileName,
@@ -63,6 +55,7 @@ export function createAbacusTarget(settingsOf: (meta: TargetFileMeta) => AbacusT
     importBlock: (bookings, meta) => importBlock(bookings, optionsOf(meta), fileName(meta)),
     // The file has no creation time: unchanged means byte-identical.
     sameContent: (existing, next) => existing.length === next.length && existing.every((byte, i) => byte === next[i]),
+    movements: abacusMovements,
     advice: {
       currency:
         "An Abacus booking is written in the Mandant's Leitwährung (abacus.leitwaehrung), without foreign-currency data, " +

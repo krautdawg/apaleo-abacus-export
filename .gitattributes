@@ -1,4 +1,4 @@
-# Golden files (DATEV and BMD) are Windows-1252 with CRLF line ends and are compared byte
+# Golden files (BMD: Windows-1252 with CRLF, Abacus: UTF-8 with LF) are compared byte
 # for byte: never convert their line ends or encoding.
 test/golden/** -text
 # The Excel round-trip fixture is Windows-1252 with CRLF, like a file Excel (DE) saves.
@@ -9,6 +9,7 @@ templates/*.csv -text
 # above, kept byte-identical by test/examples.test.ts.
 docs/examples/*.csv -text
 docs/examples/*.txt -text
+docs/examples/*.xml -text
 examples/demo/** -text
 # Mapping files beside the live recordings keep the BOM and CRLF that init-mapping writes.
 test/fixtures/apaleo/live/**/*.csv -text

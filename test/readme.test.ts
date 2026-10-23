@@ -105,7 +105,7 @@ describe('README quick start', () => {
     const quickStart = section(README, '## Schnellstart');
     const numbered = [...quickStart.matchAll(/^(\d)\. \*\*(.+?)\*\*/gm)].map((m) => `${m[1]} ${m[2]}`);
     expect(numbered).toEqual(['1 apaleo Custom App anlegen.', '2 Installieren', '3 Kontenzuordnung anlegen', '4 Probelauf', '5 Export']);
-    for (const command of ['init-mapping --property BSP --template ekr', 'export --month 2026-09 --dry-run', 'export --month 2026-09\n']) {
+    for (const command of ['init-mapping --property BSP --template kmu-hotel', 'export --month 2026-09 --dry-run', 'export --month 2026-09\n']) {
       expect(quickStart).toContain(command);
     }
   });
@@ -194,7 +194,7 @@ describe('README.en.md', () => {
 
   it('shows the same install commands as the German quick start, without the shell comments', () => {
     expect(firstShellBlock(ENGLISH_README)).toEqual(INSTALL_BLOCK.map(withoutComment));
-    for (const command of ['init-mapping --property BSP --template ekr', 'export --month 2026-09 --dry-run', 'export --month 2026-09\n']) {
+    for (const command of ['init-mapping --property BSP --template kmu-hotel', 'export --month 2026-09 --dry-run', 'export --month 2026-09\n']) {
       expect(ENGLISH_README).toContain(command);
     }
   });
@@ -289,7 +289,7 @@ describe('docs folder', () => {
 
   it('First import in BMD: docs/bmd-import.md names the menu path, the Buchungssymbol per property, the period and the checklist', () => {
     const guide = readRepoFile('docs/bmd-import.md');
-    for (const phrase of ['**Buchen > Buchungen importieren**', '**Menü > Extras > Buchungen importieren**', 'Vorerfassung', '## Buchungssymbol anlegen', '`properties[].buchsymbol`', '## Periode und Datum', 'Buchungsperiode']) {
+    for (const phrase of ['**Buchen > Buchungen importieren**', '**Menü > Extras > Buchungen importieren**', 'Vorerfassung', '## Buchungssymbol anlegen', 'properties[].buchsymbol', '## Periode und Datum', 'Buchungsperiode']) {
       expect(guide, phrase).toContain(phrase);
     }
     const checklist = section(guide, '## Erster Import: bitte prüfen');
@@ -334,11 +334,11 @@ describe('readme-quickstart CI job', () => {
   const workflow = parse(readRepoFile('.github/workflows/ci.yml')) as { jobs: Record<string, { steps: { run?: string }[] }> };
   const runs = workflow.jobs['readme-quickstart']?.steps.map((step) => step.run ?? '') ?? [];
 
-  it('extracts the README block after the quickstart marker, runs it, then the demo dry run and checks its BMD summary', () => {
+  it('extracts the README block after the quickstart marker, runs it, then the demo dry run and checks its Abacus summary', () => {
     expect(runs.join('\n')).toContain('<!-- quickstart -->');
     expect(runs).toContain('bash -euxo pipefail "$RUNNER_TEMP/quickstart.sh"');
     const demo = runs.at(-1) ?? '';
     expect(demo.startsWith('node dist/cli/main.js export --month 2026-09 --demo --dry-run | tee "$RUNNER_TEMP/demo.txt"\n')).toBe(true);
-    for (const line of ['^Import into BMD', '^Totals per BMD account', '^DEMO Result: dry run']) expect(demo).toContain(`grep -q '${line}`);
+    for (const line of ['^Import into Abacus FIBU', '^Totals per Abacus account', '^DEMO Result: dry run']) expect(demo).toContain(`grep -q '${line}`);
   });
 });

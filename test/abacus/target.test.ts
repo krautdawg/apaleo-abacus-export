@@ -3,7 +3,6 @@ import { abacusTarget, AbacusValidationError, createAbacusTarget, DEMO_TEXT_PREF
 import type { AbacusBooking } from '../../src/abacus/types.js';
 import { configSchema } from '../../src/core/config.js';
 import type { LocalDate } from '../../src/core/date.js';
-import { UserError } from '../../src/core/errors.js';
 import type { TargetFileMeta } from '../../src/export/index.js';
 import { abacusOptions, accommodation, mwst, payment, values } from '../helpers/abacus.js';
 
@@ -11,7 +10,7 @@ const decode = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
 /** A config with the given `abacus` section (Mandant 1234 by default) and properties. */
 function config(abacus: Record<string, unknown> = {}, properties: Record<string, unknown>[] = []) {
-  return configSchema.parse({ bmd: { buchsymbol: 'HO' }, abacus: { mandant: 1234, ...abacus }, properties });
+  return configSchema.parse({ abacus: { mandant: 1234, ...abacus }, properties });
 }
 
 function meta(overrides: Partial<TargetFileMeta> = {}, from: LocalDate = '2026-10-01', to: LocalDate = '2026-10-31'): TargetFileMeta {
@@ -90,10 +89,24 @@ describe('abacusTarget', () => {
     expect(abacusTarget.advice.currency).toContain('abacus.leitwaehrung');
   });
 
-  it('needs the abacus section, and says so', () => {
-    const without = configSchema.parse({ bmd: { buchsymbol: 'HO' } });
-    expect(() => abacusTarget.currency(without)).toThrow(UserError);
-    expect(() => abacusTarget.render([payment()], meta({ config: without }))).toThrow(/abacus\.mandant/);
+  it('needs the abacus section with abacus.mandant: the config schema refuses one without', () => {
+    expect(() => configSchema.parse({})).toThrow(/mandant/);
+    expect(() => configSchema.parse({ bmd: { buchsymbol: 'HO' }, abacus: { mandant: 1234 } })).toThrow(/bmd/);
+  });
+
+  it('moves the Collective account by the gross and the Single account by the gross minus the MWST, signed by DebitCredit', () => {
+    expect(abacusTarget.movements(accommodation())).toEqual([
+      ['1101', 20_760],
+      ['3400', -20_000],
+    ]);
+    expect(abacusTarget.movements(accommodation({ debitCredit: 'C', grossCents: 2_076, tax: mwst('313', 3.8, 76) }))).toEqual([
+      ['1101', -2_076],
+      ['3400', 2_000],
+    ]);
+    expect(abacusTarget.movements(payment())).toEqual([
+      ['1090', 12_000],
+      ['1101', -12_000],
+    ]);
   });
 
   it('counts a file as unchanged only when every byte is equal', () => {

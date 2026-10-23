@@ -1,19 +1,20 @@
-import type { BmdBooking, BmdDialect } from '../bmd/types.js';
+import type { AbacusBooking } from '../abacus/types.js';
 import type { PostingConfig } from '../core/config.js';
 import type { Finding } from '../core/findings.js';
 import type { LedgerLine } from '../core/source.js';
+import type { MwstCodes } from '../mapping/index.js';
 
-/** One BMD booking, with the source entries it came from for traceability. */
-export interface PostedBooking extends BmdBooking {
+/** One Abacus Einzelbuchung, with the source entries it came from for traceability. */
+export interface PostedBooking extends AbacusBooking {
   sourceEntryNumbers: string[];
 }
 
 /**
  * Why a ledger line produced no booking although nothing is wrong with it:
  * - `VAT_ACCOUNT_LINE`: a side is an apaleo Vat or VatOnLiabilities account;
- *   BMD books the tax from the `steuer` field of the revenue or deposit line.
+ *   Abacus books the MWST from the `TaxData` of the revenue or deposit line.
  * - `ZERO_AMOUNT`: the gross amount is 0.
- * - `SAME_ACCOUNT`: both sides map to the same BMD account (for example a
+ * - `SAME_ACCOUNT`: both sides map to the same Abacus account (for example a
  *   move between two guest folios, or the `/Offset` line of a payment).
  */
 export const SKIP_REASONS = ['VAT_ACCOUNT_LINE', 'ZERO_AMOUNT', 'SAME_ACCOUNT'] as const;
@@ -25,20 +26,12 @@ export interface SkippedLine {
 }
 
 export interface PostingOptions extends PostingConfig {
-  /** The Steuercode in the fix hints of `E-UNMAPPED`. */
-  dialect: BmdDialect;
-  /** Scales the template's example accounts in the fix hints of `E-UNMAPPED`. */
-  sachkontenlaenge: number;
-  /** Scales the template's Personenkonto in the fix hints of `E-UNMAPPED`. Default 6. */
-  personenkontenlaenge?: number | undefined;
-  /** The property's Buchungssymbol. */
-  buchsymbol: string;
-  /** The Buchungssymbol of lines without VAT side that have a Payments side. */
-  buchsymbolZahlung: string;
+  /** `abacus.mwstCodes`, for the fix hints of `E-UNMAPPED`. Default 311, 312, 313. */
+  mwstCodes?: MwstCodes | undefined;
 }
 
-/** Soll and Haben of one BMD account over all bookings (movement model). Balance is Soll minus Haben. */
-export interface BmdAccountTotal {
+/** Soll and Haben of one Abacus account over all bookings (movement model). Balance is Soll minus Haben. */
+export interface AccountTotal {
   account: string;
   sollCents: number;
   habenCents: number;
@@ -46,14 +39,16 @@ export interface BmdAccountTotal {
 }
 
 /**
- * Revenue, deposits or write-offs booked at one rate, signed as owed (allowances and
- * releases reduce it): net, tax and gross as passed to BMD, and the precise VAT
- * apaleo charged on the same lines.
+ * Revenue, deposits or write-offs booked with one MWST-Code at one rate, signed as
+ * owed (allowances and releases reduce it): net, tax and gross as passed to Abacus,
+ * and the precise VAT apaleo charged on the same lines.
  */
 export interface VatTotal {
+  /** The MWST-Code of the bookings; empty for bookings without one (rate 0). */
+  mwstCode: string;
   ratePercent: number;
   netCents: number;
-  /** Sum of `steuer` of the bookings. */
+  /** Sum of the MWST of the bookings, signed as owed. */
   vatCents: number;
   grossCents: number;
   /** Sum of apaleo's precise taxes, as decimal text. */
@@ -62,7 +57,7 @@ export interface VatTotal {
 
 export type RevenueTotal = VatTotal;
 
-/** Payments received on one BMD clearing account, signed (refunds reduce it). */
+/** Payments received on one Abacus clearing account, signed (refunds reduce it). */
 export interface PaymentTotal {
   account: string;
   cents: number;
@@ -82,14 +77,14 @@ export interface FindingCount {
 
 /** Totals of one posting run, all in cents. */
 export interface PostingSummary {
-  accounts: BmdAccountTotal[];
+  accounts: AccountTotal[];
   revenueByRate: VatTotal[];
   /** Deposits (Liabilities) per VAT rate: received minus released. */
   depositVatByRate: VatTotal[];
   /**
-   * Written-off guest receivables (LossOfAccountsReceivable) per VAT rate, signed
-   * as written off (a reversed write-off reduces it): net, the USt-Berichtigung as
-   * tax, gross, and apaleo's precise VAT on the same lines.
+   * Written-off guest receivables (LossOfAccountsReceivable) per MWST-Code and rate,
+   * signed as written off (a reversed write-off reduces it): net, the MWST correction
+   * as tax, gross, and apaleo's precise VAT on the same lines.
    */
   writeOffsByRate: VatTotal[];
   /** City tax, second city tax and guest levies, signed. */
@@ -97,10 +92,10 @@ export interface PostingSummary {
   payments: PaymentTotal[];
   /** Classified by side and sign (`depositMovement`), unsigned; refunds (paid back via a payment) are part of the released amount. */
   deposits: { receivedCents: number; releasedCents: number; refundedCents: number };
-  /** Net movement on accounts receivable (Sammeldebitor): debits positive. */
+  /** Net movement on accounts receivable (Debitoren apaleo): debits positive. */
   accountsReceivableCents: number;
   skipped: SkippedTotal[];
-  /** Sum of the one-cent differences (BMD's check value minus `steuer`) reported as `W-VAT-ROUNDING`. */
+  /** Sum of the one-Rappen differences (Abacus' check value minus the booked MWST) reported as `W-VAT-ROUNDING`. */
   roundingCents: number;
   findings: FindingCount[];
 }

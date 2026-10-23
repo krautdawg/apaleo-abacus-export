@@ -4,10 +4,10 @@ import type { LocalDate } from '../../src/core/date.js';
 import type { TargetFileMeta } from '../../src/export/index.js';
 import { bmdBooking, bmdPayment, dataLines, octoberOptions } from '../helpers/bmd.js';
 
-/** The default target reads its settings from the config's `bmd` section; this one holds the defaults. */
+/** The BMD target no longer reads the config (it has no bmd section; src/bmd goes in a04): any config will do. */
 function meta(overrides: Partial<TargetFileMeta> = {}, from: LocalDate = '2026-10-01', to: LocalDate = '2026-10-31'): TargetFileMeta {
   return {
-    config: { bmd: { ...BMD_DEFAULT_SETTINGS, buchsymbol: 'HO' } } as TargetFileMeta['config'],
+    config: {} as TargetFileMeta['config'],
     propertyId: 'BSP',
     part: { from, to, month: from.slice(0, 7), wjBeginn: '2026-01-01' },
     demo: false,
@@ -76,13 +76,20 @@ describe('bmdTarget', () => {
     expect(bmdTarget.id).toBe('bmd');
   });
 
-  it('reads dialect and account lengths from the bmd section of the config', () => {
-    const config = { bmd: { dialect: 'bmd55', sachkontenlaenge: 5, personenkontenlaenge: 6, buchsymbol: 'HO' } } as TargetFileMeta['config'];
-    const { bytes } = bmdTarget.render([bmdBooking({ konto: '40100', gkonto: '23900' })], meta({ config }));
+  it('takes dialect and account lengths from its settings', () => {
+    const target = createBmdTarget(() => ({ dialect: 'bmd55', sachkontenlaenge: 5, personenkontenlaenge: 6 }));
+    const { bytes } = target.render([bmdBooking({ konto: '40100', gkonto: '23900' })], meta());
     const [header, line] = new TextDecoder('windows-1252').decode(bytes).split('\r\n');
     expect(header).toMatch(/^satzart;konto;gkto;/);
     expect(line).toMatch(/^0;40100;23900;100100001;20261014;/);
-    expect(() => bmdTarget.render([bmdBooking()], meta({ config }))).toThrow(BmdValidationError);
+    expect(() => target.render([bmdBooking()], meta())).toThrow(BmdValidationError);
+  });
+
+  it('moves konto by Betrag and gkonto by Betrag plus Steuer', () => {
+    expect(bmdTarget.movements(bmdBooking())).toEqual([
+      ['4010', -10_000],
+      ['2390', 11_000],
+    ]);
   });
 
   it('names a dialect change in the refusal for a file with bookings, whose lines all change with the dialect', () => {

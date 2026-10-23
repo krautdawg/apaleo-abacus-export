@@ -59,7 +59,7 @@ describe('apaleo-abacus properties', () => {
   it('exits 1 without any network call when the client id is missing', async () => {
     const ctx = createApaleoContext(
       {},
-      { files: { 'apaleo-abacus.config.yaml': 'bmd:\n  buchsymbol: HO\n' } },
+      { files: { 'apaleo-abacus.config.yaml': 'abacus:\n  mandant: 1234\n' } },
     );
     expect(await runCli(['properties'], ctx)).toBe(1);
     expect(ctx.err()).toContain('apaleo.clientId is not set');

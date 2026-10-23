@@ -90,7 +90,7 @@ describe('CI workflow', () => {
     const text = read('.github/workflows/ci.yml');
     expect(text).toContain('docker run --rm -w /data -v "$RUNNER_TEMP/demo-data:/data" apaleo-abacus-export:ci export --month 2026-09 --demo\n');
     expect(text).toContain('sudo chown 1000:1000 "$RUNNER_TEMP/demo-data"');
-    expect(text).toContain('test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/BMD_Buchungsimport_20260901-20260930_BSP_DEMO.csv"');
+    expect(text).toContain('test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/ABACUS_Buchungen_20260901-20260930_BSP_DEMO.xml"');
     for (const forbidden of ['docker login', 'docker push', 'docker/login-action', 'docker/build-push-action', 'ghcr.io', 'packages: write']) {
       expect(text).not.toContain(forbidden);
     }
@@ -177,7 +177,7 @@ describe('compose and env examples', () => {
     const paths = [
       'config/apaleo-abacus.config.yaml',
       'config/mapping-BSP.csv',
-      'data/BSP/2026-10/BMD_Buchungsimport_20261001-20261031_BSP.csv',
+      'data/BSP/2026-10/ABACUS_Buchungen_20261001-20261031_BSP.xml',
       'data/BSP/2026-10/manifest.json',
       'schedule.log',
       'apaleo-abacus.config.yaml',
@@ -194,7 +194,7 @@ describe('compose and env examples', () => {
 
   it('still tracks the examples and templates next to those ignored paths', () => {
     const root = fileURLToPath(new URL('..', import.meta.url));
-    const tracked = ['apaleo-abacus.config.example.yaml', 'docker-compose.example.yml', '.env.example', 'test/fixtures/mapping/ekr-beispiel.csv', 'templates/ekr-hotel.rules.csv'];
+    const tracked = ['apaleo-abacus.config.example.yaml', 'docker-compose.example.yml', '.env.example', 'test/fixtures/mapping/ekr-beispiel.csv', 'test/fixtures/mapping/abacus-beispiel.csv', 'templates/ekr-hotel.rules.csv', 'templates/kmu-hotel.rules.csv'];
     let ignored = '';
     try {
       ignored = execFileSync('git', ['check-ignore', '--no-index', ...tracked], { cwd: root, encoding: 'utf8' });
