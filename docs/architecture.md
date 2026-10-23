@@ -16,7 +16,6 @@ src/
   mapping/      die Kontenzuordnung als CSV: laden, auflösen, prüfen, die KMU-Hotelvorlage, der Kontenexport eines Connectors
   posting/      Journalzeilen + Kontenzuordnung -> Abacus-Buchungen, mit der MWST-Prüfung
   abacus/       der Writer für AbaConnect XML Buchungen: Belegnummern, TaxData, Prüfung, Bereinigung, Bewegungsmodell
-  bmd/          der frühere Writer für den BMD Buchungsimport, ohne Export, entfällt bald
   export/       der Ablauf: Regeln für Zeiträume, Abruf, Buchen, Plausibilitätsprüfungen, Ausgabeordner und Manifest
   schedule/     schedule --once: welche Zeiträume fällig sind, dann der Export für jeden
 ```
@@ -30,7 +29,7 @@ cli -> export / schedule -> sources/<name>     (Verdrahtung)
 
 Zwei Lint-Regeln (in `eslint.config.js`, getestet in `test/lint/`) sorgen dafür, dass das so bleibt:
 
-- `core`, `abacus`, `bmd`, `mapping` und `posting` dürfen nichts aus `src/sources/` importieren. Sie sehen nur die kanonischen Typen in `src/core/source.ts`.
+- `core`, `abacus`, `mapping` und `posting` dürfen nichts aus `src/sources/` importieren. Sie sehen nur die kanonischen Typen in `src/core/source.ts`.
 - Alles unter `src/` außer dem Einstieg der Kommandozeile erreicht die Uhr, das Netz und die Umgebung nur über den übergebenen `CommandContext` (`ctx.now()`, `ctx.fetchFn`, `ctx.env`, `ctx.fs`). Kein `new Date()`, kein `Date.now()`, kein nacktes `fetch` und kein `process.env`. Tests bauen mit `createTestContext()` in `test/helpers/context.ts` einen Kontext mit Attrappen.
 
 ## Der Vertrag SourceAdapter
@@ -95,7 +94,7 @@ interface AbacusBooking {
 }
 ```
 
-Nur `src/abacus/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dateien ausschliesslich über die Schnittstelle `TargetWriter<B>` aus `src/export/target.ts`, wobei `B` der Buchungstyp des Ziels ist. Die Umsetzung für Abacus ist `abacusTarget` in `src/abacus/target.ts` (Einstellungen aus dem Abschnitt `abacus` der Konfiguration und dem Hotel), und `DEFAULT_TARGET` in `src/export/pipeline.ts` wählt sie. Der frühere BMD-Writer in `src/bmd/` mit seinem `BmdBooking` und `bmdTarget` liegt noch im Quellcode, schreibt aber keine Exporte mehr und entfällt bald. Ein `TargetWriter` liefert:
+Nur `src/abacus/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dateien ausschliesslich über die Schnittstelle `TargetWriter<B>` aus `src/export/target.ts`, wobei `B` der Buchungstyp des Ziels ist. Die Umsetzung für Abacus ist `abacusTarget` in `src/abacus/target.ts` (Einstellungen aus dem Abschnitt `abacus` der Konfiguration und dem Hotel), und `DEFAULT_TARGET` in `src/export/pipeline.ts` wählt sie. Ein `TargetWriter` liefert:
 
 - den Dateinamen und ein Muster, an dem der Ausgabeordner vorhandene und überlappende Dateien erkennt (`fileName`, `filePattern`);
 - die gerenderten Bytes und die Befunde über geänderte Werte (`render`, wie `renderXmlBuchungen` in `src/abacus/writer.ts`, dessen `AbacusValidationError` aus `src/abacus/errors.ts` als `FindingsError` alle Fehler auf einmal enthält);
@@ -112,7 +111,7 @@ Ein Beispiel ohne Zusage: Eine Kanzlei bucht mit RZL und möchte dieselben Buchu
 
 1. kommt der Writer nach `src/<ziel>/`, hängt nicht von `src/sources/` ab und meldet fehlerhafte Daten als Befunde mit eigenen Codes, die in [troubleshooting.md](troubleshooting.md) stehen;
 2. bekommt er Golden Files in `test/golden/<ziel>/` und einen Test wie `test/abacus/golden.test.ts`;
-3. setzt er `TargetWriter` für seinen Buchungstyp um. Braucht das Ziel andere Felder als `AbacusBooking` (wie früher der BMD-Writer mit `BmdBooking`), gehört die Umrechnung aus den Buchungsregeln in einen eigenen Buchungsschritt für dieses Ziel, nicht in den Writer: USt-Logik, die nur ein Zielformat betrifft, bleibt in dessen Buchungsschritt.
+3. setzt er `TargetWriter` für seinen Buchungstyp um. Braucht das Ziel andere Felder als `AbacusBooking`, gehört die Umrechnung aus den Buchungsregeln in einen eigenen Buchungsschritt für dieses Ziel, nicht in den Writer: USt-Logik, die nur ein Zielformat betrifft, bleibt in dessen Buchungsschritt.
 
 Besprich so eine Änderung zuerst in einem Issue (Formular „Neue Quelle oder neues Zielformat“); sie braucht eine eigene OpenSpec-Änderung.
 

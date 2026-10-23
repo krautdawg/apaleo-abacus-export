@@ -128,7 +128,7 @@ Schreibt das Hotel eine Gastforderung ab, bucht apaleo den Forderungsverlust (Lo
 - `7800` (10 %), `7802` (13 %) und `7801` (20 %) mit dem Umsatzsteuer-Code (NTCS `1`) und dem Satz,
 - `7809` (0 %) ohne Steuercode.
 
-Mit dem Umsatzsteuer-Code steht das Forderungsverlust-Konto vorn (`konto`), Betrag und Steuer sind positiv: eine Soll-Buchung auf das USt-Konto, die die Umsatzsteuer mindert, wie eine Gutschrift an einen Kunden. In der UVA sollte die Berichtigung als Minderung in KZ 022/029/006 (oder KZ 090) erscheinen; das prüft der erste Import (Checkliste in [bmd-format.md](bmd-format.md)). Ein Vorsteuer-Code auf dieser Zeile ist ein Fehler (`E-STEUERCODE-INPUT-TAX`).
+Mit dem Umsatzsteuer-Code steht das Forderungsverlust-Konto vorn (`konto`), Betrag und Steuer sind positiv: eine Soll-Buchung auf das USt-Konto, die die Umsatzsteuer mindert, wie eine Gutschrift an einen Kunden. In der UVA sollte die Berichtigung als Minderung in KZ 022/029/006 (oder KZ 090) erscheinen; das prüft der erste Import (Checkliste in [abacus-import.md](abacus-import.md#erster-import-bitte-prüfen)). Ein Vorsteuer-Code auf dieser Zeile ist ein Fehler (`E-STEUERCODE-INPUT-TAX`).
 
 Warum `*`-Zeilen: apaleo bucht Forderungsverluste wohl auf Konten je Reservierung unter den Containern `6900` und `CollectiveDebitor_LossOfAccountsReceivable`, wie bei den Debitoren. Belegt ist das noch nicht, denn keine aufgezeichnete Buchung enthält einen Forderungsverlust. Die `*`-Zeilen greifen nach Typ und Satz, egal unter welchem Container das Konto hängt; für die Container selbst schreibt die Vorlage keine Zeile. Bucht apaleo direkt auf einen Container, stoppt der Export mit `E-UNMAPPED`.
 
@@ -154,7 +154,7 @@ BMD liest das Feld `kost` auf Erlös- und Aufwandsbuchungen als Kostenstelle, au
 
 ## Die EKR-Vorlage
 
-Die Vorlage steht in `templates/ekr-hotel.rules.csv` (Version `ekr-hotel@1`). Sie folgt den Gruppen des Einheitskontenrahmens (KFS/BW 6, 2017) mit vierstelligen Konten, wie BMD-Kanzleien sie oft einrichten. Die Nummern sind Vorschläge: Viele Kanzleien führen einen eigenen, vom EKR abgeleiteten Kontenplan. Jede Zeile trägt im Kommentar die Markierung „Vorschlag (ungeprüft)“.
+Die frühere österreichische Vorlage `ekr-hotel@1` liegt nicht mehr in diesem Repository, sie bleibt in apaleo-bmd-export; die Schweizer Fassung dieses Abschnitts mit `templates/kmu-hotel.rules.csv` folgt. Sie folgte den Gruppen des Einheitskontenrahmens (KFS/BW 6, 2017) mit vierstelligen Konten, wie BMD-Kanzleien sie oft einrichten. Die Nummern sind Vorschläge: Viele Kanzleien führen einen eigenen, vom EKR abgeleiteten Kontenplan. Jede Zeile trägt im Kommentar die Markierung „Vorschlag (ungeprüft)“.
 
 | Fall | BMD-Konto | Steuercode (NTCS) | USt |
 |---|---|---|---|
@@ -203,9 +203,9 @@ apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30
 
 Das Tool nimmt für jedes apaleo-Konto mit Typ das Abacus-Konto und die Kostenstelle aus dem Export und den MWST-Code und Satz aus der Vorlage, denn der Export hat keine MWST-Spalte. Jede übernommene Zeile ist als „Vorschlag (ungeprüft)“ markiert und sagt im Kommentar, dass sie übernommen ist. Konten des Exports, die der apaleo-Kontenplan nicht hat, listet der Befehl auf. Gibt die Vorlage für ein Konto keinen MWST-Code, bleibt er leer, und `mapping check` meldet `E-MWST-CODE-MISSING`, bis du ihn mit deinem Treuhänder einträgst. Als Kontenzuordnung lehnt das Tool den Export ab und nennt `--accounts-from`.
 
-## Checkliste zur Freigabe durch die Kanzlei
+## Checkliste zur Freigabe durch den Treuhänder
 
-Bevor die erste Datei in BMD importiert wird:
+Bevor die erste Datei in Abacus importiert wird:
 
 - [ ] Mandant, Leitwährung und MWST-Codes in der Konfiguration stimmen (`abacus.mandant`, `abacus.leitwaehrung`, `abacus.mwstCodes.normal`, `abacus.mwstCodes.reduziert`, `abacus.mwstCodes.beherbergung`).
 - [ ] Jede Zeile mit BMD-Konto ist geprüft; jede leere Zeile ist ausgefüllt oder bewusst leer (ein solches Konto darf dann nicht gebucht werden).
@@ -217,6 +217,6 @@ Bevor die erste Datei in BMD importiert wird:
 - [ ] Die Erlöskonten ohne Steuercode haben in BMD keinen fixen Steuercode.
 - [ ] `apaleo-abacus mapping check --property <id> --from <Monatsanfang> --to <Monatsende>` endet ohne Fehler für einen echten Monat.
 - [ ] Ein Probelauf `apaleo-abacus export --month <YYYY-MM> --dry-run` ist ohne `E-` Befund; die Summen pro Konto und USt-Satz stimmen mit den Berichten in apaleo überein.
-- [ ] Der erste Import läuft in einen Testmandanten, und das Importprotokoll wurde geprüft ([bmd-import.md](bmd-import.md)).
+- [ ] Der erste Import läuft in einen Testmandanten, und das Importprotokoll wurde geprüft ([abacus-import.md](abacus-import.md)).
 
 Datum, Name der Kanzlei und die geprüfte Version der Datei (SHA-256 aus dem Protokoll) kannst du in die Spalte `comment` oder in eure Unterlagen schreiben.

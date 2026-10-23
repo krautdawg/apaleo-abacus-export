@@ -57,8 +57,8 @@ describe('README and docs match the code', () => {
         'DISCLAIMER.md',
         'CHANGELOG.md',
         'docs/examples/README.md',
-        'docs/bmd-import.md',
-        'docs/bmd-format.md',
+        'docs/abacus-import.md',
+        'docs/abacus-format.md',
         'examples/demo/README.md',
       ]),
     );
@@ -103,9 +103,13 @@ describe('README and docs match the code', () => {
     expect(checkCompatibilityClaims(file, readRepoFile(file), recordedTestImports(readRepoFile('docs/maintainers.md')).length)).toEqual([]);
   });
 
-  it('has no docs/datev-*.md guide', () => {
-    expect(FILES.filter((file) => /^docs\/datev-/.test(file))).toEqual([]);
-    expect(FILES).toEqual(expect.arrayContaining(['docs/bmd-import.md', 'docs/bmd-format.md']));
+  it('has no docs/bmd-*.md or docs/datev-*.md guide, and the Abacus guides instead', () => {
+    expect(FILES.filter((file) => /^docs\/(bmd|datev)-/.test(file))).toEqual([]);
+    expect(FILES).toEqual(expect.arrayContaining(['docs/abacus-import.md', 'docs/abacus-format.md']));
+  });
+
+  it('Former file names: no doc links a docs/bmd-*.md guide', () => {
+    for (const file of FILES) expect(linkTargets(readRepoFile(file)).filter((target) => /(?:^|\/)bmd-[a-z]+\.md/.test(target)), file).toEqual([]);
   });
 
   it('README.en.md and the translation in DISCLAIMER.md are the only English texts', () => {
@@ -129,8 +133,8 @@ describe('the docs checks', () => {
   const sh = (...lines: string[]) => ['Some text.', '', '```sh', ...lines, '```', ''].join('\n');
 
   it('names a stale flag, its command and the file', () => {
-    const problems = checkCommandLines('docs/bmd-import.md', sh('apaleo-abacus export --month 2026-10 --email'), COMMANDS);
-    expect(problems).toEqual(['docs/bmd-import.md: "apaleo-abacus export --month 2026-10 --email": --email is not an option of "export"']);
+    const problems = checkCommandLines('docs/abacus-import.md', sh('apaleo-abacus export --month 2026-10 --email'), COMMANDS);
+    expect(problems).toEqual(['docs/abacus-import.md: "apaleo-abacus export --month 2026-10 --email": --email is not an option of "export"']);
   });
 
   it('Old binary in a doc: names apaleo-bmd and the file, and passes once the line reads apaleo-abacus', () => {
@@ -333,8 +337,8 @@ describe('the Austrian terms check', () => {
   });
 
   it('Bare DATEV mention: names the file and the token', () => {
-    expect(problemsOf('docs/bmd-import.md', 'Das läuft wie beim DATEV-Import.')).toEqual([
-      'docs/bmd-import.md: "Das läuft wie beim DATEV-Import.": "DATEV" is named outside the origin sentence and the findings for a copied German setup',
+    expect(problemsOf('docs/abacus-import.md', 'Das läuft wie beim DATEV-Import.')).toEqual([
+      'docs/abacus-import.md: "Das läuft wie beim DATEV-Import.": "DATEV" is named outside the origin sentence and the findings for a copied German setup',
     ]);
     expect(problemsOf('README.md', '## Häufige Fragen\n\n**DATEV?** Nein.\n')).toHaveLength(1);
   });

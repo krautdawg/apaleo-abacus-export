@@ -41,7 +41,7 @@ Ein Wert aus der Umgebung geht dem Wert in der Datei vor.
 
 ### `abacus`
 
-Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du die erste Datei schickst. Der Abschnitt ist Pflicht, weil `abacus.mandant` keinen Standardwert hat; fehlt er, nennt das Tool `abacus.mandant`. Was jedes Feld in der Datei bewirkt: [abacus-format.md](abacus-format.md).
+Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du die erste Datei schickst. Der Abschnitt ist Pflicht, weil `abacus.mandant` keinen Standardwert hat; fehlt er, nennt das Tool `abacus.mandant`. Was jedes Feld in der Datei bewirkt: [abacus-format.md](abacus-format.md). Wie dein Treuhänder die Datei importiert und was er beim ersten Import prüft: [abacus-import.md](abacus-import.md).
 
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|

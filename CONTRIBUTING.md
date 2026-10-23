@@ -47,7 +47,7 @@ Wie der Code aufgebaut ist und wie du eine Quelle oder ein Zielformat hinzufügs
 ## Regeln für den Code
 
 - Befehle bekommen Uhr, Netz, Dateisystem und Umgebung nur aus dem `CommandContext` (`ctx.now()`, `ctx.fetchFn`, `ctx.fs`, `ctx.env`); Lint setzt das durch. Tests nutzen `createTestContext()`.
-- `core`, `bmd`, `mapping` und `posting` importieren nie aus `src/sources/`.
+- `core`, `abacus`, `mapping` und `posting` importieren nie aus `src/sources/`.
 - Geld sind ganze Cent. Nie Gleitkommazahlen.
 - Jede Prüfung meldet einen `Finding` mit Code. Ein neuer Code braucht eine Zeile in `docs/troubleshooting.md`.
 - Ein neuer Befehl, eine neue Option oder ein neuer Konfigurationsschlüssel wird im README oder in `docs/` beschrieben, auf Deutsch. Der Docs-Test schlägt fehl, wenn ein beschriebener Befehl, eine Option, ein Konfigurationsschlüssel oder ein Befund-Code im Code nicht existiert, wenn ein Link ins Leere zeigt oder wenn ein Text nicht deutsch ist.
@@ -68,6 +68,6 @@ Wie der Code aufgebaut ist und wie du eine Quelle oder ein Zielformat hinzufügs
 
 ## Wissen über die Kontenzuordnung
 
-Änderungen an der EKR-Vorlage (`templates/ekr-hotel.rules.csv`) brauchen eine Quelle: den Einheitskontenrahmen (KFS/BW 6), das Handbuch von BMD oder den Kontenplan einer Kanzlei, die die Zeile bestätigt, im Kommentar der Zeile genannt. Eine Zeile, die nicht gegen eine Quelle geprüft ist, wird mit `Vorschlag (ungeprüft)` markiert, und der [Leitfaden zur Kontenzuordnung](docs/mapping-guide.md) führt sie auf. Steuerliche Regeln (Steuersätze, Ortstaxe, Anzahlungen) belegst du mit dem UStG 1994 im RIS, dem Landesgesetz oder einer Fundstelle im Handbuch von BMD.
+Änderungen an der KMU-Vorlage (`templates/kmu-hotel.rules.csv`) brauchen eine Quelle: den Schweizer Kontenrahmen KMU, den Kontenrahmen für die Hotellerie und Gastronomie oder den Kontenplan eines Treuhänders, der die Zeile bestätigt, im Kommentar der Zeile genannt. Eine Zeile, die nicht gegen eine Quelle geprüft ist, wird mit `Vorschlag (ungeprüft)` markiert, und der [Leitfaden zur Kontenzuordnung](docs/mapping-guide.md) führt sie auf. Steuerliche Regeln (Steuersätze, Ortstaxe, Anzahlungen) belegst du mit dem UStG 1994 im RIS, dem Landesgesetz oder einer Fundstelle im Handbuch von BMD.
 
 Hat deine Kanzlei eine Datei des Tools in BMD importiert, hilft ein kurzer Bericht am meisten: BMD-Version, Dialekt, was ohne Nacharbeit ging und was nicht, ohne Namen und Beträge. Er kommt als Testimport in [docs/maintainers.md](docs/maintainers.md#testimporte).

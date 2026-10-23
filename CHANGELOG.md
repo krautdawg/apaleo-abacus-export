@@ -18,6 +18,7 @@ Die Geschichte von apaleo-bmd-export beginnt hier. Das Projekt ist eine Kopie vo
 ### Entfernt
 
 - **BMD als Ziel des Exports** (a03): die EKR-Vorlage im Befehl `init-mapping` (`--template ekr`), die Sach- und Personenkontenlänge, die Buchungssymbole und die BMD-Befunde der Kontenzuordnung. Der BMD-Writer selbst entfällt im nächsten Schritt.
+- **BMD-Writer und BMD-Anleitungen** (a04): `src/bmd/` mit `bmdTarget`, die Vorlage `templates/ekr-hotel.rules.csv`, die Befunde `E-BMD-*` und `N-BMD-*`, `docs/bmd-format.md` und `docs/bmd-import.md`. Die Abacus-Dateien bleiben Byte für Byte gleich. Neu ist `docs/abacus-import.md`: wie der Treuhänder die Datei in Abacus importiert und was er beim ersten Import prüft. Wer mit BMD bucht, nimmt apaleo-bmd-export.
 
 ## [0.1.0] - 2026-10-21
 
