@@ -449,7 +449,7 @@ export function checkGermanPracticeTerms(file: string, markdown: string): string
  * doc for Switzerland adds it here; a listed file that does not exist yet is
  * skipped.
  */
-export const SWISS_FILES: readonly string[] = ['docs/abacus-format.md', 'docs/abacus-import.md'];
+export const SWISS_FILES: readonly string[] = ['docs/abacus-format.md', 'docs/abacus-import.md', 'docs/mapping-guide.md', 'docs/posting-rules.md'];
 
 /** The listed Swiss files that exist. */
 export function existingSwissFiles(files: readonly string[] = SWISS_FILES, root: string = ROOT): string[] {
@@ -502,33 +502,38 @@ export function checkSwissFile(file: string, markdown: string, swissFiles: reado
 
 // --- Compatibility claims --------------------------------------------------------
 
-/** Up to two words between "BMD" and the verb, so "mit BMD NTCS getestet" and "von BMD 5.5 akzeptiert" are caught. */
-const BMD = String.raw`BMD(?:\s+[\w.]+){0,2}`;
+/**
+ * The target named in a claim: Abacus (with "Abacus FIBU" and the like), and BMD
+ * as long as docs from the origin project remain. Up to two words between the
+ * name and the verb, so "mit Abacus FIBU getestet" and "von BMD 5.5 akzeptiert" are caught.
+ */
+const TARGET = String.raw`(?:Abacus|BMD)`;
+const NAMED = String.raw`${TARGET}(?:\s+[\w.]+){0,2}`;
 
 /**
  * What the docs may say only after a recorded test import (b08 design decision
- * 4), case-insensitive, in German and English and in either word order:
- * tested with, compatible with, certified by or accepted by BMD.
+ * 4, Abacus since a05), case-insensitive, in German and English and in either
+ * word order: tested with, compatible with, certified by or accepted by Abacus.
  */
 export const COMPATIBILITY_CLAIMS: readonly RegExp[] = [
-  /getestet\s+(?:mit|in|gegen)\s+BMD/,
-  new RegExp(String.raw`(?:mit|in|gegen)\s+${BMD}\s+getestet`),
-  /BMD-(?:getestet|kompatibel|zertifiziert)/,
-  /kompatibel\s+(?:mit|zu)\s+BMD/,
-  new RegExp(String.raw`(?:mit|zu)\s+${BMD}\s+kompatibel`),
-  /zertifiziert\s+(?:von|durch|für)\s+BMD/,
-  new RegExp(String.raw`(?:von|durch|für)\s+${BMD}\s+(?:zertifiziert|akzeptiert|freigegeben)`),
-  /(?:akzeptiert|freigegeben)\s+(?:von|durch)\s+BMD/,
-  /tested\s+(?:with|in|against|on)\s+BMD/,
-  /BMD[- ](?:tested|compatible|certified|approved)/,
-  /compatible\s+with\s+BMD/,
-  /(?:certified|accepted|approved)\s+(?:by|for)\s+BMD/,
+  new RegExp(String.raw`getestet\s+(?:mit|in|gegen)\s+${TARGET}`),
+  new RegExp(String.raw`(?:mit|in|gegen)\s+${NAMED}\s+getestet`),
+  new RegExp(String.raw`${TARGET}-(?:getestet|kompatibel|zertifiziert)`),
+  new RegExp(String.raw`kompatibel\s+(?:mit|zu)\s+${TARGET}`),
+  new RegExp(String.raw`(?:mit|zu)\s+${NAMED}\s+kompatibel`),
+  new RegExp(String.raw`zertifiziert\s+(?:von|durch|für)\s+${TARGET}`),
+  new RegExp(String.raw`(?:von|durch|für)\s+${NAMED}\s+(?:zertifiziert|akzeptiert|freigegeben)`),
+  new RegExp(String.raw`(?:akzeptiert|freigegeben)\s+(?:von|durch)\s+${TARGET}`),
+  new RegExp(String.raw`tested\s+(?:with|in|against|on)\s+${TARGET}`),
+  new RegExp(String.raw`${TARGET}[- ](?:tested|compatible|certified|approved)`),
+  new RegExp(String.raw`compatible\s+with\s+${TARGET}`),
+  new RegExp(String.raw`(?:certified|accepted|approved)\s+(?:by|for)\s+${TARGET}`),
 ].map((pattern) => new RegExp(String.raw`(?<![\p{L}\p{N}])(?:${pattern.source})`, 'giu'));
 
-/** Datum, BMD-Version, Dialekt and Ergebnis: a row records an import only when all four are filled. */
-const RECORDED_IMPORT_FIELDS = 4;
+/** Datum, Abacus-Version, Schnittstellenversion, Programm and Ergebnis: a row records an import only when all five are filled. */
+const RECORDED_IMPORT_FIELDS = 5;
 
-/** The rows of the `## Testimporte` table in `docs/maintainers.md` that record an import (all four fields filled). */
+/** The rows of the `## Testimporte` table in `docs/maintainers.md` that record an import (all five fields filled). */
 export function recordedTestImports(maintainers: string): string[][] {
   const start = maintainers.search(/^## Testimporte$/m);
   if (start < 0) return [];
@@ -548,10 +553,10 @@ export function recordedTestImports(maintainers: string): string[][] {
   return rows.filter((cells) => cells.length >= RECORDED_IMPORT_FIELDS && cells.slice(0, RECORDED_IMPORT_FIELDS).every((cell) => cell !== ''));
 }
 
-/** Problems where a file claims BMD compatibility while no test import is recorded. */
+/** Problems where a file claims Abacus (or BMD) compatibility while no test import is recorded. */
 export function checkCompatibilityClaims(file: string, markdown: string, recordedImports: number): string[] {
   if (recordedImports > 0) return [];
   const text = prose(markdown);
   const claims = COMPATIBILITY_CLAIMS.flatMap((pattern) => [...text.matchAll(pattern)].map((match) => match[0].replace(/\s+/g, ' ')));
-  return [...new Set(claims)].map((claim) => `${file}: "${claim}" claims a tested BMD import, but docs/maintainers.md records no import under ## Testimporte`);
+  return [...new Set(claims)].map((claim) => `${file}: "${claim}" claims a tested import, but docs/maintainers.md records no import under ## Testimporte`);
 }

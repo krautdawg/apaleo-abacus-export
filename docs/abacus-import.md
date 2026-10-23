@@ -20,7 +20,7 @@ Abacus liest die Datei in diesen Programmen:
 - **F5534 „Import/Export Buchungen AbaConnect“** (Hilfsprogramme, Buchungsschnittstellen): auf „Import“ wechseln, Importart **„XML Buchungen“** wählen, Datei wählen. Hier kannst du eine Zeitachse wählen und die Buchungen prüfen, bevor sie in das Geschäftsjahr übernommen werden.
 - **F625 AbaConnect**: „Import XML“ mit der Schnittstelle „XML Buchungen“.
 
-Die Schnittstellenversion steht in der Datei (`abacus.version`, Standard `2015.00`). Warnt Abacus wegen der Version, stell `abacus.version` auf `2024.00` und exportiere neu.
+Die Schnittstellenversion steht in der Datei (`abacus.version`, Standard `2015.00`). Warnt Abacus wegen der Version, stell `abacus.version` auf `2024.00` und exportiere den Zeitraum mit `export --month <JJJJ-MM> --overwrite` neu; die neue Version ändert die Datei, ohne `--overwrite` lehnt das Tool sie mit `E-FILE-EXISTS` ab, und `schedule` überspringt einen Zeitraum, der schon im Manifest steht. Hat Abacus schon Buchungen aus der alten Datei übernommen, entfernt dein Treuhänder sie zuerst (siehe [Rückgängig machen](#rückgängig-machen)).
 
 ## Mandant und Geschäftsbereich
 
@@ -53,7 +53,7 @@ Jede Buchung trägt als `EntryDate` den Geschäftstag aus apaleo. Das Geschäfts
 
 Ohne besondere Einstellung prüft Abacus beim Import die MWST jeder Buchung und lehnt fehlerhafte ab. Mit der Option **„MWST berechnen“** (Register Gestaltung in F5534 oder F625) berechnet Abacus fehlende oder fehlerhafte MWST selbst. Abacus empfiehlt die Option, das Protokoll des Tools auch.
 
-Achtung: Mit „MWST berechnen“ kann Abacus den Standard-MWST-Code nehmen, der dem Konto im Kontenplan (F21) hinterlegt ist, statt des MWST-Codes aus der Datei. Deshalb muss jedes Konto, das in der Datei einen MWST-Code trägt, in F21 MWST-pflichtig sein und denselben Standard-MWST-Code haben wie im Protokoll, und ein Konto ohne MWST-Code darf in F21 keinen Standard-MWST-Code haben. Sonst stimmt die MWST-Abrechnung nicht, ohne dass der Import einen Fehler meldet. Mit „MWST berechnen“ kann eine einzelne Buchung um einen Rappen anders gerundet sein als in apaleo; vergleiche die Summen pro MWST-Code.
+Achtung: Mit „MWST berechnen“ kann Abacus den Standard-MWST-Code nehmen, der dem Konto im Kontenplan (F21) hinterlegt ist, statt des MWST-Codes aus der Datei. Deshalb muss jedes Konto, das in der Datei einen MWST-Code trägt, in F21 MWST-pflichtig sein und denselben Standard-MWST-Code haben wie im Protokoll, und ein Konto ohne MWST-Code darf in F21 keinen Standard-MWST-Code haben. Sonst stimmt die MWST-Abrechnung nicht, ohne dass der Import einen Fehler meldet. Mit „MWST berechnen“ kann eine einzelne Buchung um einen Rappen anders gerundet sein als in apaleo; vergleiche die Summen pro MWST-Code mit der Zeile `MWST-Codes` im Block „Import into Abacus FIBU“.
 
 ## Nebenjournal
 
@@ -84,11 +84,12 @@ Mach den ersten Import mit deinem Treuhänder in einem Testmandanten, oder lass 
 - [ ] Abacus liest die Datei ohne Formatfehler, und das Importprotokoll lehnt keine Buchung ab.
 - [ ] Mandant, Geschäftsbereich und Leitwährung stimmen; bei mehreren Hotels in einem gemeinsamen Mandanten hat jedes Hotel seinen eigenen Geschäftsbereich.
 - [ ] Die Saldenliste des Monats zeigt pro Konto dieselben Summen wie „Totals per Abacus account“ im Protokoll.
-- [ ] Das MWST-Journal zeigt pro MWST-Code dieselbe MWST wie „Revenue and MWST per MWST-Code and rate“, und in der MWST-Abrechnung landen die Umsätze in der richtigen Ziffer: Normalsatz 8,1 % in Ziffer 303, reduzierter Satz 2,6 % in Ziffer 313, Beherbergung 3,8 % in Ziffer 343 (im KMU-Mustermandanten die Codes `311`, `312` und `313`).
+- [ ] Das MWST-Journal zeigt pro MWST-Code dieselbe MWST wie die Zeile `MWST-Codes` im Block „Import into Abacus FIBU“ des Protokolls, im Schweizer Testmonat zum Beispiel `313 (3.8 %; tax -20.14 CHF)`. Diese Summe pro Code enthält Erlöse, Anzahlungen, Debitorenverluste und besteuerte Abgaben zusammen, denn sie teilen sich den Code; „Revenue and MWST per MWST-Code and rate“ zeigt nur den Teil der Erlöse (im Testmonat `313` mit MWST 24.53) und passt deshalb nicht zum MWST-Journal. In der MWST-Abrechnung landen die Umsätze in der richtigen Ziffer: Normalsatz 8,1 % in Ziffer 303, reduzierter Satz 2,6 % in Ziffer 313, Beherbergung 3,8 % in Ziffer 343 (im KMU-Mustermandanten die Codes `311`, `312` und `313`).
 - [ ] Jedes Paar „Konto -> MWST-Code“ im Block „Import into Abacus FIBU“ stimmt mit dem Standard-MWST-Code dieses Kontos in F21 überein, zum Beispiel `3400 -> 313`, `2030 -> 313`, `2031 -> 311` und `3805 -> 313`, und jedes dieser Konten ist in F21 MWST-pflichtig.
-- [ ] Anzahlungen erscheinen mit ihrer MWST im Monat, in dem sie eingehen (Vorauszahlungen, MWSTG Art. 40), und ihre Auflösung bucht die MWST wieder zurück.
-- [ ] Der Debitorenverlust erscheint als Entgeltsminderung, die die geschuldete MWST mindert, nicht als Vorsteuer.
-- [ ] Das Konto der Kurtaxe (Beispiel `2210`) und die Konten ohne MWST (zum Beispiel `3600`, `3680`, `2039` und `3808`) haben in F21 keinen Standard-MWST-Code. Eine Kurtaxe mit MWST-Code trägt einen Code für Ziffer 910, nie den Code `490` (Ziffer 900).
+- [ ] Anzahlungen erscheinen mit ihrer MWST im Monat, in dem sie eingehen (Vorauszahlungen, MWSTG Art. 40 Abs. 1 Bst. c), und ihre Auflösung und Rückzahlung buchen die MWST wieder zurück. Vergleiche sie pro Konto: Soll, Haben und Saldo des Anzahlungskontos (Beispiel `2030`) in der Saldenliste entsprechen seiner Zeile in „Totals per Abacus account“. Im MWST-Journal lassen sie sich nicht getrennt ablesen, weil sie den MWST-Code der Erlöse tragen (Beispiel `313`).
+- [ ] Der Debitorenverlust erscheint als Entgeltsminderung, die die geschuldete MWST mindert, nicht als Vorsteuer. Vergleiche ihn pro Konto: Das Verlustkonto (Beispiel `3805`) zeigt in der Saldenliste dieselben Summen wie seine Zeile in „Totals per Abacus account“; seine MWST ist in der Summe seines MWST-Codes enthalten.
+- [ ] Das Konto der Kurtaxe (Beispiel `2210`) und die Konten ohne MWST (zum Beispiel `3600`, `3680`, `2039` und `3808`) haben in F21 keinen Standard-MWST-Code. Eine Kurtaxe mit MWST-Code trägt einen Code für Ziffer 910, nie den Code `490` (Ziffer 900). Vergleiche die Abgaben pro Konto mit „Kurtaxe and other guest levies“ im Protokoll (im Testmonat `2210 without MWST: 12.60`).
+- [ ] Rechnet der Mandant nach vereinnahmten Entgelten ab (`abacus.abrechnungsart: vereinnahmt`, Warnung `W-ABRECHNUNGSART-VEREINNAHMT`): Der Saldo des Hilfskontos `2202` am Periodenende ist geprüft; der bezahlte Teil ist auf `2200` umgebucht, und für die offenen Debitoren ist die Debitorenkorrektur gemacht ([mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte)).
 - [ ] Eine Zahlung landet auf dem Transferkonto ohne MWST, eine Rechnung an eine Firma auf den Debitoren als Sachkonto.
 - [ ] Abacus meldet keine doppelten Belegnummern, auch nicht mit einer zweiten Datei eines anderen Monats.
 - [ ] Umlaute und das Eurozeichen sind im Buchungstext lesbar.
@@ -105,8 +106,10 @@ Diese Fragen kann nur ein echter Import beantworten. Jede Antwort ist eine Einst
 - [ ] **`TaxAccount`**: Nimmt Abacus das Steuerkonto (`abacus.mwstKonto`) in der `CollectiveInformation` und das Konto selbst in der `SingleInformation` an (Konstante `SINGLE_TAX_ACCOUNT`), und bei MWST-Codes mit Satz 0 das Steuerkonto statt `0` (Konstante `TAX_ACCOUNT_AT_RATE_ZERO`)?
 - [ ] **`TaxIncluded` bei Satz 0**: Nimmt Abacus `I` bei Codes mit Satz 0 an (Konstante `TAX_INCLUDED_AT_RATE_ZERO`), auch ohne „MWST berechnen“?
 - [ ] **MWST berechnen**: Behält Abacus mit der Option den MWST-Code der Datei, oder nimmt es den Standard-MWST-Code des Kontos in F21?
+- [ ] **Rundung der MWST**: Nimmt Abacus ohne „MWST berechnen“ die MWST aus apaleo an, wenn sie um einen Rappen von `Brutto × Satz / (100 + Satz)` abweicht (Warnung `W-VAT-ROUNDING`), oder lehnt es die Buchung ab? Stimmt mit der Option das MWST-Journal pro MWST-Code mit der Zeile `MWST-Codes` im Protokoll überein?
 - [ ] **Belegnummern**: Nimmt Abacus die zehnstelligen Belegnummern an, und warnt es bei Doppelten über mehrere Dateien? Prüft es Doppelte pro Geschäftsjahr? Die Nummer hat kein Jahr: Die Dateien ab 2026-10-01 und ab 2027-10-01 beginnen beide mit `1001000001`.
 - [ ] **Nebenjournal**: Landen die importierten Buchungen im Nebenjournal, und kann dein Treuhänder sie dort vor der Übernahme löschen?
+- [ ] **Anzahlungen**: Will dein Treuhänder die Anzahlungen auf `2030` und folgende mit dem normalen MWST-Code des Satzes (Standard der Vorlage, zum Beispiel `313`), oder führt der Mandant einen eigenen MWST-Code für Vorauszahlungen?
 - [ ] **Vereinnahmt**: Wie behandelt Abacus mit `abacus.abrechnungsart` `vereinnahmt` die Buchungen auf dem Hilfskonto (`abacus.mwstHilfskonto`, Standard `2202`), wenn keine Zahlung in der Debitorenbuchhaltung erfasst ist, und welche Korrektur macht dein Treuhänder am Periodenende?
 
 Schick uns das Ergebnis gern als Issue (Abacus-Version, Programm, Schnittstellenversion, was ging und was nicht, ohne Namen und Beträge); der Maintainer trägt es unter [Testimporte](maintainers.md#testimporte) ein.

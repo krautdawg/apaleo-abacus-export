@@ -1,12 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../src/cli/run.js';
 import type { SourceAccount } from '../../src/core/source.js';
 import { encodeCp1252 } from '../../src/core/cp1252.js';
 import { decodeCsv } from '../../src/mapping/csv.js';
-import { CARRIED_OVER_COMMENT, checkMapping, parseMapping } from '../../src/mapping/index.js';
-import { BSP, CLIENT_ID, FIXTURE_FILES, createApaleoContext, loadBeispielData } from '../helpers/apaleo.js';
+import { CARRIED_OVER_COMMENT, checkMapping, parseMapping, renderMappingFile, type MappingRowValues } from '../../src/mapping/index.js';
+import { BSP, CLIENT_ID, ENG, FIXTURE_FILES, createApaleoContext, loadBeispielData } from '../helpers/apaleo.js';
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FakeSource, type FakeSourceData } from '../helpers/fake-source.js';
 import { readMappingFixture } from '../helpers/mapping.js';
@@ -256,5 +256,26 @@ describe('apaleo-abacus init-mapping', () => {
     const { ctx } = await fakeContext();
     expect(await runCli(['init-mapping', '--property', BSP, '--skr', '03'], ctx)).toBe(2);
     expect(ctx.err()).toContain('--skr');
+  });
+});
+
+describe('the mapping of the Swiss fixture month', () => {
+  const FIXTURE = new URL('../fixtures/mapping/kmu-ch-month.csv', import.meta.url);
+  const KURTAXE = 'Testzuordnung wie vom Treuhänder ausgefüllt: Kurtaxe als durchlaufender Posten auf 2210 ohne MWST-Code (ESTV MBI 08 Ziff. 7.11).';
+  const HEADER =
+    'apaleo-abacus Kontenzuordnung für Hotel Beispiel Engelberg (ENG), den Schweizer Testmonat: was init-mapping --template kmu-hotel ' +
+    'auf dem Kontenplan schreibt, nur die Kurtaxe-Zeile 3501 ist ausgefüllt.';
+
+  it('is what init-mapping --template kmu-hotel writes on the ENG chart, with only the Kurtaxe row filled in (2210, no MWST-Code)', async () => {
+    const config = `apaleo:\n  clientId: ${CLIENT_ID}\nabacus:\n  mandant: 1234\n  leitwaehrung: CHF\n`;
+    const ctx = createApaleoContext({ chMonth: true }, { files: { 'apaleo-abacus.config.yaml': config } });
+    expect(await runCli(['init-mapping', '--property', ENG, '--template', 'kmu-hotel'], ctx)).toBe(0);
+    const written = parseMapping(read(ctx, 'mapping-ENG.csv'), { path: 'mapping-ENG.csv' });
+    // renderMappingFile writes the mapping columns only, so the rows keep their line numbers here.
+    const rows: MappingRowValues[] = written.rows.map((row) => (row.apaleoAccount === '3501' ? { ...row, abacusAccount: '2210', comment: KURTAXE } : row));
+    expect(rows.filter((row) => row.abacusAccount === '2210')).toHaveLength(1);
+    const expected = renderMappingFile([HEADER], rows);
+    if (process.env.UPDATE_GOLDEN === '1') writeFileSync(FIXTURE, expected);
+    expect(Buffer.from(readFileSync(FIXTURE)).equals(Buffer.from(expected)), 'run UPDATE_GOLDEN=1 pnpm test and review the diff').toBe(true);
   });
 });

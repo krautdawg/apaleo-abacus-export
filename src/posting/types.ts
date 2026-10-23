@@ -57,6 +57,21 @@ export interface VatTotal {
 
 export type RevenueTotal = VatTotal;
 
+/**
+ * Kurtaxe, Gästetaxe and Beherbergungsabgabe booked on one Abacus account with one
+ * MWST-Code and rate, signed as charged (a correction reduces it): the gross amount
+ * and its MWST. Empty `mwstCode` and rate 0 for a levy booked without `TaxData`
+ * (durchlaufender Posten).
+ */
+export interface LevyTotal {
+  account: string;
+  mwstCode: string;
+  ratePercent: number;
+  grossCents: number;
+  /** Sum of the MWST of the bookings, signed as owed; 0 without MWST. */
+  vatCents: number;
+}
+
 /** Payments received on one Abacus clearing account, signed (refunds reduce it). */
 export interface PaymentTotal {
   account: string;
@@ -89,6 +104,8 @@ export interface PostingSummary {
   writeOffsByRate: VatTotal[];
   /** City tax, second city tax and guest levies, signed. */
   cityTaxCents: number;
+  /** The same levies per Abacus account, MWST-Code and rate: booked without MWST (durchlaufender Posten) or with it. */
+  levies: LevyTotal[];
   payments: PaymentTotal[];
   /** Classified by side and sign (`depositMovement`), unsigned; refunds (paid back via a payment) are part of the released amount. */
   deposits: { receivedCents: number; releasedCents: number; refundedCents: number };

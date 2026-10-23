@@ -48,7 +48,7 @@ Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du
 | `abacus` | Pflicht | Der Abschnitt muss da sein, weil `abacus.mandant` keinen Standardwert hat. |
 | `abacus.mandant` | Pflicht | Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Sie steht im Block `Parameter` und in jeder Buchung (`Client`); mit der Importeinstellung „nur Buchungen mit gleicher Mandantennummer“ lehnt Abacus die Datei in einem anderen Mandanten ab. |
 | `abacus.leitwaehrung` | `CHF` | Die Leitwährung des Mandanten, `CHF` oder `EUR`. Jedes Hotel muss in dieser Währung buchen; das Tool rechnet nicht um. |
-| `abacus.abrechnungsart` | `vereinbart` | Die MWST-Abrechnungsart: `vereinbart` oder `vereinnahmt`. Sie bestimmt den `UseCode` (0 oder 1) und das Steuer- oder Hilfskonto in der Buchung. |
+| `abacus.abrechnungsart` | `vereinbart` | Die MWST-Abrechnungsart: `vereinbart` oder `vereinnahmt`. Sie bestimmt den `UseCode` (0 oder 1) und das Steuer- oder Hilfskonto in der Buchung, nie die Beträge. Mit `vereinnahmt` warnen `doctor` und jeder Export `W-ABRECHNUNGSART-VEREINNAHMT`, siehe [mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte). |
 | `abacus.version` | `2015.00` | Die Version der AbaConnect-Schnittstelle: `2015.00`, `2020.00`, `2022.00` oder `2024.00`. Ändere sie nur, wenn Abacus die Datei mit der Standardversion ablehnt. |
 | `abacus.mwstKonto` | `2200` | Das Steuerkonto der MWST-Codes (Umsatzsteuer), 1 bis 11 Ziffern; der Wert für die vereinbarte Abrechnung. |
 | `abacus.mwstHilfskonto` | `2202` | Das Hilfskonto der MWST-Codes (Umsatzsteuerausgleich Abrechnungsmethode), 1 bis 11 Ziffern; der Wert für die vereinnahmte Abrechnung. |

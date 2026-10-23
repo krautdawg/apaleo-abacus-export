@@ -43,12 +43,12 @@ In dieser Reihenfolge:
 
 ## Testimporte
 
-Jeder echte Import einer Datei des Tools in BMD, den eine Kanzlei gemacht hat. Solange die Tabelle leer ist, sagen README und Dokumentation nur, dass die Datei dem dokumentierten BMD-Importformat folgt und der erste Testimport noch aussteht; der Docs-Test schlägt fehl, wenn sie mehr behaupten.
+Jeder echte Import einer Datei des Tools in die Abacus FIBU, den ein Treuhänder gemacht hat. Solange die Tabelle leer ist, sagen README und Dokumentation nur, dass die Datei der dokumentierten AbaConnect-Schnittstelle „XML Buchungen“ folgt und der erste Testimport noch aussteht; der Docs-Test schlägt fehl, wenn sie mehr behaupten. Ein Eintrag zählt erst, wenn alle fünf Spalten gefüllt sind.
 
-| Datum | BMD-Version | Dialekt | Ergebnis |
-|---|---|---|---|
+| Datum | Abacus-Version | Schnittstellenversion | Programm | Ergebnis |
+|---|---|---|---|---|
 
-Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beispiel Zeichensatz, MWST-Codes im MWST-Journal, Belegnummern), ohne Namen der Kanzlei oder des Hotels, wenn sie das nicht möchten. Jede offene Frage aus [abacus-format.md](abacus-format.md#offene-fragen), die der Import beantwortet, kommt als Einstellung oder Korrektur in eine eigene OpenSpec-Änderung.
+Trag unter „Ergebnis“ ein, was ohne Nacharbeit ging und was nicht (zum Beispiel Zeichensatz, MWST-Codes im MWST-Journal, Belegnummern), ohne Namen des Treuhänders oder des Hotels, wenn sie das nicht möchten. Jede offene Frage aus [abacus-format.md](abacus-format.md#offene-fragen), die der Import beantwortet, kommt als Einstellung oder Korrektur in eine eigene OpenSpec-Änderung.
 
 ## Später geplant
 

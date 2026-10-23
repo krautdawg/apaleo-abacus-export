@@ -45,6 +45,7 @@ Written-off receivables (Debitorenverluste) and the MWST correction per MWST-Cod
 Each booking carries apaleo's tax of its line, rounded to the Rappen, while apaleo rounds only the precise total of its lines per day, so a difference (apaleo VAT minus tax) of a few Rappen is this rounding, not an error.
 
 Kurtaxe and other guest levies (apaleo city tax): 6.40
+  2210 without MWST: 6.40
 
 Payments per clearing account:
   account  amount

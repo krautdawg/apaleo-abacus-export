@@ -1,4 +1,4 @@
-import { ConfigNotFoundError, EXAMPLE_CONFIG_FILE, loadConfig, resolveConfigPath, sharedMandantFindings } from '../../core/config.js';
+import { ConfigNotFoundError, EXAMPLE_CONFIG_FILE, abrechnungsartFindings, loadConfig, resolveConfigPath, sharedMandantFindings } from '../../core/config.js';
 import { formatFinding } from '../../core/findings.js';
 import { CONFIG_OPTION, EXIT_OK, stringOption, type Command } from '../command.js';
 import { VERSION } from '../version.js';
@@ -24,7 +24,7 @@ export const doctor: Command = {
       print('Client secret', loaded.secrets.apaleoClientSecret ? 'set (APALEO_CLIENT_SECRET)' : 'not set (APALEO_CLIENT_SECRET)');
       const { abacus } = loaded.config;
       print('Abacus', `Mandant ${abacus.mandant}, Leitwährung ${abacus.leitwaehrung}, ${abacus.abrechnungsart}, version ${abacus.version}`);
-      for (const finding of sharedMandantFindings(loaded.config)) ctx.stdout.write(`${formatFinding(finding)}\n`);
+      for (const finding of [...sharedMandantFindings(loaded.config), ...abrechnungsartFindings(abacus)]) ctx.stdout.write(`${formatFinding(finding)}\n`);
     } catch (error) {
       if (!(error instanceof ConfigNotFoundError)) throw error;
       print('Config', `not found (copy ${EXAMPLE_CONFIG_FILE} to get started)`);

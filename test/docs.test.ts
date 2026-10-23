@@ -99,7 +99,7 @@ describe('README and docs match the code', () => {
     for (const file of existingSwissFiles()) expect(checkSwissFile(file, readRepoFile(file)), file).toEqual([]);
   });
 
-  it.each(FILES)('%s: claims no tested BMD import while docs/maintainers.md records none', (file) => {
+  it.each(FILES)('%s: claims no tested Abacus import while docs/maintainers.md records none', (file) => {
     expect(checkCompatibilityClaims(file, readRepoFile(file), recordedTestImports(readRepoFile('docs/maintainers.md')).length)).toEqual([]);
   });
 
@@ -366,6 +366,8 @@ describe('the Swiss file check', () => {
 
   it('lists the Abacus docs from the start and skips a listed file that does not exist yet', () => {
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/abacus-format.md', 'docs/abacus-import.md']));
+    // a05 rewrote the mapping guide and the posting rules for Switzerland.
+    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/mapping-guide.md', 'docs/posting-rules.md']));
     expect(existingSwissFiles(['docs/abacus-format.md', 'README.md', 'docs/does-not-exist.md'])).toEqual(
       expect.not.arrayContaining(['docs/does-not-exist.md']),
     );
@@ -380,7 +382,7 @@ describe('the Swiss file check', () => {
       expect.stringMatching(/^docs\/abacus-format\.md: .*"Kanzlei"/),
       expect.stringMatching(/^docs\/abacus-format\.md: .*"Buchungssymbol"/),
     ]);
-    expect(checkSwissFile('docs/mapping-guide.md', text)).toEqual([]);
+    expect(checkSwissFile('docs/export.md', text)).toEqual([]);
   });
 
   it('names every Austrian BMD term and the token BMD, matched as whole words', () => {
@@ -399,27 +401,35 @@ describe('the Swiss file check', () => {
 });
 
 describe('the compatibility claim check', () => {
-  const maintainers = (rows: string[]) => ['## Testimporte', '', '| Datum | BMD-Version | Dialekt | Ergebnis |', '|---|---|---|---|', ...rows, '', '## Später geplant', '| x | y |'].join('\n');
+  const maintainers = (rows: string[]) =>
+    ['## Testimporte', '', '| Datum | Abacus-Version | Schnittstellenversion | Programm | Ergebnis |', '|---|---|---|---|---|', ...rows, '', '## Später geplant', '| x | y |'].join('\n');
 
   it('counts the recorded test imports, not the header, an empty row or a partial row', () => {
     expect(recordedTestImports(maintainers([]))).toEqual([]);
-    expect(recordedTestImports(maintainers(['|  |  |  |  |']))).toEqual([]);
-    expect(recordedTestImports(maintainers(['| 2026-11-10 |  |  |  |']))).toEqual([]);
-    expect(recordedTestImports(maintainers(['| 2026-11-10 | BMD NTCS 2026.1 | ntcs |  |', '| TBD |']))).toEqual([]);
-    expect(checkCompatibilityClaims('README.md', 'Getestet mit BMD NTCS.', recordedTestImports(maintainers(['| 2026-11-10 |  |  |  |'])).length)).toHaveLength(1);
-    expect(recordedTestImports(maintainers(['| 2026-11-10 | BMD NTCS 2026.1 | ntcs | ohne Fehler |']))).toEqual([['2026-11-10', 'BMD NTCS 2026.1', 'ntcs', 'ohne Fehler']]);
+    expect(recordedTestImports(maintainers(['|  |  |  |  |  |']))).toEqual([]);
+    expect(recordedTestImports(maintainers(['| 2026-11-10 |  |  |  |  |']))).toEqual([]);
+    expect(recordedTestImports(maintainers(['| 2026-11-10 | Abacus 2025 | 2015.00 | F5534 |  |', '| TBD |']))).toEqual([]);
+    expect(checkCompatibilityClaims('README.md', 'Getestet mit Abacus FIBU.', recordedTestImports(maintainers(['| 2026-11-10 |  |  |  |  |'])).length)).toHaveLength(1);
+    expect(recordedTestImports(maintainers(['| 2026-11-10 | Abacus 2025 | 2015.00 | F5534 | ohne Fehler |']))).toEqual([['2026-11-10', 'Abacus 2025', '2015.00', 'F5534', 'ohne Fehler']]);
     expect(recordedTestImports(readRepoFile('docs/maintainers.md'))).toEqual([]);
   });
 
   it('Claim without a recorded import: names the README and the phrase', () => {
-    expect(checkCompatibilityClaims('README.md', 'Die Datei ist getestet mit BMD NTCS.', 0)).toEqual([
-      'README.md: "getestet mit BMD" claims a tested BMD import, but docs/maintainers.md records no import under ## Testimporte',
+    expect(checkCompatibilityClaims('README.md', 'Die Datei ist getestet mit Abacus FIBU.', 0)).toEqual([
+      'README.md: "getestet mit Abacus" claims a tested import, but docs/maintainers.md records no import under ## Testimporte',
     ]);
+    expect(checkCompatibilityClaims('docs/x.md', 'Kompatibel mit Abacus FIBU und Abacus-zertifiziert.', 0)).toHaveLength(2);
     expect(checkCompatibilityClaims('docs/x.md', 'Kompatibel mit BMD NTCS und BMD-zertifiziert.', 0)).toHaveLength(2);
-    expect(checkCompatibilityClaims('README.md', 'Die Datei ist getestet mit BMD NTCS.', 1)).toEqual([]);
+    expect(checkCompatibilityClaims('README.md', 'Die Datei ist getestet mit Abacus FIBU.', 1)).toEqual([]);
   });
 
   it.each([
+    'Die Datei ist mit Abacus FIBU getestet.',
+    'Die Datei wurde in\nAbacus erfolgreich getestet.',
+    'Der Export ist Abacus-kompatibel.',
+    'Die Datei wird von Abacus akzeptiert.',
+    'The file is tested with Abacus FIBU.',
+    'An Abacus-certified import file.',
     'Die Datei ist mit BMD NTCS getestet.',
     'Die Datei wurde mit\nBMD 5.5 erfolgreich getestet.',
     'Der Export ist BMD-kompatibel.',
