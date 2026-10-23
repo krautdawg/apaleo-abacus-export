@@ -67,6 +67,24 @@ export const TAX_COEFFICIENT = '100';
 export const TAX_COUNTRY = 'CH';
 export const FLAT_RATE = '0';
 
+/**
+ * The Ziffer of the MWST-Abrechnung (ESTV form, effective method) for each
+ * Swiss rate in force since 2024-01-01: Normalsatz 8.1 % → 303, reduzierter
+ * Satz 2.6 % → 313, Sondersatz Beherbergung 3.8 % → 343. Another rate (an old
+ * Swiss rate or a foreign one) has no Ziffer here; the next rate change
+ * replaces this table (design decision 1 of a06).
+ */
+export const MWST_ZIFFER_BY_RATE: ReadonlyMap<number, string> = new Map([
+  [8.1, '303'],
+  [2.6, '313'],
+  [3.8, '343'],
+]);
+
+/** The Ziffer of the MWST-Abrechnung for `percent`, or undefined for a rate without one. */
+export function mwstZiffer(percent: number): string | undefined {
+  return MWST_ZIFFER_BY_RATE.get(percent);
+}
+
 /** `UseCode`: `0` vereinbart, `1` vereinnahmt. */
 export function useCode(abrechnungsart: Abrechnungsart): '0' | '1' {
   return abrechnungsart === 'vereinnahmt' ? '1' : '0';

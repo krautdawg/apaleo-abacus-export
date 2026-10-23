@@ -28,6 +28,8 @@ const fakeTarget: TargetWriter<PostedBooking> = {
   sameContent: (existing, next) => Buffer.from(existing).equals(Buffer.from(next)),
   importBlock: (bookings) => ['FAKE import:', `  ${bookings.length} lines`],
   movements: (booking) => abacusTarget.movements(booking),
+  taxReturnLine: () => undefined,
+  manifestFields: () => ({}),
   advice: {
     currency: 'FAKE currency advice.',
     overlap: 'FAKE overlap advice',
@@ -197,6 +199,21 @@ describe('the Abacus target through the export', () => {
     const outcome = await runWith(setup, {}, createAbacusTarget(() => ({ ...settingsFromConfig({ config, propertyId: BSP }) })));
     expect(outcome.status).toBe('written');
     expect(readFileSync(join(folderOf(setup), 'ABACUS_Buchungen_20260901-20260930_BSP.xml'), 'utf8')).toContain('<Division>7</Division>');
+    // The manifest names the unit of the target's settings, the same as the import block, not the config's.
+    const manifest = JSON.parse(readFileSync(join(folderOf(setup), 'manifest.json'), 'utf8'));
+    expect(manifest.files[0]).toMatchObject({ mandant: '42', geschaeftsbereich: 7 });
+    expect(readFileSync(join(folderOf(setup), 'ABACUS_Buchungen_20260901-20260930_BSP.protokoll.txt'), 'utf8')).toContain('Mandant: 42, Geschäftsbereich 7');
+  });
+
+  it('writes only the fields of manifestFields into the manifest: no Abacus Mandant for another target', async () => {
+    const setup = exportSetup();
+    expect((await runWith(setup, {}, fakeTarget)).status).toBe('written');
+    const [entry] = JSON.parse(readFileSync(join(folderOf(setup), 'manifest.json'), 'utf8')).files;
+    expect(entry).not.toHaveProperty('mandant');
+    expect(entry).not.toHaveProperty('geschaeftsbereich');
+    const tagged = exportSetup();
+    expect((await runWith(tagged, {}, { ...fakeTarget, manifestFields: () => ({ mandant: '9' }) })).status).toBe('written');
+    expect(JSON.parse(readFileSync(join(folderOf(tagged), 'manifest.json'), 'utf8')).files[0]).toMatchObject({ mandant: '9' });
   });
 });
 
@@ -334,7 +351,7 @@ describe('the checks and the summary do not depend on the target (recorded VIE d
     expect(fake.findings).toEqual(standard.findings);
     expect(withoutPlaceholderCodes(fake.findings).map((f) => f.code)).toEqual([]);
     expect(fake.findings.map((f) => f.value).sort()).toEqual(['V10', 'V13', 'V20']);
-    expect(fake.summary).toContain('Deposits: received 491.00, released 295.00, of it refunded 10.00');
+    expect(fake.summary).toContain('Deposits (Anzahlungen) received, released and refunded:\n  received        491.00\n  released        295.00\n  of it refunded   10.00\n');
   });
 });
 

@@ -9,8 +9,8 @@ import { isErrorFinding, type Finding } from '../core/findings.js';
 import type { LedgerLine, SourceAdapter, SourceProperty } from '../core/source.js';
 import { abacusTarget } from '../abacus/target.js';
 import { checkCoverage, checkUsedMwstCodes, loadMapping, type Mapping } from '../mapping/index.js';
-import { buildBookings, releaseRateOf, taxByRate, type PostedBooking, type PostingOptions, type PostingResult } from '../posting/index.js';
-import { checkAggregates, plausibilityFindings } from './checks.js';
+import { buildBookings, journalTotalCents, releaseRateOf, taxByMwstCode, type PostedBooking, type PostingOptions, type PostingResult } from '../posting/index.js';
+import { checkAggregates, checkMwstCodeRates, plausibilityFindings } from './checks.js';
 import { monthFolder, planOutput, repairCompanions, sha256, writeOutput, type OutputPlan, type WrittenFile } from './output.js';
 import { dayRuleFindings, finalFrom, lastFinalDay, splitPeriod, type DateRange, type PeriodPart } from './period.js';
 import { renderSummary } from './summary.js';
@@ -157,6 +157,7 @@ function concernsProperty(finding: Finding, propertyId: string, config: Config):
 
 async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: ExportRequest, deps: ExportDeps, notes: readonly Finding[]): Promise<PartOutcome> {
   const findings: Finding[] = [...notes];
+  const target = deps.target ?? DEFAULT_TARGET;
   let lines: readonly LedgerLine[] = [];
   let result: PostingResult | undefined;
   /** The target's import block, once the file is rendered. */
@@ -174,6 +175,7 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
       bookings: result?.bookings.length ?? 0,
       ...(result ? { summary: result.summary } : {}),
       ...(importBlock ? { importBlock } : {}),
+      taxReturnLine: (ratePercent) => target.taxReturnLine(ratePercent),
       findings,
     }),
     ...extra,
@@ -187,7 +189,6 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     });
     return failed();
   }
-  const target = deps.target ?? DEFAULT_TARGET;
   findings.push(...currencyFindings(target, deps.loaded.config, inputs.property));
   const { timeZone } = inputs.property;
   const hold = request.holdUntilFinal;
@@ -216,6 +217,7 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     result = (deps.post ?? buildBookings)(lines, mapping, chart, options);
     // The posting rules repeat the coverage check's E-UNMAPPED findings.
     findings.push(...coverage, ...usedCodes, ...result.findings.filter((finding) => finding.code !== 'E-UNMAPPED'));
+    findings.push(...checkMwstCodeRates(lines, result, { mapping, chart }));
     // The plausibility checks assume a clean posting run; with errors the part fails anyway.
     if (!hasError(findings)) findings.push(...plausibilityFindings(lines, result, { mapping, chart, movements: (booking) => target.movements(booking) }));
     if (deps.loaded.config.checks.aggregates) findings.push(...(await aggregateFindings(deps.source, inputs.id, part, lines, chart)));
@@ -242,7 +244,10 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
         from: part.from,
         to: part.to,
         bookings: result?.bookings.length ?? 0,
-        taxByRate: taxByRate(result?.bookings ?? []),
+        journalTotalCents: journalTotalCents(result?.bookings ?? []),
+        currency: target.currency(deps.loaded.config),
+        taxByMwstCode: taxByMwstCode(result?.bookings ?? []),
+        ...target.manifestFields(meta),
         mappingSha256,
         toolVersion: VERSION,
         createdAt: deps.ctx.now().toISOString(),

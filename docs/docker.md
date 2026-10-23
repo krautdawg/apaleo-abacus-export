@@ -162,7 +162,7 @@ mkdir -p data && sudo chown 1000:1000 data
 docker run --rm -w /data -v "$PWD/data:/data" apaleo-abacus-export:local export --month 2026-09 --demo
 ```
 
-Die Datei landet in `./data/demo-output/BSP/2026-09/` und endet auf `_BSP_DEMO.csv`. Lösch `./data/demo-output/` danach; importiere nie eine Demodatei in einen echten Mandanten.
+Die Datei landet in `./data/demo-output/BSP/2026-09/` und endet auf `_BSP_DEMO.xml`. Lösch `./data/demo-output/` danach; importiere nie eine Demodatei in einen echten Mandanten.
 
 ## Aktualisieren
 

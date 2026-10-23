@@ -368,6 +368,8 @@ describe('the Swiss file check', () => {
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/abacus-format.md', 'docs/abacus-import.md']));
     // a05 rewrote the mapping guide and the posting rules for Switzerland.
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/mapping-guide.md', 'docs/posting-rules.md']));
+    // Since a06 the Swiss demo and its example output.
+    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/examples/README.md', 'examples/demo/README.md']));
     expect(existingSwissFiles(['docs/abacus-format.md', 'README.md', 'docs/does-not-exist.md'])).toEqual(
       expect.not.arrayContaining(['docs/does-not-exist.md']),
     );

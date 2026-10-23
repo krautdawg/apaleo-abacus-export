@@ -359,10 +359,12 @@ describe('docs folder', () => {
       'MWST-Code für Vorauszahlungen',
       '**Vereinnahmt**',
       'Hilfskonto',
+      '**Journalsumme**',
+      'journalTotalCents',
     ]) {
       expect(questions, item).toContain(item);
     }
-    expect(questions.match(/^- \[ \]/gm)).toHaveLength(13);
+    expect(questions.match(/^- \[ \]/gm)).toHaveLength(14);
   });
 
   it('links docs/abacus-import.md from the README and docs/configuration.md', () => {
@@ -411,6 +413,8 @@ describe('readme-quickstart CI job', () => {
     expect(runs).toContain('bash -euxo pipefail "$RUNNER_TEMP/quickstart.sh"');
     const demo = runs.at(-1) ?? '';
     expect(demo.startsWith('node dist/cli/main.js export --month 2026-09 --demo --dry-run | tee "$RUNNER_TEMP/demo.txt"\n')).toBe(true);
-    for (const line of ['^Import into Abacus FIBU', '^Totals per Abacus account', '^DEMO Result: dry run']) expect(demo).toContain(`grep -q '${line}`);
+    for (const line of ['^Import into Abacus FIBU', '^Totals per Abacus account', '^  313 3.8 % (Ziffer 343): net ', '^DEMO Result: dry run']) {
+      expect(demo).toContain(`grep -q '${line}`);
+    }
   });
 });

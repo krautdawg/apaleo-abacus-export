@@ -62,11 +62,13 @@ jobs:
         run: |
           node dist/cli/main.js --help > "$RUNNER_TEMP/help.txt"
           grep -qxF 'Usage: apaleo-abacus <command> [options]' "$RUNNER_TEMP/help.txt"
-      - name: Demo dry run without config, secret or network prints the Abacus summary
+      - name: Demo dry run without config, secret or network prints the Swiss Abacus summary in CHF
         run: |
           node dist/cli/main.js export --month 2026-09 --demo --dry-run | tee "$RUNNER_TEMP/demo.txt"
           grep -q '^Import into Abacus FIBU' "$RUNNER_TEMP/demo.txt"
+          grep -q '^  Mandant: 7777, Geschäftsbereich 0, Leitwährung CHF$' "$RUNNER_TEMP/demo.txt"
           grep -q '^Totals per Abacus account' "$RUNNER_TEMP/demo.txt"
+          grep -q '^  313 3.8 % (Ziffer 343): net ' "$RUNNER_TEMP/demo.txt"
           grep -q '^DEMO Result: dry run, nothing written; 1 file(s) passed every check.' "$RUNNER_TEMP/demo.txt"
 
   docker:

@@ -20,7 +20,7 @@ Business days (September 2026, so the demo month 2026-09 is always closed):
 
 The amounts are chosen so that Abacus' check of every booking (the MWST contained in the gross amount) equals apaleo's tax rounded to the cent: the fixture month has no `W-VAT-ROUNDING`.
 
-`examples/demo/apaleo/` holds copies of these files plus two demo-only days (an unpaid night on 2026-09-25 and its write-off on 2026-09-29, see `examples/demo/README.md`), so the demo protocol shows every section; the tests here do not use them.
+The demo (`examples/demo/apaleo/`) no longer copies these files: it is the Swiss "Hotel Beispiel" in CHF, fabricated in the shape of the Swiss fixture month (`ch-month/`) and kept apart from both, see `examples/demo/README.md`.
 
 
 The Swiss fixture month (property `ENG`, CHF, August 2026, with Kurtaxe, a deposit received, released and refunded, an Annullation, an invoice on accounts receivable and a write-off) is in [`ch-month/`](ch-month/README.md).

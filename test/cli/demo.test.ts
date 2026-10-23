@@ -18,36 +18,37 @@ function bareContext(env: Record<string, string> = {}) {
 }
 
 describe('apaleo-abacus export --demo', () => {
-  it('runs the dry run on the bundled data without config, secret or network and marks it DEMO', async () => {
+  it('Demo without credentials: runs the dry run on the bundled Swiss data without config, secret or network, in CHF with 311, 312 and 313, and marks it DEMO', async () => {
     const ctx = bareContext();
     expect(await runCli(['export', '--month', '2026-09', '--demo', '--dry-run'], ctx)).toBe(0);
     const out = ctx.out();
     expect(out.startsWith('DEMO: bundled sample data of the fabricated "Hotel Beispiel"')).toBe(true);
-    expect(out).toContain('Property BSP, 2026-09-01 to 2026-09-30: 31 apaleo lines, 26 Abacus bookings');
+    expect(out).toContain('Property BSP, 2026-09-01 to 2026-09-30: 26 apaleo lines, 21 Abacus bookings');
     expect(out).toContain('Never import a demo file into a real Abacus Mandant.');
     // Every section of the summary has content.
     for (const text of [
-      `Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):\n  File: ${FILE}\n  Bookings: 26 Einzelbuchungen`,
-      '  Mandant: 7777, Geschäftsbereich 0, Leitwährung EUR',
-      '  Belegnummern: 0901000001 to 0901000026',
-      '  MWST-Codes: V10 (10 %; tax -58.48 EUR), V20 (20 %; tax -7.67 EUR)',
+      `Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):\n  File: ${FILE}\n  Bookings: 21 Einzelbuchungen`,
+      '  Journal total: 2144.42 CHF',
+      '  Mandant: 7777, Geschäftsbereich 0, Leitwährung CHF',
+      '  Belegnummern: 0901000001 to 0901000021',
+      '  MWST-Codes: 311 (8.1 %; tax -6.48 CHF), 312 (2.6 %; tax -0.39 CHF), 313 (3.8 %; tax -20.14 CHF)',
       'Totals per Abacus account',
-      '  3805      50.00    0.00    50.00',
-      '  V10 10 %: net 634.82, tax 63.48, gross 698.30, apaleo VAT 63.48, difference 0.00',
-      '  V20 20 %: net 38.33, tax 7.67, gross 46.00',
-      'Deposits and their MWST per MWST-Code and rate (received minus released):\n  no MWST-Code 0 %: net 0.00',
-      'Written-off receivables (Debitorenverluste) and the MWST correction per MWST-Code and rate:\n  V10 10 %: net 50.00, tax 5.00, gross 55.00',
-      'Kurtaxe and other guest levies (apaleo city tax): 6.40',
-      'Payments per clearing account:\n  account  amount\n  1000      24.00\n  1090     556.70',
-      'Deposits: received 395.00, released 395.00, of it refunded 10.00',
-      'Accounts receivable (Debitoren, Soll positive): 115.00',
-      'both sides on the same Abacus account      5            325.70',
-      // Until a06 brings Swiss demo data, the demo mapping books 10 and 20 % with the placeholder codes V10 and V20.
-      'Findings:\n  W-MWST-CODE-UNCHECKED (mwst_code): lines 3, 6, 15, 33 of the mapping file: the tool does not know the MWST-Code V10 ',
-      '  W-MWST-CODE-UNCHECKED (mwst_code): line 7 of the mapping file: the tool does not know the MWST-Code V20 ',
+      '  3805     115.61    0.00   115.61',
+      '  311 8.1 % (Ziffer 303): net 80.00, tax 6.48, gross 86.48, apaleo VAT 6.48, difference 0.00',
+      '  312 2.6 % (Ziffer 313): net 15.00, tax 0.39, gross 15.39, apaleo VAT 0.39, difference 0.00',
+      '  313 3.8 % (Ziffer 343): net 645.61, tax 24.53, gross 670.14, apaleo VAT 24.53, difference 0.00',
+      'Deposits and their MWST per MWST-Code and rate (received minus released):\n  313 3.8 % (Ziffer 343): net 0.00',
+      'Written-off receivables (Debitorenverluste) and the MWST correction per MWST-Code and rate:\n  313 3.8 % (Ziffer 343): net 115.61, tax 4.39, gross 120.00',
+      'Kurtaxe and other guest levies per account (apaleo city tax, total 12.60):\n  2210 without MWST: 12.60',
+      'Payments per clearing account:\n  account  amount\n  1000     240.15\n  1090     296.00',
+      'Deposits (Anzahlungen) received, released and refunded:\n  received        311.40\n  released        311.40\n  of it refunded  103.80',
+      'Accounts receivable (Debitoren, Soll positive): 208.46',
+      'both sides on the same Abacus account      5            537.01',
+      'Findings:\n  none',
     ]) {
       expect(out).toContain(text);
     }
+    expect(out).not.toContain('EUR');
     expect(out).toContain('File: a real run writes demo-output/BSP/2026-09/');
     expect(out).toContain('DEMO Result: dry run, nothing written; 1 file(s) passed every check.');
     expect(out).not.toContain('W-RECENT-DAY');
@@ -75,11 +76,15 @@ describe('apaleo-abacus export --demo', () => {
     // The example file with "DEMO " before every Text1, and nothing else changed.
     expect(demo).toBe(decode(EXAMPLE).replace(/<Text1>/g, '<Text1>DEMO '));
     const texts = [...demo.matchAll(/<Text1>([^<]*)<\/Text1>/g)].map((match) => match[1] ?? '');
-    expect(texts).toHaveLength(2 * 26);
+    expect(texts).toHaveLength(2 * 21);
     expect(texts.every((text) => text.startsWith('DEMO '))).toBe(true);
     const protocol = readFileSync(join(folder, PROTOCOL), 'utf8').split('\n');
     expect(protocol[0]).toBe('DEMO');
     expect(protocol[1]).toMatch(/^DEMO: bundled sample data/);
+    expect(protocol).toContain('  Mandant: 7777, Geschäftsbereich 0, Leitwährung CHF');
+    expect(JSON.parse(readFileSync(join(folder, 'manifest.json'), 'utf8'))).toMatchObject({
+      files: [{ file: FILE, status: 'current', bookings: 21, journalTotalCents: 214_442, currency: 'CHF', mandant: '7777', geschaeftsbereich: 0 }],
+    });
     expect(ctx.fetchCalls).toEqual([]);
 
     // Running the demo again finds its own file and changes nothing.

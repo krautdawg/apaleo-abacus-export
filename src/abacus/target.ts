@@ -1,5 +1,6 @@
 import { abacusUnitOf } from '../core/config.js';
 import { fileTag, type TargetFileMeta, type TargetWriter } from '../export/target.js';
+import { mwstZiffer } from './format.js';
 import { importBlock } from './import-block.js';
 import { abacusMovements } from './movements.js';
 import type { AbacusBooking, AbacusRenderOptions } from './types.js';
@@ -53,9 +54,17 @@ export function createAbacusTarget(settingsOf: (meta: TargetFileMeta) => AbacusT
       return { bytes, findings: notes };
     },
     importBlock: (bookings, meta) => importBlock(bookings, optionsOf(meta), fileName(meta)),
+    manifestFields: (meta) => {
+      const { mandant, geschaeftsbereich } = settingsOf(meta);
+      return { mandant, geschaeftsbereich };
+    },
     // The file has no creation time: unchanged means byte-identical.
     sameContent: (existing, next) => existing.length === next.length && existing.every((byte, i) => byte === next[i]),
     movements: abacusMovements,
+    taxReturnLine: (ratePercent) => {
+      const ziffer = mwstZiffer(ratePercent);
+      return ziffer && `Ziffer ${ziffer}`;
+    },
     advice: {
       currency:
         "An Abacus booking is written in the Mandant's Leitwährung (abacus.leitwaehrung), without foreign-currency data, " +

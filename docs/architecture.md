@@ -100,6 +100,8 @@ Nur `src/abacus/` kennt das Dateiformat. Der Export (`src/export/`) schreibt Dat
 - die gerenderten Bytes und die Befunde über geänderte Werte (`render`, wie `renderXmlBuchungen` in `src/abacus/writer.ts`, dessen `AbacusValidationError` aus `src/abacus/errors.ts` als `FindingsError` alle Fehler auf einmal enthält);
 - den Vergleich „unverändert“ (`sameContent`), den Titel des Protokolls und den Block zum Import im Protokoll (`importBlock`, bei Abacus „Import into Abacus FIBU“);
 - das Bewegungsmodell einer Buchung (`movements`): um wie viel jedes Konto der Buchung sich im Ziel bewegt, ohne die Steuerbuchung auf dem eigenen Steuerkonto. Die Plausibilitätsprüfung `E-ACCOUNT-BALANCE` vergleicht damit die Buchungen mit apaleo, ohne Feldnamen des Ziels zu kennen;
+- die Zeile der Steuerabrechnung zu einem Satz (`taxReturnLine`, bei Abacus die Ziffer der MWST-Abrechnung: 8,1 % Ziffer 303, 2,6 % Ziffer 313, 3,8 % Ziffer 343, aus der Tabelle in `src/abacus/format.ts`), die die Übersicht neben jedem MWST-Code und Satz zeigt;
+- die eigenen Felder des Ziels im Manifest (`manifestFields`, bei Abacus `mandant` und `geschaeftsbereich`, aus denselben Einstellungen wie der Block zum Import); ein Ziel ohne solche Einstellungen gibt `{}` zurück;
 - die Währung, in der die Datei bucht (`currency`, bei Abacus `abacus.leitwaehrung`): Ein Hotel oder eine apaleo-Zeile in einer anderen Währung lehnt der Export mit `E-CURRENCY` ab, denn das Tool rechnet nicht um;
 - die Hinweise (`advice`) für die Meldungen `E-PERIOD-OVERLAP`, `E-FILE-EXISTS` und `E-CURRENCY`: welches Programm die Datei importiert, welche Konfigurationswerte die Datei ändern, wie der Treuhänder eine importierte Datei rückgängig macht und warum die Datei keine andere Währung tragen kann.
 

@@ -11,7 +11,7 @@ export {
   resolutionRate,
   type ReleaseRate,
 } from './release.js';
-export { taxByRate } from './summary.js';
+export { journalTotalCents, taxByMwstCode } from './summary.js';
 export { inclusiveCheckTax, normaliseTaxes, taxFromGross } from './taxes.js';
 export {
   SKIP_REASONS,

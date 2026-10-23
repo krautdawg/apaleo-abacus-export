@@ -19,11 +19,25 @@ function creditedAmount(line: LedgerLine, types: ReadonlySet<string> | string): 
   return (has(line.credit.type) ? line.grossCents : 0) - (has(line.debit.type) ? line.grossCents : 0);
 }
 
-/** The MWST of the bookings per rate, signed as owed (a credited Single account owes it), so a write-off or an allowance reduces it. */
-export function taxByRate(bookings: readonly Pick<AbacusBooking, 'tax'>[]): { ratePercent: number; taxCents: number }[] {
-  const totals = new Map<number, number>();
-  for (const { tax } of bookings) if (tax) totals.set(tax.percent, (totals.get(tax.percent) ?? 0) - tax.taxCents);
-  return [...totals].sort(([a], [b]) => a - b).map(([ratePercent, taxCents]) => ({ ratePercent, taxCents }));
+/**
+ * The MWST of the bookings per MWST-Code and rate, signed as owed (a credited Single account owes it),
+ * so a write-off or an allowance reduces it; by rate, then code.
+ */
+export function taxByMwstCode(bookings: readonly Pick<AbacusBooking, 'tax'>[]): { mwstCode: string; ratePercent: number; taxCents: number }[] {
+  const totals = new Map<string, { mwstCode: string; ratePercent: number; taxCents: number }>();
+  for (const { tax } of bookings) {
+    if (!tax) continue;
+    const key = `${tax.mwstCode}\u0000${tax.percent}`;
+    const entry = totals.get(key) ?? { mwstCode: tax.mwstCode, ratePercent: tax.percent, taxCents: 0 };
+    entry.taxCents -= tax.taxCents;
+    totals.set(key, entry);
+  }
+  return [...totals.values()].sort((a, b) => a.ratePercent - b.ratePercent || a.mwstCode.localeCompare(b.mwstCode));
+}
+
+/** The journal total: every Einzelbuchung moves its gross amount once to Soll and once to Haben. */
+export function journalTotalCents(bookings: readonly Pick<AbacusBooking, 'grossCents'>[]): number {
+  return bookings.reduce((sum, booking) => sum + booking.grossCents, 0);
 }
 
 interface VatEntry {
