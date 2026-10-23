@@ -5,17 +5,17 @@ import type { AccountRef, LedgerLine, LedgerTax } from '../core/source.js';
 import { VAT_RELEVANT_TYPES, type MappingRow } from '../mapping/index.js';
 import { accountText, lineFinding, percentText, rowText } from './describe.js';
 import { depositDirection, inferredTaxCents, isUntaxedRelease, type ReleaseRate } from './release.js';
-import { bmdCheckTax, taxPercents, taxTotal } from './taxes.js';
+import { inclusiveCheckTax, taxPercents, taxTotal } from './taxes.js';
 
 /** One side of a ledger line with its mapping row. */
 export interface PostedSide {
   ref: AccountRef;
   row: MappingRow;
-  /** The row's Steuercode; undefined without one. */
-  steuercode: number | undefined;
-  /** The VAT rate BMD books on the row (`bmd_vat_percent`, 0 without Steuercode). */
+  /** The row's MWST-Code; undefined without one. */
+  mwstCode: string | undefined;
+  /** The MWST rate Abacus books on the row (`mwst_percent`, 0 without MWST-Code). */
   rate: number;
-  /** The row has a Steuercode: this side is the VAT side and leads the booking as `konto`. */
+  /** The row has an MWST-Code: this side is the VAT side and goes into `SingleInformation`. */
   vat: boolean;
 }
 
@@ -34,9 +34,9 @@ export interface GuardResult {
   findings: Finding[];
   /** True when a finding blocks the booking. */
   failed: boolean;
-  /** The tax the booking carries, unsigned: apaleo's tax rounded to cents, or the inferred tax of a deposit line. */
+  /** The tax the booking carries, unsigned: apaleo's tax rounded to Rappen, or the inferred tax of a deposit line. */
   steuerCents: number;
-  /** BMD's check value minus the booked tax, signed like the line, when it is a one-cent rounding difference. */
+  /** Abacus' check value minus the booked tax, signed like the line, when it is a one-Rappen rounding difference. */
   roundingCents: number;
   /** The booked tax differs by one cent from the VAT apaleo moved (a `PostPrepaymentVat` pair): the VAT check allows that cent. */
   apaleoRounding: boolean;
@@ -52,13 +52,15 @@ function sideText(side: PostedSide): string {
 }
 
 /**
- * The VAT consistency guard (design decision 2). BMD receives the tax
- * explicitly, so the guard checks that the VAT-side row books apaleo's rate,
- * that the tax has the sign of the gross amount, and that BMD's own check of
- * the booking (`round(|betrag| × rate / 100)`) is within one cent of the tax.
+ * The VAT consistency guard (design decision 6). Abacus receives the tax
+ * explicitly with an inclusive gross amount, so the guard checks that the
+ * VAT-side row books apaleo's rate, that the tax has the sign of the gross
+ * amount, and that Abacus' own check value of the booking
+ * (`round(|gross| × rate / (100 + rate))`) is within one Rappen of the tax.
  * The tax is apaleo's per-line tax rounded half away from zero; for an untaxed
  * deposit line it comes from the inferred rate (`PostPrepaymentVat` pair or
- * chart). Sub-cent digits of apaleo's tax never cause a finding.
+ * chart). Sub-Rappen digits of apaleo's tax never cause a finding, and nothing
+ * is rounded to 5 Rappen.
  */
 export function guardVat(input: GuardInput): GuardResult {
   const { line, taxes, release, vatSide } = input;
@@ -81,7 +83,7 @@ export function guardVat(input: GuardInput): GuardResult {
         `it settles a deposit without a VAT amount; the tool books it at ${percentText(release.rate)}, the VAT rate of account ` +
           `${release.account} in the apaleo chart of accounts, with no PostPrepaymentVat line to check the amount against` +
           `${release.rate === 0 ? ', so the booking carries no tax' : `, and computes the tax ${formatCents(result.steuerCents)} from the gross amount`}. ` +
-          'Have your Steuerberatung check the deposit bookings',
+          'Have your Treuhänder check the deposit bookings',
       ),
     );
     return result;
@@ -95,22 +97,22 @@ export function guardVat(input: GuardInput): GuardResult {
       : `${isUntaxedRelease(line) ? 'settles' : 'books'} a deposit taxed at ${percentText(expected)}${source}`;
     return fail(
       'E-VAT-MISSING',
-      `it ${what}, but neither side has a Steuercode (debit on ${rowText(input.debit.row)}, credit on ${rowText(input.credit.row)}), so BMD books no tax. ` +
-        `Change the row for ${sideText(fix)} to a BMD account with the Umsatzsteuer code and ${percentText(expected)}`,
+      `it ${what}, but neither side has an MWST-Code (debit on ${rowText(input.debit.row)}, credit on ${rowText(input.credit.row)}), so Abacus books no MWST. ` +
+        `Change the row for ${sideText(fix)} to an Abacus account with the MWST-Code and ${percentText(expected)}`,
     );
   }
   if (!taxed && !release && vatSide.rate > 0) {
     return fail(
       'E-VAT-UNEXPECTED',
-      `apaleo charged no VAT on it, but ${sideText(vatSide)} books ${percentText(vatSide.rate)} with Steuercode ${vatSide.steuercode}. ` +
-        'Change that row to a BMD account without tax, or check the VAT setting of the account in apaleo',
+      `apaleo charged no VAT on it, but ${sideText(vatSide)} books ${percentText(vatSide.rate)} with the MWST-Code ${vatSide.mwstCode}. ` +
+        'Change that row to an Abacus account without MWST, or check the VAT setting of the account in apaleo',
     );
   }
   if (vatSide.rate !== expected) {
     return fail(
       'E-VAT-RATE',
       `apaleo taxed it at ${percentText(expected)}${source}, but ${sideText(vatSide)} books ${percentText(vatSide.rate)}. ` +
-        `Change that row to a BMD account for ${percentText(expected)} (a period taxed at other rates needs its own mapping)`,
+        `Change that row to an Abacus account and MWST-Code for ${percentText(expected)} (a period taxed at other rates needs its own mapping)`,
     );
   }
 
@@ -124,7 +126,7 @@ export function guardVat(input: GuardInput): GuardResult {
     result.steuerCents = inferredTaxCents(line, release);
   }
   if (release?.kind === 'pair' && !checkPair(result, line, release)) return result;
-  if (result.findings.length === 0 && expected > 0) checkBmdRounding(result, line, expected);
+  if (result.findings.length === 0 && expected > 0) checkInclusiveRounding(result, line, expected);
   return result.failed ? result : inferred();
 }
 
@@ -155,14 +157,14 @@ function checkPair(result: GuardResult, line: LedgerLine, release: Extract<Relea
   return false;
 }
 
-/** BMD's check of the booking, `round(|betrag| × rate / 100)`, against the tax it carries. */
-function checkBmdRounding(result: GuardResult, line: LedgerLine, rate: number): void {
-  const betrag = Math.abs(line.grossCents) - result.steuerCents;
-  const check = bmdCheckTax(betrag, rate);
+/** Abacus' check value of an inclusive booking, `round(|gross| × rate / (100 + rate))`, against the tax it carries. */
+function checkInclusiveRounding(result: GuardResult, line: LedgerLine, rate: number): void {
+  const gross = Math.abs(line.grossCents);
+  const check = inclusiveCheckTax(gross, rate);
   const difference = check - result.steuerCents;
   if (difference === 0) return;
   const describe =
-    `BMD checks the tax as ${percentText(rate)} of the Betrag ${formatCents(betrag)}, which is ${formatCents(check)}, ` +
+    `Abacus checks the MWST as ${percentText(rate)} contained in the gross amount ${formatCents(gross)}, which is ${formatCents(check)}, ` +
     `but the booking carries apaleo's tax ${formatCents(result.steuerCents)}`;
   if (Math.abs(difference) === 1) {
     result.roundingCents += Math.sign(line.grossCents) * difference;

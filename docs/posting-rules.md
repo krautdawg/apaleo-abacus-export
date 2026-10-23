@@ -1,8 +1,20 @@
-# Buchungsregeln: von apaleo-Zeilen zu BMD-Buchungen
+# Buchungsregeln: von apaleo-Zeilen zu Abacus-Buchungen
 
-`buildBookings(lines, mapping, chart, options)` in `src/posting` macht aus den Zeilen von `export-gross-daily` in apaleo die Buchungen eines BMD-Buchungsimports. Die Funktion ist rein: Dieselben Zeilen und dieselbe Kontenzuordnung ergeben immer dasselbe Ergebnis. Jede apaleo-Zeile landet an genau einer von drei Stellen: in einer Buchung, in der Liste der übersprungenen Zeilen (mit Grund und Betrag) oder in einem Befund mit `E-`, der den Export blockiert.
+`buildBookings(lines, mapping, chart, options)` in `src/posting` macht aus den Zeilen von `export-gross-daily` in apaleo die Einzelbuchungen einer Abacus-Datei (AbaConnect „XML Buchungen“). Die Funktion ist rein: Dieselben Zeilen und dieselbe Kontenzuordnung ergeben immer dasselbe Ergebnis. Jede apaleo-Zeile landet an genau einer von drei Stellen: in einer Buchung, in der Liste der übersprungenen Zeilen (mit Grund und Betrag) oder in einem Befund mit `E-`, der den Export blockiert.
 
 Keine Gewähr, keine Steuerberatung: Die steuerlichen Entscheidungen stecken in der Kontenzuordnung, und die muss deine Steuerberatung freigeben. Die Regeln unten stellen nur sicher, dass BMD die USt bucht, die apaleo berechnet hat.
+
+## Abacus: die Seite mit MWST-Code kommt in SingleInformation
+
+Jede Abacus-Buchung hat ein Konto in `CollectiveInformation` und eines in `SingleInformation`; nur `SingleInformation` trägt die MWST (`TaxData`). Deshalb gilt:
+
+- Das Konto, dessen Zeile einen MWST-Code hat (Erlös, Anzahlung, Debitorenverlust), steht in `SingleInformation`, das andere in `CollectiveInformation`.
+- `DebitCredit` ist die Seite des Kontos in `CollectiveInformation`: `D`, wenn die apaleo-Zeile es belastet, `C`, wenn sie es entlastet; ein negativer Bruttobetrag tauscht die Seiten.
+- Der Betrag ist der Bruttobetrag ohne Vorzeichen. Die MWST ist die genaue Steuer von apaleo, auf den Rappen gerundet, negativ, wenn das MWST-Konto im Haben steht, positiv, wenn es im Soll steht. Auf 5 Rappen wird nie gerundet.
+- Ohne MWST-Seite kommt ein Erlös- oder Debitorenverlustkonto in `SingleInformation`, damit eine Kostenstelle auf einer Belastung ohne MWST wie auf ihrer Gutschrift steht; sonst steht das belastete Konto in `CollectiveInformation` mit `D`.
+- Ein MWST-Code auf einer Zahlung, einer Gästeforderung oder einem Debitor stoppt die Zeile (`E-MWST-CODE-NOT-ALLOWED`), zwei Seiten mit MWST-Code ebenso (`E-TWO-VAT-SIDES`).
+
+Die Prüfung der MWST pro Zeile vergleicht die Steuer von apaleo mit der MWST, die im Bruttobetrag steckt (`round(Brutto × Satz / (100 + Satz))`); ein Rappen Unterschied ist `W-VAT-ROUNDING`, mehr ist `E-VAT-AMOUNT`. Die Abschnitte unten beschreiben die Regeln noch mit den Begriffen und Beispielen der früheren BMD-Fassung (österreichische Sätze); die Schweizer Fassung mit Kurtaxe, Anzahlungen und Annullationen folgt.
 
 ## Eine Buchung pro Zeile
 
@@ -56,7 +68,7 @@ Eine erhaltene oder erstattete Anzahlung ohne `taxes[]` nimmt den Satz einer `Po
 
 ## Österreichische Sonderfälle
 
-Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispielzeilen stammen aus dem erfundenen österreichischen Testmonat (`test/fixtures/apaleo/at-month/`, Hotel Beispiel Tirol, August 2026) und stehen so in `test/golden/bmd/at-month.csv`; der Testmonat bucht unter dem Symbol `AR`, in einer echten Einrichtung steht dort das eigene Symbol der Kanzlei ([bmd-import.md](bmd-import.md#buchungssymbol-anlegen)) (Spalten `satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;steuercode;betrag;steuer;text;kost;extbelegnr;gegenbuchkz;verbuchkz`).
+Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispielzeilen stammen aus dem früheren österreichischen Testmonat der BMD-Fassung (Hotel Beispiel Tirol, August 2026, unter dem Symbol `AR`; [bmd-import.md](bmd-import.md#buchungssymbol-anlegen)) (Spalten `satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;steuercode;betrag;steuer;text;kost;extbelegnr;gegenbuchkz;verbuchkz`).
 
 **Anzahlung, erhalten, aufgelöst und erstattet.** Die erhaltene Anzahlung trägt die USt bei Erhalt (Mindest-Istbesteuerung) mit dem normalen Umsatzsteuer-Code; Auflösung und Erstattung buchen sie zurück, mit positivem Betrag und positiver Steuer auf dem Anzahlungskonto:
 
@@ -103,10 +115,10 @@ Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem ei
 
 ## Felder
 
-- **Buchungssymbol**: `bmd.buchsymbol` (oder `properties[].buchsymbol`). Eine Zeile ohne USt-Seite mit einem Zahlungskonto bekommt `bmd.buchsymbolZahlung` (oder `properties[].buchsymbolZahlung`), sonst ebenfalls das Hauptsymbol.
-- **extbelegnr**: die Belegnummer aus apaleo (Rechnung, Referenz des Zahlungsdienstleisters, …), wenn `posting.extbelegnr` auf `receipt` steht (Standard) und es eine gibt, sonst die Reservierungsreferenz. Der BMD-Writer bereinigt sie.
-- **text**: eine deutsche Bezeichnung ohne Gästenamen, gekürzt auf 40 Zeichen: `Erlös Logis 10 %` oder `Erlösminderung …` nach Seite und Vorzeichen, `Anzahlung 10 %`, `Umbuchung Anzahlung`, `Auflösung Anzahlung 13 %`, `Erstattung Anzahlung`, `Zahlung Visa` oder `Erstattung …` (englische Namen der Zahlungsarten übersetzt oder weggelassen), `Forderung an Debitor`, `Forderungsverlust 10 %`, `Ortstaxe`. Konten vom Typ Receivables, AccountsReceivable und Liabilities außerhalb des globalen Buchungsjournals nutzen den Namen ihres globalen Elternkontos oder eine feste Bezeichnung, nie ihren eigenen Namen, denn der kann der eines Gastes sein.
-- **kost**: nur aus der Zeile von `konto`, und nur, wenn das eine Erlös- oder Forderungsverlustzeile ist. Auf Zahlungen, Personenkonten, Anzahlungen, Ortstaxe und Verrechnungskonten bleibt `kost` leer, denn auf einer Zahlung liest BMD es als Belegnummer der bezahlten Rechnung.
+- **Text1**: eine Bezeichnung in Schweizer Hochdeutsch ohne Gästenamen, gekürzt auf 80 Zeichen: `Erlös Beherbergung 3,8 %` oder `Erlösminderung …` nach Seite und Vorzeichen, `Anzahlung 3,8 %`, `Umbuchung Anzahlung`, `Auflösung Anzahlung 8,1 %`, `Rückzahlung Anzahlung`, `Zahlung Visa` oder `Rückzahlung …` (englische Namen der Zahlungsarten übersetzt oder weggelassen), `Forderung an Debitor`, `Debitorenverlust 3,8 %`, `Kurtaxe`. Konten vom Typ Receivables, AccountsReceivable und Liabilities ausserhalb des globalen Buchungsjournals nutzen den Namen ihres globalen Elternkontos oder eine feste Bezeichnung (`Gästeforderung`, `Debitor`, `Anzahlung Gast`), nie ihren eigenen Namen, denn der kann der eines Gastes sein.
+- **Text2**: die Belegnummer aus apaleo (Rechnung, Referenz des Zahlungsdienstleisters, …), wenn `posting.text2` auf `receipt` steht (Standard) und es eine gibt, sonst die Reservationsreferenz. Nie ein Gastname.
+- **DocumentNumber**: die Belegnummer, die das Tool bildet (Monat und Tag des ersten Tags der Datei und ein Zähler).
+- **Kostenstelle** (`BookingLevel1`): nur aus der Zeile des Kontos in `SingleInformation`, und nur, wenn das eine Erlös- oder Debitorenverlustzeile ist. Auf Zahlungen, Debitoren, Anzahlungen, Kurtaxe und Transferkonten bleibt sie leer, denn Abacus nimmt eine Kostenstelle nur auf Erfolgskonten an.
 
 ## Übersicht
 

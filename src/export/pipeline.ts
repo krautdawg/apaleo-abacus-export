@@ -2,15 +2,14 @@ import { basename, join, resolve } from 'node:path';
 import type { CommandContext } from '../cli/context.js';
 import { VERSION } from '../cli/version.js';
 import { ChartIndex } from '../core/chart.js';
-import { abacusUnitKey, abacusUnitOf, buchsymboleOf, sharedBuchsymbolFindings, sharedMandantFindings, type Config, type LoadedConfig } from '../core/config.js';
+import { abacusUnitKey, abacusUnitOf, sharedMandantFindings, type Config, type LoadedConfig } from '../core/config.js';
 import { localDateIn, nextDay } from '../core/date.js';
 import { FindingsError, UserError } from '../core/errors.js';
 import { isErrorFinding, type Finding } from '../core/findings.js';
-import { formatCents } from '../core/money.js';
 import type { LedgerLine, SourceAdapter, SourceProperty } from '../core/source.js';
-import { bmdTarget } from '../bmd/target.js';
-import { checkCoverage, loadMapping, type Mapping } from '../mapping/index.js';
-import { buildBookings, journalTotals, releaseRateOf, taxByRate, type PostedBooking, type PostingOptions, type PostingResult } from '../posting/index.js';
+import { abacusTarget } from '../abacus/target.js';
+import { checkCoverage, checkUsedMwstCodes, loadMapping, type Mapping } from '../mapping/index.js';
+import { buildBookings, releaseRateOf, taxByRate, type PostedBooking, type PostingOptions, type PostingResult } from '../posting/index.js';
 import { checkAggregates, plausibilityFindings } from './checks.js';
 import { monthFolder, planOutput, repairCompanions, sha256, writeOutput, type OutputPlan, type WrittenFile } from './output.js';
 import { dayRuleFindings, finalFrom, lastFinalDay, splitPeriod, type DateRange, type PeriodPart } from './period.js';
@@ -47,11 +46,11 @@ export interface ExportDeps {
 }
 
 /** The target the export writes when the caller names none. */
-export const DEFAULT_TARGET: TargetWriter<PostedBooking> = bmdTarget;
+export const DEFAULT_TARGET: TargetWriter<PostedBooking> = abacusTarget;
 
 /**
- * BMD files have no fiscal-year field, so a file only has to stay inside one
- * calendar month: the period is split as if the fiscal year began on 1 January.
+ * A file only has to stay inside one calendar month (one MWST period and one
+ * fiscal year of the Mandant): the period is split as if the fiscal year began on 1 January.
  */
 export const CALENDAR_YEAR_START = '01-01';
 
@@ -85,7 +84,7 @@ export interface PartOutcome {
  */
 export async function runExport(request: ExportRequest, deps: ExportDeps): Promise<PartOutcome[]> {
   const parts = splitPeriod(request.period, CALENDAR_YEAR_START);
-  const shared = [...sharedBuchsymbolFindings(deps.loaded.config), ...sharedMandantFindings(deps.loaded.config)];
+  const shared = sharedMandantFindings(deps.loaded.config);
   const properties = await deps.source.listProperties();
   const outcomes: PartOutcome[] = [];
   for (const propertyId of request.propertyIds) {
@@ -124,7 +123,7 @@ class PropertyInputs {
     this.mappingFile ??= (async () => {
       let bytes = new Uint8Array();
       const readFile = async (path: string) => (bytes = await this.deps.ctx.fs.readFile(path));
-      const mapping = await loadMapping(this.mappingPath, { sachkontenlaenge: this.deps.loaded.config.bmd.sachkontenlaenge, readFile });
+      const mapping = await loadMapping(this.mappingPath, { readFile });
       return { mapping, sha256: sha256(bytes) };
     })();
     return this.mappingFile;
@@ -149,16 +148,9 @@ export function notFinalFinding(part: DateRange, timeZone: string, finalAfter: s
   };
 }
 
-/**
- * A `W-BUCHSYMBOL-SHARED` finding concerns the property when the shared symbol is one of its own,
- * a `W-MANDANT-SHARED` finding when the shared Mandant and Geschäftsbereich are its own.
- */
+/** A `W-MANDANT-SHARED` finding concerns the property when the shared Mandant and Geschäftsbereich are its own. */
 function concernsProperty(finding: Finding, propertyId: string, config: Config): boolean {
-  if (finding.code === 'W-MANDANT-SHARED') {
-    return config.abacus !== undefined && finding.value === abacusUnitKey(abacusUnitOf(config.abacus, config.properties, propertyId));
-  }
-  const { buchsymbol, buchsymbolZahlung } = buchsymboleOf(config, propertyId);
-  return finding.value === buchsymbol || finding.value === buchsymbolZahlung;
+  return finding.value === abacusUnitKey(abacusUnitOf(config.abacus, config.properties, propertyId));
 }
 
 async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: ExportRequest, deps: ExportDeps, notes: readonly Finding[]): Promise<PartOutcome> {
@@ -212,16 +204,18 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     lines = ledger;
     findings.push(...currencyFindings(target, deps.loaded.config, inputs.property, lines));
     if (hasError(findings)) return failed();
-    const { bmd, posting } = deps.loaded.config;
-    const { sachkontenlaenge, personenkontenlaenge, dialect } = bmd;
-    const options: PostingOptions = { ...posting, dialect, sachkontenlaenge, personenkontenlaenge, ...buchsymboleOf(deps.loaded.config, inputs.id) };
+    const { abacus, posting } = deps.loaded.config;
+    const options: PostingOptions = { ...posting, mwstCodes: abacus.mwstCodes };
 
-    const coverage = checkCoverage(mapping, lines, chart, { rateOf: releaseRateOf(lines, chart), sachkontenlaenge, personenkontenlaenge, dialect });
+    const coverageOptions = { rateOf: releaseRateOf(lines, chart), mwstCodes: abacus.mwstCodes };
+    const coverage = checkCoverage(mapping, lines, chart, coverageOptions);
+    // A swapped or unknown MWST-Code passes the posting guard (it compares rates only), and scheduled runs never call mapping check.
+    const usedCodes = checkUsedMwstCodes(mapping, lines, chart, coverageOptions);
     result = (deps.post ?? buildBookings)(lines, mapping, chart, options);
     // The posting rules repeat the coverage check's E-UNMAPPED findings.
-    findings.push(...coverage, ...result.findings.filter((finding) => finding.code !== 'E-UNMAPPED'));
+    findings.push(...coverage, ...usedCodes, ...result.findings.filter((finding) => finding.code !== 'E-UNMAPPED'));
     // The plausibility checks assume a clean posting run; with errors the part fails anyway.
-    if (!hasError(findings)) findings.push(...plausibilityFindings(lines, result, { mapping, chart }));
+    if (!hasError(findings)) findings.push(...plausibilityFindings(lines, result, { mapping, chart, movements: (booking) => target.movements(booking) }));
     if (deps.loaded.config.checks.aggregates) findings.push(...(await aggregateFindings(deps.source, inputs.id, part, lines, chart)));
     if (hasError(findings)) return failed();
     if (result.bookings.length === 0) {
@@ -238,7 +232,6 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     if (plan.action === 'refuse') findings.push(plan.finding);
     if (hasError(findings)) return outcome('failed', { path });
     if (request.dryRun) return outcome('checked', { path, plan: plan.action });
-    const totals = journalTotals(result.bookings);
     const companions = (status: PartStatus, fileBytes: Uint8Array): WrittenFile => ({
       path,
       bytes: fileBytes,
@@ -247,8 +240,6 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
         from: part.from,
         to: part.to,
         bookings: result?.bookings.length ?? 0,
-        sollTotal: formatCents(totals.sollCents),
-        habenTotal: formatCents(totals.habenCents),
         taxByRate: taxByRate(result?.bookings ?? []),
         mappingSha256,
         toolVersion: VERSION,
@@ -372,13 +363,13 @@ export const DEMO_MARKER = 'DEMO';
 
 /** The line after `DEMO_MARKER` in a demo protocol, and the first line of the demo's output (`export --demo`). */
 export const DEMO_NOTICE =
-  'DEMO: bundled sample data of the fabricated "Hotel Beispiel" in Wien, not read from apaleo. Every Buchungstext starts with "DEMO ". ' +
-  'Never import a demo file into a real BMD Mandant.';
+  'DEMO: bundled sample data of the fabricated "Hotel Beispiel", not read from apaleo. Every Text1 starts with "DEMO ". ' +
+  'Never import a demo file into a real Abacus Mandant.';
 
 function protocolText(title: string, summary: string, path: string, bytes: Uint8Array, mappingSha256: string, now: Date, demo: boolean): string {
   return [
     ...(demo ? [DEMO_MARKER, DEMO_NOTICE] : []),
-    `${title}. No warranty, not tax advice: have your Steuerberater check the bookings.`,
+    `${title}. No warranty, not tax advice: have your Treuhänder check the bookings.`,
     '',
     summary,
     `File: ${basename(path)}`,

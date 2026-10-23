@@ -1,52 +1,56 @@
-import { DIALECTS, DEFAULT_DIALECT } from '../bmd/format.js';
-import type { BmdDialect } from '../bmd/types.js';
 import type { ChartIndex } from '../core/chart.js';
 import { REPORT_PROBLEM_HINT } from '../core/errors.js';
 import type { Finding } from '../core/findings.js';
 import { formatCents } from '../core/money.js';
 import { ACCOUNT_TYPES, type AccountRef, type LedgerLine } from '../core/source.js';
-import { accountLengthFinding, type AccountLengths } from './account-length.js';
+import { KMU_SAMPLE_CODES } from './kmu-sample-codes.js';
 import { resolve } from './resolve.js';
-import { shippedTemplate, templateWildcardAccount } from './template.js';
+import { DEFAULT_MWST_CODES, MWST_CODE_RATES, shippedTemplate, templateWildcard, type MwstCodes } from './template.js';
 import {
   ANY_TYPE,
   KOST_TYPES,
   NO_TAX_TYPES,
   OUTPUT_TAX_TYPES,
-  PERSONAL_ACCOUNT_TYPE,
   VAT_ACCOUNT_TYPES,
   VAT_RELEVANT_TYPES,
   WILDCARD,
+  mwstCodeOf,
   parsePercent,
-  parseSteuercode,
   rowRate,
   type Mapping,
   type MappingRow,
 } from './types.js';
 
-export interface CheckMappingOptions extends AccountLengths {
-  /** Which Steuercodes mean output and input tax. Default `ntcs`. */
-  dialect?: BmdDialect | undefined;
+export interface CheckMappingOptions {
+  /** `abacus.mwstCodes`: which codes the tool knows and the rate each stands for. Default 311, 312, 313. */
+  mwstCodes?: MwstCodes | undefined;
 }
 
 const KNOWN_TYPES: ReadonlySet<string> = new Set([...ACCOUNT_TYPES, ANY_TYPE]);
 
-/** The VAT rates Austrian law knows today (UStG 1994 § 10, since 2026-07-01). */
-export const AUSTRIAN_VAT_RATES: readonly number[] = [0, 4.9, 10, 13, 20];
+/** The MWST rates Swiss law knows today (MWSTG Art. 25, since 2024-01-01). */
+export const SWISS_VAT_RATES: readonly number[] = [0, 2.6, 3.8, 8.1];
 
-const KOST = /^\d{1,9}$/;
+/** The rates in force until 2023-12-31, with what they were. */
+const PRE_2024_RATES: ReadonlyMap<number, string> = new Map([
+  [7.7, 'the Normalsatz'],
+  [3.7, 'the Sondersatz Beherbergung'],
+  [2.5, 'the reduzierter Satz'],
+]);
 
-/** `bmd.personenkontenlaenge` when a caller does not pass it. */
-const DEFAULT_PERSONENKONTENLAENGE = 6;
+const ACCOUNT = /^\d{1,11}$/;
+const KOST = /^\d{1,11}$/;
+const MWST_CODE = /^[A-Za-z0-9]{1,3}$/;
+
+const percents = (rates: readonly number[]) => rates.map((rate) => `${rate} %`).join(', ');
 
 /**
- * Offline validation of a loaded mapping (design decision 6): digits only and
- * the exact account length, Steuercode and rate together, no Steuercode on a
- * payment, guest claim or Debitor, no input-tax code on a sale, deposit, levy or bad debt, Austrian rates, `kost`, untaxed revenue and
- * the row's rate against the apaleo rate. Structural problems (duplicates,
- * forbidden wildcards) already fail `loadMapping`.
+ * Offline validation of a loaded mapping: account format, MWST-Code format and
+ * placement, MWST-Code and rate together, configured codes at their own rate,
+ * Swiss rates, `kost`, untaxed revenue and the row's rate against the apaleo
+ * rate. Structural problems (duplicates, forbidden wildcards) already fail `loadMapping`.
  */
-export function checkMapping(mapping: Mapping, options: CheckMappingOptions): Finding[] {
+export function checkMapping(mapping: Mapping, options: CheckMappingOptions = {}): Finding[] {
   const findings: Finding[] = [];
   const ignored = mapping.rows.filter((row) => VAT_ACCOUNT_TYPES.has(row.apaleoType));
   if (ignored.length > 0) {
@@ -54,107 +58,167 @@ export function checkMapping(mapping: Mapping, options: CheckMappingOptions): Fi
       code: 'N-VAT-ROW-IGNORED',
       message:
         `${ignored.length} row(s) for Vat or VatOnLiabilities accounts (${ignored.map((r) => `line ${r.line}`).join(', ')}) ` +
-        'are ignored: those lines are always skipped because BMD books the tax from the steuer field of the revenue or deposit line',
+        'are ignored: those lines are always skipped because Abacus books the MWST from the TaxData of the revenue or deposit line',
     });
   }
+  const codes = options.mwstCodes ?? DEFAULT_MWST_CODES;
   for (const row of mapping.rows) {
-    if (!VAT_ACCOUNT_TYPES.has(row.apaleoType)) findings.push(...checkRow(row, options));
+    if (!VAT_ACCOUNT_TYPES.has(row.apaleoType)) findings.push(...checkRow(row, codes));
   }
   return findings;
 }
 
-function checkRow(row: MappingRow, options: CheckMappingOptions): Finding[] {
+/** The `checkMapping` warnings about a row's MWST-Code that the export repeats for the rows it uses. */
+export const USED_ROW_MWST_WARNINGS: ReadonlySet<string> = new Set(['W-MWST-CODE-RATE', 'W-MWST-CODE-UNCHECKED']);
+
+/**
+ * `W-MWST-CODE-RATE` and `W-MWST-CODE-UNCHECKED` for the mapping rows the lines of a
+ * period actually resolve to, one finding per warning that names every row it
+ * concerns (`lines 3, 6: ...`). The posting guard compares rates only,
+ * so a swapped configured code (311 at 3.8 %) or a Vorsteuer code (111) would reach
+ * the file silently; the export and schedule runs never call `mapping check`, so
+ * they report these warnings in the dry run and the protocol themselves.
+ */
+export function checkUsedMwstCodes(mapping: Mapping, lines: readonly LedgerLine[], chart: ChartIndex | undefined, options: CoverageOptions): Finding[] {
+  const used = new Map<number, MappingRow>();
+  for (const line of lines) {
+    if (VAT_ACCOUNT_TYPES.has(line.debit.type) || VAT_ACCOUNT_TYPES.has(line.credit.type)) continue;
+    const rate = options.rateOf(line);
+    for (const account of [line.debit, line.credit]) {
+      const row = resolve(mapping, account, { rate, ...(chart ? { chart } : {}) });
+      if (row && row.abacusAccount !== '' && mwstCodeOf(row) !== undefined) used.set(row.line, row);
+    }
+  }
+  const codes = options.mwstCodes ?? DEFAULT_MWST_CODES;
+  const merged = new Map<string, { finding: Finding; lines: number[] }>();
+  for (const row of [...used.values()].sort((a, b) => a.line - b.line)) {
+    for (const finding of checkRow(row, codes)) {
+      if (!USED_ROW_MWST_WARNINGS.has(finding.code)) continue;
+      const body = finding.message.slice(`line ${row.line}: `.length);
+      const key = `${finding.code}\u0000${body}`;
+      const entry = merged.get(key) ?? { finding: { ...finding, message: body }, lines: [] };
+      entry.lines.push(row.line);
+      merged.set(key, entry);
+    }
+  }
+  return [...merged.values()].map(({ finding, lines }) => ({
+    ...finding,
+    message: `${lines.length === 1 ? 'line' : 'lines'} ${lines.join(', ')} of the mapping file: ${finding.message}`,
+  }));
+}
+
+/** The configured name of a code (`normal`, `reduziert`, `beherbergung`), or undefined for any other code. */
+function configuredName(code: string, codes: MwstCodes): keyof MwstCodes | undefined {
+  return (Object.keys(codes) as (keyof MwstCodes)[]).find((name) => codes[name] === code);
+}
+
+const CODE_LABELS: Readonly<Record<keyof MwstCodes, string>> = { normal: 'the Normalsatz', reduziert: 'the reduzierter Satz', beherbergung: 'Beherbergung' };
+
+/** `W-MWST-CODE-UNCHECKED`: the Ziffer of a known KMU sample code, and its note. */
+function uncheckedMessage(code: string, codes: MwstCodes): string {
+  const configured = `${codes.normal}, ${codes.reduziert} and ${codes.beherbergung}`;
+  const sample = KMU_SAMPLE_CODES[code];
+  const known = sample
+    ? ` In the Abacus KMU sample Mandant, ${code} is "${sample.designation}" (${sample.ziffer} of the MWST-Abrechnung)${sample.note ? `: ${sample.note}` : ''}.`
+    : '';
+  return (
+    `the tool does not know the MWST-Code ${code} (it checks only the configured abacus.mwstCodes ${configured}).${known} ` +
+    "Confirm with your Treuhänder that it is an Umsatzsteuer code of the Mandant's MWST-Tabelle"
+  );
+}
+
+function checkRow(row: MappingRow, codes: MwstCodes): Finding[] {
   const where = `line ${row.line}`;
-  const dialectName = options.dialect ?? DEFAULT_DIALECT;
-  const dialect = DIALECTS[dialectName];
   const findings: Finding[] = [];
   const add = (code: string, field: string, value: string, message: string) => findings.push({ code, message: `${where}: ${message}`, field, value });
   if (!KNOWN_TYPES.has(row.apaleoType)) {
     add('W-UNKNOWN-TYPE', 'apaleo_type', row.apaleoType, `apaleo_type "${row.apaleoType}" is not an apaleo account type (${ACCOUNT_TYPES.join(', ')})`);
   }
-  for (const [field, text] of [['apaleo_vat_percent', row.apaleoVatPercent], ['bmd_vat_percent', row.bmdVatPercent]] as const) {
+  for (const [field, text] of [['apaleo_vat_percent', row.apaleoVatPercent], ['mwst_percent', row.mwstPercent]] as const) {
     if (Number.isNaN(parsePercent(text) ?? 0)) add('E-VAT-PERCENT', field, text, `${field} "${text}" is not a percentage`);
   }
   if (row.kost !== '' && !KOST.test(row.kost)) {
-    add('E-KOST-FORMAT', 'kost', row.kost, `kost "${row.kost}" must be a Kostenstelle of 1 to 9 digits`);
+    add('E-KOST-FORMAT', 'kost', row.kost, `kost "${row.kost}" must be a Kostenstelle of 1 to 11 digits`);
   } else if (row.kost !== '' && !KOST_TYPES.has(row.apaleoType)) {
     add(
       'W-KOST-IGNORED',
       'kost',
       row.kost,
-      `kost ${row.kost} is never written for apaleo type ${row.apaleoType}: BMD reads kost as Kostenstelle only on revenue and ` +
-        'bad-debt bookings, and on a payment as the Belegnummer of the invoice it clears. Leave kost empty on this row',
+      `kost ${row.kost} is never written for apaleo type ${row.apaleoType}: Abacus accepts a Kostenstelle only on Erfolgskonten, ` +
+        'so the tool writes it only on revenue and write-off bookings. Leave kost empty on this row',
     );
   }
-  const code = parseSteuercode(row.steuercode);
-  const rate = parsePercent(row.bmdVatPercent);
-  if (Number.isNaN(code ?? 0)) {
-    add('E-STEUERCODE-FORMAT', 'steuercode', row.steuercode, `Steuercode "${row.steuercode}" must be a whole number from 0 to 99`);
+  const code = mwstCodeOf(row);
+  const rate = parsePercent(row.mwstPercent);
+  const rateKnown = rate !== undefined && !Number.isNaN(rate);
+  if (code !== undefined && !MWST_CODE.test(code)) {
+    add('E-MWST-CODE-FORMAT', 'mwst_code', row.mwstCode, `MWST-Code "${row.mwstCode}" must be 1 to 3 characters of A-Z, a-z and 0-9 (a code of the Mandant's MWST-Tabelle)`);
   } else if (code !== undefined && NO_TAX_TYPES.has(row.apaleoType)) {
     add(
-      'E-STEUERCODE-NOT-ALLOWED',
-      'steuercode',
-      row.steuercode,
-      `apaleo type ${row.apaleoType} is a payment, guest claim or Debitor and books no tax, but the row has Steuercode ${code}: ` +
-        'BMD would book the tax on this account instead of the revenue or deposit account. Leave steuercode and bmd_vat_percent empty ' +
-        'on this row, and put the Steuercode on the revenue or deposit row',
+      'E-MWST-CODE-NOT-ALLOWED',
+      'mwst_code',
+      row.mwstCode,
+      `apaleo type ${row.apaleoType} is a payment, guest claim or Debitor and books no MWST, but the row has the MWST-Code ${code}: ` +
+        'Abacus would book the MWST on this money or claim account instead of the revenue or deposit account. Leave mwst_code and ' +
+        'mwst_percent empty on this row, and put the MWST-Code on the revenue or deposit row',
     );
   } else if (code !== undefined) {
     if (rate === undefined) {
-      add('E-VAT-RATE-MISSING', 'bmd_vat_percent', '', `Steuercode ${code} needs the VAT rate BMD books with it in bmd_vat_percent (0 for untaxed revenue)`);
+      add('E-VAT-RATE-MISSING', 'mwst_percent', '', `the MWST-Code ${code} needs the rate Abacus books with it in mwst_percent (0 for revenue without MWST)`);
     }
-    const inputTax = dialect.inputTaxCodes.get(code);
-    if (inputTax !== undefined && OUTPUT_TAX_TYPES.has(row.apaleoType)) {
+    const name = configuredName(code, codes);
+    if (name === undefined) {
+      add('W-MWST-CODE-UNCHECKED', 'mwst_code', code, uncheckedMessage(code, codes));
+    } else if (rateKnown && rate !== MWST_CODE_RATES[name]) {
       add(
-        'E-STEUERCODE-INPUT-TAX',
-        'steuercode',
-        row.steuercode,
-        `Steuercode ${code} means ${inputTax} in ${dialectName === 'ntcs' ? 'BMD NTCS' : 'BMD 5.5'}, but apaleo type ${row.apaleoType} is a sale, ` +
-          `deposit, levy or bad debt and owes Umsatzsteuer. Use the Umsatzsteuer code ${dialect.normalOutputTaxCode} and have your Steuerberatung confirm it`,
-      );
-    } else if (!dialect.outputTaxCodes.includes(code)) {
-      add(
-        'W-STEUERCODE-UNCHECKED',
-        'steuercode',
-        row.steuercode,
-        `the tool does not know Steuercode ${code} (it checks only the Umsatzsteuer code${dialect.outputTaxCodes.length > 1 ? 's' : ''} ` +
-          `${dialect.outputTaxCodes.join(' and ')} of bmd.dialect ${dialectName}); have your Steuerberatung confirm what BMD books with it`,
+        'W-MWST-CODE-RATE',
+        'mwst_code',
+        code,
+        `the MWST-Code ${code} is configured for ${CODE_LABELS[name]} at ${MWST_CODE_RATES[name]} % (abacus.mwstCodes.${name}), ` +
+          `but the row books it at ${rate} %. Check that the codes are not swapped`,
       );
     }
-  } else if (rate !== undefined && !Number.isNaN(rate) && rate > 0) {
-    add('E-STEUERCODE-MISSING', 'steuercode', '', `bmd_vat_percent is ${rate} %, but the Steuercode is empty: BMD books no tax without one. Fill in the Steuercode`);
+  } else if (rateKnown && rate > 0) {
+    add('E-MWST-CODE-MISSING', 'mwst_code', '', `mwst_percent is ${rate} %, but the MWST-Code is empty: Abacus books no MWST without one. Fill in the MWST-Code`);
   }
-  if (rate !== undefined && !Number.isNaN(rate) && !AUSTRIAN_VAT_RATES.includes(rate)) {
+  if (rateKnown && !SWISS_VAT_RATES.includes(rate)) {
+    const old = PRE_2024_RATES.get(rate);
     add(
       'W-VAT-RATE-UNUSUAL',
-      'bmd_vat_percent',
-      row.bmdVatPercent,
-      `bmd_vat_percent ${rate} % is not an Austrian VAT rate (${AUSTRIAN_VAT_RATES.map((r) => `${r} %`).join(', ')}). ` +
-        'Was this row copied from a German mapping?',
+      'mwst_percent',
+      row.mwstPercent,
+      `mwst_percent ${rate} % is not a Swiss MWST rate (${percents(SWISS_VAT_RATES)}). ` +
+        (old ? `${rate} % was ${old} until 2023-12-31: exports for 2023 and earlier need your Treuhänder` : 'Was this row copied from a German or Austrian mapping?'),
     );
   }
-  if (row.bmdAccount === '') return findings;
+  if (row.abacusAccount === '') return findings;
 
-  const length = accountLengthFinding(row, options);
-  if (length) findings.push(length);
+  if (!ACCOUNT.test(row.abacusAccount)) {
+    add(
+      'E-ACCOUNT-FORMAT',
+      'abacus_account',
+      row.abacusAccount,
+      `Abacus account "${row.abacusAccount}" must be an account number of 1 to 11 digits (digits only, no letters or spaces)`,
+    );
+  }
   if (row.apaleoType === 'Revenues' && code === undefined) {
     add(
       'W-UNTAXED-REVENUE',
-      'steuercode',
+      'mwst_code',
       '',
-      `revenue on BMD account ${row.bmdAccount} is booked without a Steuercode. The BMD account must not carry a fixed Steuercode, ` +
-        "or BMD fills it in on import; check the account in BMD, or enter the Kanzlei's Steuercode for non-taxable revenue",
+      `revenue on Abacus account ${row.abacusAccount} is booked without an MWST-Code. The Abacus account must not carry a default MWST-Code, ` +
+        'or "MWST berechnen" applies it on import; check the account in Abacus, or enter the Mandant\'s MWST-Code for revenue without MWST',
     );
   }
-  const bmdRate = rowRate(row);
+  const abacusRate = rowRate(row);
   const apaleoRate = parsePercent(row.apaleoVatPercent);
-  if (bmdRate !== undefined && apaleoRate !== undefined && !Number.isNaN(apaleoRate) && bmdRate !== apaleoRate) {
+  if (abacusRate !== undefined && apaleoRate !== undefined && !Number.isNaN(apaleoRate) && abacusRate !== apaleoRate) {
     add(
       'E-VAT-MISMATCH',
-      'bmd_vat_percent',
-      String(bmdRate),
-      `apaleo account ${row.apaleoAccount} (${row.apaleoType}) has VAT ${apaleoRate} %, but the row books ${bmdRate} % on BMD account ` +
-        `${row.bmdAccount}. Map it to an account for ${apaleoRate} % with the matching Steuercode and bmd_vat_percent`,
+      'mwst_percent',
+      String(abacusRate),
+      `apaleo account ${row.apaleoAccount} (${row.apaleoType}) has VAT ${apaleoRate} %, but the row books ${abacusRate} % on Abacus account ` +
+        `${row.abacusAccount}. Map it to an account for ${apaleoRate} % with the matching MWST-Code and mwst_percent`,
     );
   }
   return findings;
@@ -167,12 +231,8 @@ export interface CoverageOptions {
    * be inferred) and the line's own rate (`lineRate`) otherwise.
    */
   rateOf: (line: LedgerLine) => number | undefined;
-  /** Scales the template's example accounts in the fix hints. */
-  sachkontenlaenge: number;
-  /** Scales the template's Personenkonto in the fix hints. Default 6. */
-  personenkontenlaenge?: number | undefined;
-  /** The Steuercode in the fix hints. Default `ntcs`. */
-  dialect?: BmdDialect | undefined;
+  /** The MWST-Codes in the fix hints. Default 311, 312, 313. */
+  mwstCodes?: MwstCodes | undefined;
 }
 
 /** A line without a tax entry left after normalising. */
@@ -199,7 +259,7 @@ interface Unmapped extends Booked {
 interface Mismatch extends Booked {
   rate: number;
   row: MappingRow;
-  bmdRate: number;
+  abacusRate: number;
 }
 
 /** Untaxed deposit releases whose VAT rate cannot be inferred. */
@@ -222,11 +282,11 @@ const MAX_EXAMPLES = 3;
 
 /**
  * Checks every account booked in `lines` against the mapping:
- * - `E-UNMAPPED` for an account that does not resolve to a row with a BMD
+ * - `E-UNMAPPED` for an account that does not resolve to a row with an Abacus
  *   account, with its type, name, line count and gross total;
  * - `E-VAT-MISMATCH` for a VAT-relevant account whose row books another rate
  *   than the line carries, for example a revenue account at 10 % that resolves
- *   through a parent row to a 20 % account;
+ *   through a parent row to an 8.1 % account;
  * - `E-VAT-RATE-UNKNOWN` once for all untaxed deposit releases whose rate
  *   `rateOf` cannot infer (the export stops on them).
  * Lines with a Vat or VatOnLiabilities side are skipped by the posting rules,
@@ -254,13 +314,13 @@ export function checkCoverage(
         continue;
       }
       const row = resolveAt(account, rate);
-      if (row && row.bmdAccount !== '') {
+      if (row && row.abacusAccount !== '') {
         // A row whose own apaleo_vat_percent equals the line's rate is checked by checkMapping.
         if (rate === undefined || !OUTPUT_TAX_TYPES.has(account.type) || parsePercent(row.apaleoVatPercent) === rate) continue;
-        const bmdRate = rowRate(row);
-        if (bmdRate === undefined || bmdRate === rate) continue;
+        const abacusRate = rowRate(row);
+        if (abacusRate === undefined || abacusRate === rate) continue;
         add(mismatches, `${row.line}\u0000${account.number}\u0000${account.type}\u0000${rate}`, line, () => ({
-          account, rate, row, bmdRate, lines: 0, grossCents: 0,
+          account, rate, row, abacusRate, lines: 0, grossCents: 0,
         }));
         continue;
       }
@@ -279,8 +339,7 @@ export function checkCoverage(
     }
   }
   const hint: Hint = {
-    lengths: { sachkontenlaenge: options.sachkontenlaenge, personenkontenlaenge: options.personenkontenlaenge ?? DEFAULT_PERSONENKONTENLAENGE },
-    outputTaxCode: DIALECTS[options.dialect ?? DEFAULT_DIALECT].normalOutputTaxCode,
+    mwstCodes: options.mwstCodes ?? DEFAULT_MWST_CODES,
     wildcardRow: (type, rate) =>
       mapping.rows.find((row) => row.apaleoAccount === WILDCARD && row.apaleoType === type && parsePercent(row.apaleoVatPercent) === rate),
   };
@@ -296,9 +355,8 @@ function bookedText({ lines, grossCents }: Pick<Booked, 'lines' | 'grossCents'>)
 }
 
 interface Hint {
-  lengths: AccountLengths;
-  /** The Steuercode a wildcard row for a taxed rate needs. */
-  outputTaxCode: number;
+  /** The MWST-Codes a wildcard row for a taxed rate needs. */
+  mwstCodes: MwstCodes;
   /** The mapping's wildcard row for a VAT-relevant type at a rate, if it has one. */
   wildcardRow: (type: string, rate: number) => MappingRow | undefined;
 }
@@ -308,25 +366,34 @@ interface Hint {
  * exists (resolve prefers the parent): name that row instead of asking to add it.
  */
 function emptyWildcardFix(wildcard: MappingRow, type: string, rate: number): string {
-  return `fill in bmd_account on the wildcard row for ${type} at ${rate} % on line ${wildcard.line}`;
+  return `fill in abacus_account on the wildcard row for ${type} at ${rate} % on line ${wildcard.line}`;
+}
+
+/** Labels of the template's accounts in the fix hints. */
+const TEMPLATE_ACCOUNT_LABELS: Readonly<Record<string, string>> = { AccountsReceivable: 'Debitoren apaleo' };
+
+/** The configured MWST-Code for a Swiss rate, else a placeholder. */
+function codeForRate(rate: number, codes: MwstCodes): string {
+  const name = (Object.keys(MWST_CODE_RATES) as (keyof MwstCodes)[]).find((key) => MWST_CODE_RATES[key] === rate);
+  return name ? codes[name] : '<MWST-Code>';
 }
 
 /** The wildcard row to add for a type, as it is written in the file, with the template's account as example. */
-function wildcardHint(type: string, rate: number | undefined, { lengths, outputTaxCode }: Hint): string {
+function wildcardHint(type: string, rate: number | undefined, { mwstCodes }: Hint): string {
   const rated = VAT_RELEVANT_TYPES.has(type);
-  const template = templateWildcardAccount(shippedTemplate(), type, rated ? rate : undefined, lengths);
+  const template = templateWildcard(shippedTemplate(), type, rated ? rate : undefined, { mwstCodes });
   if (!rated) {
-    const debtor = type === PERSONAL_ACCOUNT_TYPE ? ' (Sammeldebitor)' : '';
-    return `the wildcard row \`*;${type};;;${template ?? '<BMD account>'}\`${debtor}`;
+    const label = TEMPLATE_ACCOUNT_LABELS[type];
+    return `the wildcard row \`*;${type};;;${template?.abacusAccount ?? '<Abacus account>'}\`${label && template ? ` (${label})` : ''}`;
   }
-  const tax = rate === 0 ? `;;${rate}` : `;${outputTaxCode};${rate}`;
-  return `a wildcard row \`*;${type};;${rate};<BMD account>${tax}\`${template === undefined ? '' : ` (template: ${template})`}`;
+  const tax = rate === 0 ? `;;${rate}` : `;${template?.mwstCode || (rate === undefined ? '<MWST-Code>' : codeForRate(rate, mwstCodes))};${rate}`;
+  return `a wildcard row \`*;${type};;${rate};<Abacus account>${tax}\`${template === undefined ? '' : ` (template: ${template.abacusAccount})`}`;
 }
 
 /**
  * `E-UNMAPPED` with the row to change: an exact empty row by its line; an empty
  * parent row with the wildcard row to add instead (for VAT-relevant types never
- * "fill in the parent row": one BMD account cannot serve every rate); no row
+ * "fill in the parent row": one Abacus account cannot serve every rate); no row
  * at all with the row or wildcard row to add.
  */
 function unmappedFinding(entry: Unmapped, hint: Hint): Finding {
@@ -344,19 +411,19 @@ function unmappedFinding(entry: Unmapped, hint: Hint): Finding {
   const wildcard = wildcardHint(account.type, rate, hint);
   let fix: string;
   if (row && !emptyParent) {
-    fix = `fill in bmd_account on line ${row.line} of the mapping file`;
+    fix = `fill in abacus_account on line ${row.line} of the mapping file`;
   } else if (vatRelevant && rate === undefined) {
     fix = `the lines carry more than one VAT rate, so no wildcard applies; add a row for ${account.number} ${account.type}`;
   } else if (account.type === 'Revenues' && row) {
-    fix = `the parent row for ${row.apaleoAccount} on line ${row.line} has no BMD account; add a row for ${account.number} Revenues with a BMD account for${at}`;
+    fix = `the parent row for ${row.apaleoAccount} on line ${row.line} has no Abacus account; add a row for ${account.number} Revenues with an Abacus account for${at}`;
   } else if (account.type === 'Revenues') {
-    fix = `add a row with apaleo_account ${account.number}, apaleo_type Revenues and a BMD account`;
+    fix = `add a row with apaleo_account ${account.number}, apaleo_type Revenues and an Abacus account`;
   } else if (row && vatRelevant) {
     const existing = rate === undefined ? undefined : hint.wildcardRow(account.type, rate);
     const add = existing && rate !== undefined ? emptyWildcardFix(existing, account.type, rate) : `add ${wildcard}`;
-    fix = `the parent row for ${row.apaleoAccount} on line ${row.line} has no BMD account and does not apply to ${account.type} at different VAT rates; ${add}`;
+    fix = `the parent row for ${row.apaleoAccount} on line ${row.line} has no Abacus account and does not apply to ${account.type} at different VAT rates; ${add}`;
   } else if (row) {
-    fix = `fill in bmd_account for the parent row ${row.apaleoAccount} on line ${row.line}, or add ${wildcard}`;
+    fix = `fill in abacus_account for the parent row ${row.apaleoAccount} on line ${row.line}, or add ${wildcard}`;
   } else if (group && vatRelevant) {
     fix = `add ${wildcard}`;
   } else if (group) {
@@ -364,7 +431,7 @@ function unmappedFinding(entry: Unmapped, hint: Hint): Finding {
   } else if (vatRelevant) {
     fix = `add a row for ${account.number} ${account.type}, or a wildcard row (*) for ${account.type}${at}: ${wildcard.replace(/^a wildcard row /, '')}`;
   } else {
-    fix = `add a row with apaleo_account ${account.number}, apaleo_type ${account.type} and a BMD account`;
+    fix = `add a row with apaleo_account ${account.number}, apaleo_type ${account.type} and an Abacus account`;
   }
   return {
     code: 'E-UNMAPPED',
@@ -375,14 +442,14 @@ function unmappedFinding(entry: Unmapped, hint: Hint): Finding {
 }
 
 function mismatchFinding(entry: Mismatch): Finding {
-  const { account, rate, row, bmdRate } = entry;
+  const { account, rate, row, abacusRate } = entry;
   const via = row.apaleoAccount === account.number ? `its row on line ${row.line}` : `line ${row.line} (apaleo account ${row.apaleoAccount})`;
   return {
     code: 'E-VAT-MISMATCH',
     message:
       `apaleo account ${account.number} (${account.type}, "${account.name}") is booked at ${rate} % (${bookedText(entry)}), ` +
-      `but it uses ${via} of the mapping, which books ${bmdRate} % on BMD account ${row.bmdAccount}. ` +
-      `Add a row for ${account.number} ${account.type} with a BMD account for ${rate} %`,
+      `but it uses ${via} of the mapping, which books ${abacusRate} % on Abacus account ${row.abacusAccount}. ` +
+      `Add a row for ${account.number} ${account.type} with an Abacus account for ${rate} %`,
     field: 'apaleo_account',
     value: account.number,
   };

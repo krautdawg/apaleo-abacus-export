@@ -6,9 +6,23 @@ import { ChartIndex } from '../../src/core/chart.js';
 import { BSP, LIVE_DAY, LIVE_PROPERTIES, loadLiveData } from '../helpers/apaleo.js';
 import { vieMapping } from '../helpers/live-mapping.js';
 import { FakeSource } from '../helpers/fake-source.js';
-import { BEISPIEL, CHART, EKR_MAPPING, LEDGER, OPTIONS as POSTING_OPTIONS, post } from '../helpers/posting.js';
+import { abacusMovements } from '../../src/abacus/index.js';
+import {
+  ACCOUNTS,
+  BEISPIEL,
+  BEISPIEL_CHART as CHART,
+  BEISPIEL_MAPPING,
+  CHART as SWISS,
+  KMU_MAPPING,
+  LEDGER,
+  OPTIONS as POSTING_OPTIONS,
+  charge,
+  post as postSwiss,
+  swissTax,
+} from '../helpers/posting.js';
 
-const OPTIONS: CheckOptions = { mapping: EKR_MAPPING, chart: CHART };
+const OPTIONS: CheckOptions = { mapping: BEISPIEL_MAPPING, chart: CHART, movements: abacusMovements };
+const post = (lines: typeof LEDGER) => buildBookings(lines, BEISPIEL_MAPPING, CHART, POSTING_OPTIONS);
 const SEPTEMBER = { from: '2026-09-01', to: '2026-09-30' } as const;
 
 function must<T>(value: T | undefined): T {
@@ -47,48 +61,48 @@ describe('conservation (E-CONSERVATION)', () => {
   });
 });
 
-/** The 98.00 logis charge of 2026-09-14: Konto 4000, Betrag -89.09, Steuer -8.91, Gegenkonto 2390. */
-const logis = (r: PostingResult) => must(r.bookings.find((b) => b.businessDate === '2026-09-14' && b.konto === '4000'));
+/** The 98.00 logis charge of 2026-09-14: Collective 1101, Single 3400, D, gross 98.00, tax -8.91. */
+const logis = (r: PostingResult) => must(r.bookings.find((b) => b.businessDate === '2026-09-14' && b.singleAccount === '3400'));
 
 describe('account movement per day (E-ACCOUNT-BALANCE)', () => {
-  it('catches a booking with a positive Betrag where the apaleo line credits the Konto account', () => {
-    // The 98.00 logis charge of 2026-09-14: 4000 is credited in apaleo, so Betrag must be -89.09.
+  it('Side bug is caught: DebitCredit C where the apaleo line debits the Collective account names the day, the account and both amounts', () => {
+    // The 98.00 logis charge of 2026-09-14: the folio (1101) is debited in apaleo, so DebitCredit must be D.
     const result = withDefect((r) => {
       const booking = logis(r);
-      booking.betragCents = -booking.betragCents;
-      if (booking.tax) booking.tax.steuerCents = -booking.tax.steuerCents;
+      booking.debitCredit = 'C';
+      if (booking.tax) booking.tax.taxCents = -booking.tax.taxCents;
     });
     const findings = checkAccountMovements(LEDGER, result, OPTIONS);
     expect(findings.map((f) => [f.code, f.value])).toEqual([
-      ['E-ACCOUNT-BALANCE', '2390'],
-      ['E-ACCOUNT-BALANCE', '4000'],
+      ['E-ACCOUNT-BALANCE', '1101'],
+      ['E-ACCOUNT-BALANCE', '3400'],
     ]);
-    expect(findings[0]?.message).toContain('on 2026-09-14 BMD account 2390 moves -54.00 in the bookings, but the apaleo lines mapped to it move 142.00');
-    expect(findings[1]?.message).toContain('on 2026-09-14 BMD account 4000 moves 89.09 in the bookings, but the apaleo lines mapped to it move -89.09 (Soll positive, Haben negative)');
+    expect(findings[0]?.message).toContain('on 2026-09-14 account 1101 moves -54.00 in the bookings, but the apaleo lines mapped to it move 142.00');
+    expect(findings[1]?.message).toContain('on 2026-09-14 account 3400 moves 89.09 in the bookings, but the apaleo lines mapped to it move -89.09 (Soll positive, Haben negative)');
   });
 
   it('catches swapped accounts, a lost tax and a booking on the wrong day', () => {
     const swapped = withDefect((r) => {
       const booking = logis(r);
-      [booking.konto, booking.gkonto] = [booking.gkonto, booking.konto];
+      [booking.collectiveAccount, booking.singleAccount] = [booking.singleAccount, booking.collectiveAccount];
     });
-    expect(checkAccountMovements(LEDGER, swapped, OPTIONS).map((f) => f.value)).toEqual(['2390', '4000']);
+    expect(checkAccountMovements(LEDGER, swapped, OPTIONS).map((f) => f.value)).toEqual(['1101', '3400']);
     const untaxed = withDefect((r) => void delete logis(r).tax);
-    expect(checkAccountMovements(LEDGER, untaxed, OPTIONS).map((f) => f.value)).toEqual(['2390']);
+    expect(checkAccountMovements(LEDGER, untaxed, OPTIONS).map((f) => f.value)).toEqual(['3400']);
     const moved = withDefect((r) => void (must(r.bookings[0]).businessDate = '2026-09-15'));
     expect(checkAccountMovements(LEDGER, moved, OPTIONS).map((f) => f.message.slice(0, 13))).toContain('on 2026-09-14');
   });
 });
 
 describe('tax per rate (E-VAT-TOTAL)', () => {
-  const drinks = (r: PostingResult) => must(r.bookings.find((b) => b.konto === '4020' && b.betragCents === -2_000));
+  const drinks = (r: PostingResult) => must(r.bookings.find((b) => b.singleAccount === '3100' && b.grossCents === 2_400));
 
-  it('compares the Steuer of the bookings with apaleo\'s per-line taxes, deposits included', () => {
+  it('compares the tax of the bookings with apaleo\'s per-line taxes, deposits included', () => {
     expect(checkVatByRate(LEDGER, post(LEDGER), OPTIONS)).toEqual([]);
   });
 
   it('is raised for 20 % when the bookings carry less tax than apaleo charged, naming both amounts and apaleo\'s precise total', () => {
-    const result = withDefect((r) => void (must(drinks(r).tax).steuerCents = -398));
+    const result = withDefect((r) => void (must(drinks(r).tax).taxCents = -398));
     const findings = checkVatByRate(LEDGER, result, OPTIONS);
     expect(findings.map((f) => [f.code, f.value])).toEqual([['E-VAT-TOTAL', '20']]);
     expect(findings[0]?.message).toContain(
@@ -98,7 +112,7 @@ describe('tax per rate (E-VAT-TOTAL)', () => {
   });
 
   it('is raised per rate when a booking carries the wrong rate', () => {
-    const result = withDefect((r) => void (must(logis(r).tax).prozent = 20));
+    const result = withDefect((r) => void (must(logis(r).tax).percent = 20));
     expect(checkVatByRate(LEDGER, result, OPTIONS).map((f) => [f.code, f.value])).toEqual([
       ['E-VAT-TOTAL', '10'],
       ['E-VAT-TOTAL', '20'],
@@ -109,7 +123,7 @@ describe('tax per rate (E-VAT-TOTAL)', () => {
     const offByOne = (roundings: ReadonlyMap<number, number>) =>
       withDefect((r) => {
         r.vatRoundingByRate = roundings;
-        must(drinks(r).tax).steuerCents = -401;
+        must(drinks(r).tax).taxCents = -401;
       });
     expect(checkVatByRate(LEDGER, offByOne(new Map([[20, 1]])), OPTIONS)).toEqual([]);
     expect(checkVatByRate(LEDGER, offByOne(new Map()), OPTIONS).map((f) => f.code)).toEqual(['E-VAT-TOTAL']);
@@ -119,6 +133,34 @@ describe('tax per rate (E-VAT-TOTAL)', () => {
     expect(otherRate[0]?.message).toContain('the rounding total allows 0.00');
   });
 
+  describe('at the Swiss rates', () => {
+    const minibar = (sourceEntryNumber: string) => charge({ credit: ACCOUNTS.other81, grossCents: 2_680, netCents: 2_479, taxes: swissTax(8.1, 201), sourceEntryNumber });
+    const lines = [minibar('M1'), minibar('M2')];
+    const swiss: CheckOptions = { mapping: KMU_MAPPING, chart: SWISS, movements: abacusMovements };
+    const swissDefect = (defect: (result: PostingResult) => void) => {
+      const result = postSwiss(lines);
+      const copy = { ...result, bookings: structuredClone(result.bookings) };
+      defect(copy);
+      return copy;
+    };
+
+    it('Tax total per rate: bookings at 8.1 % with 4.00 against apaleo\'s 4.02 give E-VAT-TOTAL with both amounts and the precise total', () => {
+      expect(checkVatByRate(lines, postSwiss(lines), swiss)).toEqual([]);
+      const findings = checkVatByRate(lines, swissDefect((r) => void (must(r.bookings[0]?.tax).taxCents = -199)), swiss);
+      expect(findings.map((f) => [f.code, f.value])).toEqual([['E-VAT-TOTAL', '8.1']]);
+      expect(findings[0]?.message).toContain('at 8.1 % the bookings carry 4.00 tax, but apaleo charged 4.02');
+      expect(findings[0]?.message).toContain("apaleo's precise total is 4.02");
+    });
+
+    it('Roundings at another rate: two W-VAT-ROUNDING at 3.8 % do not excuse two Rappen more tax at 8.1 %', () => {
+      const result = swissDefect((r) => {
+        r.vatRoundingByRate = new Map([[3.8, 2]]);
+        must(r.bookings[0]?.tax).taxCents = -203;
+      });
+      expect(checkVatByRate(lines, result, swiss).map((f) => [f.code, f.value])).toEqual([['E-VAT-TOTAL', '8.1']]);
+    });
+  });
+
   it('Line rounding is not an error: the recorded VIE day, where the bookings carry 7.74 at 10 % and apaleo\'s precise total is 7.74545454', async () => {
     const live = await loadLiveData();
     const lines = (live.ledger.VIE ?? []).filter((line) => line.businessDate === LIVE_DAY);
@@ -126,7 +168,7 @@ describe('tax per rate (E-VAT-TOTAL)', () => {
     const mapping = vieMapping();
     const result = buildBookings(lines, mapping, chart, POSTING_OPTIONS);
     expect(result.summary.revenueByRate.find((r) => r.ratePercent === 10)).toMatchObject({ vatCents: 774, apaleoVat: '7.74545454' });
-    expect(plausibilityFindings(lines, result, { mapping, chart })).toEqual([]);
+    expect(plausibilityFindings(lines, result, { mapping, chart, movements: abacusMovements })).toEqual([]);
   });
 });
 

@@ -18,10 +18,9 @@ Business days (September 2026, so the demo month 2026-09 is always closed):
 - **2026-09-21**: logis 220.00 at 10 % for `BSP-GHIJKL-1` and the release of its deposit as a negative charge (−220.00, tax −20.00) on the deposit account.
 - **2026-09-22**: logis 165.00 and the release of the `BSP-MNOPQR-1` deposit (−165.00, tax −15.00); an overpayment of 10.00 parked on `BSP-MNOPQR-1_Liabilities/Null:0.00` and refunded to the Maestro card as a negative prepayment.
 
-The amounts are chosen so that BMD's check of every booking (Betrag × rate) equals apaleo's tax rounded to cents: the fixture month has no `W-VAT-ROUNDING`; the recorded VIE day in `live/` has one.
+The amounts are chosen so that Abacus' check of every booking (the MWST contained in the gross amount) equals apaleo's tax rounded to the cent: the fixture month has no `W-VAT-ROUNDING`.
 
 `examples/demo/apaleo/` holds copies of these files plus two demo-only days (an unpaid night on 2026-09-25 and its write-off on 2026-09-29, see `examples/demo/README.md`), so the demo protocol shows every section; the tests here do not use them.
 
-The fabricated Austrian fixture month (Hotel Beispiel Tirol, August 2026: deposit received, released and partly refunded, a cancellation fee at 0 %, an invoice on accounts receivable and a write-off with VAT correction) is in [`at-month/`](at-month/README.md).
 
 Recorded real responses of an apaleo DEV sandbox (properties `BER` and `VIE`, with eight-decimal net and tax amounts) are in [`live/`](live/README.md); the regression tests run the whole pipeline on them. More real responses are welcome: if you run `apaleo-abacus live-smoke` against a real account and the shapes differ, please run the privacy scan (`node test/helpers/fixture-scan.ts <folder>`), anonymise names, reservation ids and amounts, and add them as a new fixture day.

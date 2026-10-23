@@ -20,9 +20,9 @@ export function lineText(line: LedgerLine): string {
   );
 }
 
-/** `mapping line 4 (BMD 4000)`. */
+/** `mapping line 4 (Abacus 3400)`. */
 export function rowText(row: MappingRow): string {
-  return `mapping line ${row.line} (BMD ${row.bmdAccount})`;
+  return `mapping line ${row.line} (Abacus ${row.abacusAccount})`;
 }
 
 export function percentText(rate: number): string {

@@ -17,10 +17,21 @@ export interface BmdTargetSettings {
 /** The defaults of the `bmd` config section: NTCS, 4-digit Sachkonten as in the EKR, 6-digit Personenkonten (`201001` in PR08). */
 export const BMD_DEFAULT_SETTINGS: Readonly<BmdTargetSettings> = { dialect: DEFAULT_DIALECT, sachkontenlaenge: 4, personenkontenlaenge: 6 };
 
-/** The file settings of the config's `bmd` section. */
-export function settingsFromConfig({ config }: Pick<TargetFileMeta, 'config'>): BmdTargetSettings {
-  const { dialect, sachkontenlaenge, personenkontenlaenge } = config.bmd;
-  return { dialect, sachkontenlaenge, personenkontenlaenge };
+/** The file settings: the config has no `bmd` section any more, so always the defaults (removed with src/bmd in a04). */
+export function settingsFromConfig(): BmdTargetSettings {
+  return { ...BMD_DEFAULT_SETTINGS };
+}
+
+/**
+ * The movement model of a BMD booking: `konto` moves by `betrag`, `gkonto` by
+ * minus `betrag` plus `steuer`, which is apaleo's gross. The tax leg on BMD's own
+ * tax account is not part of it. Soll positive.
+ */
+export function bmdMovements(booking: Pick<BmdBooking, 'konto' | 'gkonto' | 'betragCents' | 'tax'>): [string, number][] {
+  return [
+    [booking.konto, booking.betragCents],
+    [booking.gkonto, -(booking.betragCents + (booking.tax?.steuerCents ?? 0))],
+  ];
 }
 
 /**
@@ -57,6 +68,7 @@ export function createBmdTarget(settingsOf: (meta: TargetFileMeta) => BmdTargetS
     importBlock: (bookings, meta) => importBlock(bookings, optionsOf(meta), buchungsimportFileName(optionsOf(meta), fileTag(meta))),
     // The file has no creation time: unchanged means byte-identical.
     sameContent: (existing, next) => existing.length === next.length && existing.every((byte, i) => byte === next[i]),
+    movements: bmdMovements,
     advice: {
       currency: "A BMD Buchungsimport line has no currency field: BMD books every amount in the Mandant's Grundwährung (EUR).",
       overlap:

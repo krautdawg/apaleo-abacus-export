@@ -4,15 +4,15 @@ import { decodeCsv, detectSeparator, formatCsvLine, parseCsv } from '../../src/m
 import { MappingError, appendRows, parsePercent, parseMapping, renderMappingFile, type MappingRow, type MappingRowValues } from '../../src/mapping/index.js';
 import { EXCEL_ORIGINAL_ROWS, csvBytes, mappingRow, readMappingFixture } from '../helpers/mapping.js';
 
-const HEADER = 'apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;bmd_account;steuercode;bmd_vat_percent;kost;comment';
-const parse = (bytes: Uint8Array, sachkontenlaenge = 4) => parseMapping(bytes, { path: 'm.csv', sachkontenlaenge });
+const HEADER = 'apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;abacus_account;mwst_code;mwst_percent;kost;comment';
+const parse = (bytes: Uint8Array) => parseMapping(bytes, { path: 'm.csv' });
 const values = (row: MappingRow): MappingRowValues => {
   const { line, ...rest } = row;
   expect(line).toBeGreaterThan(0);
   return rest;
 };
-/** The row with both rate columns as numbers, so `4,9` and `4.9` compare equal. */
-const rated = (row: MappingRowValues) => ({ ...row, apaleoVatPercent: parsePercent(row.apaleoVatPercent), bmdVatPercent: parsePercent(row.bmdVatPercent) });
+/** The row with both rate columns as numbers, so `8,1` and `8.1` compare equal. */
+const rated = (row: MappingRowValues) => ({ ...row, apaleoVatPercent: parsePercent(row.apaleoVatPercent), mwstPercent: parsePercent(row.mwstPercent) });
 
 function loadError(bytes: Uint8Array): MappingError {
   try {
@@ -36,124 +36,126 @@ describe('encoding', () => {
   });
 
   it('reads UTF-8 without BOM and CP1252 files to the same rows', () => {
-    const text = `${HEADER}\r\nRevenueFoodAndBeverages_Normal:20.00;Revenues;Getränke;20;4020;1;20;;Vorschlag – prüfen\r\n`;
+    const text = `${HEADER}\r\nRevenueFoodAndBeverages_Normal:8.10;Revenues;Getränke;8.1;3100;311;8.1;;Vorschlag – prüfen\r\n`;
     const utf8 = parse(new TextEncoder().encode(text));
     const cp1252 = parse(encodeCp1252(text).bytes);
     expect(cp1252.rows).toEqual(utf8.rows);
-    expect(utf8.rows[0]).toMatchObject({ apaleoName: 'Getränke', bmdAccount: '4020', steuercode: '1', bmdVatPercent: '20', comment: 'Vorschlag – prüfen' });
+    expect(utf8.rows[0]).toMatchObject({ apaleoName: 'Getränke', abacusAccount: '3100', mwstCode: '311', mwstPercent: '8.1', comment: 'Vorschlag – prüfen' });
   });
 });
 
 describe('separator', () => {
   it('detects ; or , from the header line, skipping comment lines', () => {
     expect(detectSeparator(`# a, b, c, d\n${HEADER}\n`)).toBe(';');
-    expect(detectSeparator('apaleo_account,apaleo_type,bmd_account\n1;2;3\n')).toBe(',');
+    expect(detectSeparator('apaleo_account,apaleo_type,abacus_account\n1;2;3\n')).toBe(',');
   });
 
   it('reads a comma-separated file, with a decimal point in the rates', () => {
-    const mapping = parse(csvBytes(['apaleo_account,apaleo_type,bmd_account,steuercode,bmd_vat_percent,comment', 'R:4.9,Revenues,4050,1,4.9,"Karte, Visa"']));
-    expect(mapping.rows[0]).toMatchObject({ apaleoAccount: 'R:4.9', bmdAccount: '4050', bmdVatPercent: '4.9', comment: 'Karte, Visa' });
+    const mapping = parse(csvBytes(['apaleo_account,apaleo_type,abacus_account,mwst_code,mwst_percent,comment', 'R:2.6,Revenues,3260,312,2.6,"Karte, Visa"']));
+    expect(mapping.rows[0]).toMatchObject({ apaleoAccount: 'R:2.6', abacusAccount: '3260', mwstPercent: '2.6', comment: 'Karte, Visa' });
   });
 
   it('reads a decimal comma in the rate columns of a ; file', () => {
-    const [row] = parse(csvBytes([HEADER, 'R;Revenues;;4,9;4050;1;4,9;;'])).rows;
-    expect(row && [parsePercent(row.apaleoVatPercent), parsePercent(row.bmdVatPercent)]).toEqual([4.9, 4.9]);
+    const [row] = parse(csvBytes([HEADER, 'R;Revenues;;8,1;3500;311;8,1;;'])).rows;
+    expect(row && [parsePercent(row.apaleoVatPercent), parsePercent(row.mwstPercent)]).toEqual([8.1, 8.1]);
+  });
+
+  it('keeps the MWST-Code as text: a leading zero and letters stay', () => {
+    const rows = parse(csvBytes([HEADER, 'R1;Revenues;;8.1;3500;011;8.1;;', 'R2;Revenues;;8.1;3500;V81;8.1;;'])).rows;
+    expect(rows.map((row) => row.mwstCode)).toEqual(['011', 'V81']);
   });
 
   it('accepts the columns in any order and ignores unknown ones with a warning', () => {
-    const mapping = parse(csvBytes(['bmd_account;Notiz;apaleo_type;apaleo_account', '2890;x;Payments;1102']));
-    expect(mapping.rows[0]).toMatchObject({ apaleoAccount: '1102', apaleoType: 'Payments', bmdAccount: '2890' });
+    const mapping = parse(csvBytes(['abacus_account;Notiz;apaleo_type;apaleo_account', '1090;x;Payments;1102']));
+    expect(mapping.rows[0]).toMatchObject({ apaleoAccount: '1102', apaleoType: 'Payments', abacusAccount: '1090' });
     expect(mapping.findings.map((f) => f.code)).toEqual(['W-UNKNOWN-COLUMN']);
   });
 
   it('skips comment lines and rows Excel left with empty cells only', () => {
-    const mapping = parse(csvBytes(['# Vorlage ekr-hotel@1', HEADER, '1102;Payments;Visa;;2890;;;;', ';;;;;;;;']));
+    const mapping = parse(csvBytes(['# Vorlage kmu-hotel@1', HEADER, '1102;Payments;Visa;;1090;;;;', ';;;;;;;;']));
     expect(mapping.rows).toHaveLength(1);
+  });
+
+  it('keeps account numbers as written: no padding and no Sachkontenlänge', () => {
+    const mapping = parse(csvBytes([HEADER, '9000;House;House;;650;;;;', '*;AccountsReceivable;AR;;200;;;;']));
+    expect(mapping.rows.map((r) => r.abacusAccount)).toEqual(['650', '200']);
+    expect(mapping.findings).toEqual([]);
   });
 });
 
 describe('mappings of other tools', () => {
-  it('rejects a DATEV mapping (datev_account) and names init-mapping --template ekr', () => {
+  it('Old BMD mapping: rejects bmd_account and steuercode, says it is a BMD mapping and names init-mapping --template kmu-hotel', () => {
+    const error = loadError(readMappingFixture('ekr-beispiel.csv'));
+    expect(error.message).toContain('this is a BMD mapping');
+    expect(error.message).toContain('init-mapping --property <id> --template kmu-hotel');
+  });
+
+  it('Old DATEV mapping: rejects datev_account and names init-mapping --template kmu-hotel', () => {
     const datev = 'apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;datev_account;bu_key;datev_vat_percent;kost1;kost2;comment';
     const error = loadError(csvBytes([datev, '5011;Revenues;Accommodation 7%;7;8300;;7;;;']));
     expect(error.message).toContain('this is a DATEV mapping');
-    expect(error.message).toContain('init-mapping --property <id> --template ekr');
+    expect(error.message).toContain('init-mapping --property <id> --template kmu-hotel');
   });
 
-  it('rejects the Grman connector export', () => {
+  it('Account export of a paid connector: refuses it, names --accounts-from and no vendor', () => {
+    const error = loadError(readMappingFixture('connector-export.csv'));
+    expect(error.message).toContain('the account export of a paid connector');
+    expect(error.message).toContain('init-mapping --property <id> --template kmu-hotel --accounts-from <file>');
+    expect(error.message).not.toMatch(/grman|afin/i);
+  });
+
+  it('rejects the account export of a paid DATEV connector without naming its vendor', () => {
     const error = loadError(csvBytes(['ApaleoAccountNumber;DatevAccountNumber;CostCenter;CostCenter2', '5011;8300;LOGIS;']));
-    expect(error.message).toContain('Grman DATEV connector export');
-    expect(error.message).toContain('--template ekr');
-  });
-});
-
-describe('account length on load', () => {
-  it('restores the leading zeros of a 1-3 digit Sachkonto at Sachkontenlänge 4 with W-PADDED', () => {
-    const mapping = parse(csvBytes([HEADER, '9000;House;House;;650;;;;', '9001;House;House 2;;65;;;;']));
-    expect(mapping.rows.map((r) => r.bmdAccount)).toEqual(['0650', '0065']);
-    expect(mapping.findings.map((f) => [f.code, f.value])).toEqual([
-      ['W-PADDED', '650'],
-      ['W-PADDED', '65'],
-    ]);
-    expect(mapping.findings[0]?.message).toContain('line 2');
-  });
-
-  it('never pads at a longer Sachkontenlänge: 2890 stays 2890 at length 5', () => {
-    const mapping = parse(csvBytes([HEADER, '1102;Payments;Visa;;2890;;;;']), 5);
-    expect(mapping.rows[0]?.bmdAccount).toBe('2890');
-    expect(mapping.findings).toEqual([]);
-  });
-
-  it('never pads AccountsReceivable rows, which may name a Personenkonto', () => {
-    const mapping = parse(csvBytes([HEADER, '*;AccountsReceivable;AR;;200;;;;']));
-    expect(mapping.rows[0]?.bmdAccount).toBe('200');
-    expect(mapping.findings).toEqual([]);
+    expect(error.message).toContain('the account export of a paid DATEV connector');
+    expect(error.message).toContain('--template kmu-hotel');
+    expect(error.message).not.toMatch(/grman/i);
   });
 });
 
 describe('structural errors', () => {
-  it('fails on two rows with the same account and type, naming both lines', () => {
-    const error = loadError(csvBytes([HEADER, 'R10;Revenues;A;10;4000;1;10;;', '1102;Payments;Visa;;2890;;;;', 'R10;Revenues;A;10;4010;1;10;;']));
-    expect(error.message).toContain('lines 2 and 4 both map apaleo account R10 of type Revenues');
+  it('Duplicate key: fails on two rows with the same account and type, naming both lines', () => {
+    const error = loadError(csvBytes([HEADER, 'R38;Revenues;A;3.8;3400;313;3.8;;', '1102;Payments;Visa;;1090;;;;', 'R38;Revenues;A;3.8;3410;313;3.8;;']));
+    expect(error.message).toContain('lines 2 and 4 both map apaleo account R38 of type Revenues');
   });
 
   it('allows the same number with different types, and rate wildcards with different rates', () => {
     const mapping = parse(
-      csvBytes([HEADER, '1200;Receivables;;;2390;;;;', '1200;Payments;;;2890;;;;', '*;Liabilities;;10;3200;1;10;;', '*;Liabilities;;20;3201;1;20;;']),
+      csvBytes([HEADER, '1200;Receivables;;;1101;;;;', '1200;Payments;;;1090;;;;', '*;Liabilities;;3.8;2030;313;3.8;;', '*;Liabilities;;8.1;2031;311;8.1;;']),
     );
     expect(mapping.rows).toHaveLength(4);
   });
 
   it('fails on two wildcards for the same rate, written differently', () => {
-    const error = loadError(csvBytes([HEADER, '*;Liabilities;;10;3200;1;10;;', '*;Liabilities;;"10,0";3200;1;10;;']));
-    expect(error.message).toContain('lines 2 and 3 both map apaleo account * of type Liabilities at 10,0 %');
+    const error = loadError(csvBytes([HEADER, '*;Liabilities;;3.8;2030;313;3.8;;', '*;Liabilities;;"3,80";2030;313;3.8;;']));
+    expect(error.message).toContain('lines 2 and 3 both map apaleo account * of type Liabilities at 3,80 %');
   });
 
   it('rejects a Liabilities wildcard without a rate: VAT-relevant wildcards must name a VAT rate', () => {
-    const error = loadError(csvBytes([HEADER, '*;Liabilities;;;3200;1;10;;']));
+    const error = loadError(csvBytes([HEADER, '*;Liabilities;;;2030;313;3.8;;']));
     expect(error.message).toContain('line 2: VAT-relevant wildcards must name a VAT rate');
+    expect(error.message).toContain('for example 3.8, 8.1, 2.6 and 0');
   });
 
-  it.each(['', '10'])('rejects a Revenues wildcard (rate "%s") because revenue accounts are mapped one by one', (rate) => {
-    const error = loadError(csvBytes([HEADER, `*;Revenues;;${rate};4000;1;10;;`]));
+  it.each(['', '8.1'])('rejects a Revenues wildcard (rate "%s") because revenue accounts are mapped one by one', (rate) => {
+    const error = loadError(csvBytes([HEADER, `*;Revenues;;${rate};3500;311;8.1;;`]));
     expect(error.message).toContain('revenue accounts must be mapped one by one because of VAT');
   });
 
   it('rejects a header without the required columns and an empty file', () => {
-    expect(loadError(csvBytes(['account;bmd'])).message).toContain('lacks the column(s) apaleo_account, apaleo_type, bmd_account');
+    expect(loadError(csvBytes(['account;abacus'])).message).toContain('lacks the column(s) apaleo_account, apaleo_type, abacus_account');
     expect(loadError(new Uint8Array()).message).toContain('the file is empty');
   });
 
   it('reports a broken quote with the file name', () => {
-    expect(() => parse(csvBytes([HEADER, 'R10;Revenues;"Accommodation;10']))).toThrow(/Cannot read the mapping file m\.csv/);
+    expect(() => parse(csvBytes([HEADER, 'R38;Revenues;"Accommodation;3.8']))).toThrow(/Cannot read the mapping file m\.csv/);
   });
 });
 
 describe('writer', () => {
   it('writes UTF-8 with BOM, ; and CRLF, quoting only where needed', () => {
-    const bytes = renderMappingFile(['Vorlage ekr-hotel@1'], [mappingRow({ apaleoAccount: 'R10', apaleoType: 'Revenues', comment: 'a; "b"' })]);
+    const bytes = renderMappingFile(['Vorlage kmu-hotel@1'], [mappingRow({ apaleoAccount: 'R38', apaleoType: 'Revenues', comment: 'a; "b"' })]);
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
-    expect(new TextDecoder().decode(bytes.subarray(3))).toBe(`# Vorlage ekr-hotel@1\r\n${HEADER}\r\nR10;Revenues;;;;;;;"a; ""b"""\r\n`);
+    expect(new TextDecoder().decode(bytes.subarray(3))).toBe(`# Vorlage kmu-hotel@1\r\n${HEADER}\r\nR38;Revenues;;;;;;;"a; ""b"""\r\n`);
     expect(formatCsvLine([' x', 'y\nz', 'plain'])).toBe('" x";"y\nz";plain');
   });
 
@@ -170,29 +172,31 @@ describe('writer', () => {
 });
 
 describe('Excel round trip', () => {
-  it('reads the Excel (AT) saved fixture to the same rows as the written original, restoring the class-0 account and reading 4,9 as 4.9', () => {
+  it('reads the Excel (CH) saved fixture to the same rows as the written original, with 8,1 read as 8.1 and the MWST-Code 311 kept as text', () => {
     const original = parse(renderMappingFile([], EXCEL_ORIGINAL_ROWS));
-    const saved = parse(readMappingFixture('excel-at-saved.csv'));
-    expect(decodeCsv(readMappingFixture('excel-at-saved.csv')).encoding).toBe('windows-1252');
+    const saved = parse(readMappingFixture('excel-ch-saved.csv'));
+    expect(decodeCsv(readMappingFixture('excel-ch-saved.csv')).encoding).toBe('windows-1252');
     expect(saved.rows.map(values).map(rated)).toEqual(original.rows.map(values).map(rated));
-    expect(saved.rows.find((row) => row.apaleoAccount === 'RevenueOther_Special:4.90')?.bmdVatPercent).toBe('4,9');
-    expect(parsePercent('4,9')).toBe(4.9);
-    expect(saved.findings.map((f) => [f.code, f.value])).toEqual([['W-PADDED', '650']]);
+    const food = saved.rows.find((row) => row.apaleoAccount === 'RevenueFoodAndBeverages_Normal:8.10');
+    expect(food?.mwstPercent).toBe('8,1');
+    expect(parsePercent(food?.mwstPercent ?? '')).toBe(8.1);
+    expect(food?.mwstCode).toBe('311');
+    expect(saved.findings).toEqual([]);
   });
 });
 
 describe('appendRows', () => {
   it('reads the column order of a header with every cell quoted (LibreOffice "quote all")', () => {
     const quoted =
-      '"apaleo_account";"apaleo_type";"apaleo_name";"apaleo_vat_percent";"bmd_account";"steuercode";"bmd_vat_percent";"kost";"comment"\r\n' +
-      '"R10";"Revenues";"Accommodation 10%";"10";"4000";"1";"10";"";""\r\n';
-    const added = mappingRow({ apaleoAccount: 'R20', apaleoType: 'Revenues', apaleoName: 'Spa 20%', apaleoVatPercent: '20', bmdAccount: '4030', steuercode: '1', bmdVatPercent: '20' });
+      '"apaleo_account";"apaleo_type";"apaleo_name";"apaleo_vat_percent";"abacus_account";"mwst_code";"mwst_percent";"kost";"comment"\r\n' +
+      '"R38";"Revenues";"Accommodation 3.8%";"3.8";"3400";"313";"3.8";"";""\r\n';
+    const added = mappingRow({ apaleoAccount: 'R81', apaleoType: 'Revenues', apaleoName: 'Spa 8.1%', apaleoVatPercent: '8.1', abacusAccount: '3500', mwstCode: '311', mwstPercent: '8.1' });
     const bytes = appendRows(new TextEncoder().encode(quoted), [added]);
-    expect(decodeCsv(bytes).text).toBe(`${quoted}R20;Revenues;Spa 20%;20;4030;1;20;;\r\n`);
-    const rows = parseMapping(bytes, { path: 'x', sachkontenlaenge: 4 }).rows;
-    expect(rows.map((r) => [r.apaleoAccount, r.bmdAccount])).toEqual([
-      ['R10', '4000'],
-      ['R20', '4030'],
+    expect(decodeCsv(bytes).text).toBe(`${quoted}R81;Revenues;Spa 8.1%;8.1;3500;311;8.1;;\r\n`);
+    const rows = parseMapping(bytes, { path: 'x' }).rows;
+    expect(rows.map((r) => [r.apaleoAccount, r.abacusAccount])).toEqual([
+      ['R38', '3400'],
+      ['R81', '3500'],
     ]);
   });
 });

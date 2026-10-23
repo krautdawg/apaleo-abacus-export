@@ -1,282 +1,247 @@
 import { describe, expect, it } from 'vitest';
 import { ChartIndex } from '../../src/core/chart.js';
 import type { LedgerLine } from '../../src/core/source.js';
-import { checkCoverage, checkMapping, rowRate, type CheckMappingOptions, type CoverageOptions, type Mapping, type MappingRowValues } from '../../src/mapping/index.js';
+import { checkCoverage, checkMapping, checkUsedMwstCodes, rowRate, type CheckMappingOptions, type CoverageOptions, type Mapping, type MappingRowValues } from '../../src/mapping/index.js';
 import { releaseRateOf } from '../../src/posting/index.js';
 import { BSP, loadBeispielData } from '../helpers/apaleo.js';
 import { FakeSource } from '../helpers/fake-source.js';
 import { ledgerLine, tax } from '../helpers/ledger.js';
 import { mappingOf, mappingRow } from '../helpers/mapping.js';
 
-const check = (rows: MappingRowValues[], options: Partial<CheckMappingOptions> = {}) => {
-  const lengths = { sachkontenlaenge: 4, personenkontenlaenge: 6, ...options };
-  return checkMapping(mappingOf(rows, lengths.sachkontenlaenge), lengths);
-};
+const check = (rows: MappingRowValues[], options: CheckMappingOptions = {}) => checkMapping(mappingOf(rows), options);
 const codes = (findings: { code: string }[]) => findings.map((f) => f.code);
+const ACC38 = 'RevenueAccommodation_Special:3.80';
 const revenue = (values: Partial<MappingRowValues> = {}) =>
-  mappingRow({ apaleoAccount: 'RevenueAccommodation_VeryReduced:10.00', apaleoType: 'Revenues', apaleoVatPercent: '10', bmdAccount: '4000', steuercode: '1', bmdVatPercent: '10', ...values });
+  mappingRow({ apaleoAccount: ACC38, apaleoType: 'Revenues', apaleoVatPercent: '3.8', abacusAccount: '3400', mwstCode: '313', mwstPercent: '3.8', ...values });
 
 describe('checkMapping', () => {
-  it('passes a valid mapping', () => {
+  it('Valid mapping: passes the KMU rows at 3.8, 8.1, 2.6 and 0 % with a Kostenstelle, Debitoren, payments, deposits and the Kurtaxe', () => {
     const findings = check([
       revenue(),
-      revenue({ apaleoAccount: 'RevenueFoodAndBeverages_Normal:20.00', apaleoVatPercent: '20', bmdAccount: '4020', bmdVatPercent: '20', kost: '20' }),
-      revenue({ apaleoAccount: 'RevenueOther_Special:4.90', apaleoVatPercent: '4.9', bmdAccount: '4050', bmdVatPercent: '4,9' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', bmdAccount: '200000' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', bmdAccount: '2890' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '13', bmdAccount: '3202', steuercode: '1', bmdVatPercent: '13' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', bmdAccount: '3209', bmdVatPercent: '0' }),
-      mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoVatPercent: '0', bmdAccount: '3580' }),
+      revenue({ apaleoAccount: 'RevenueFoodAndBeverages_Normal:8.10', apaleoVatPercent: '8.1', abacusAccount: '3200', mwstCode: '311', mwstPercent: '8,1', kost: '20' }),
+      revenue({ apaleoAccount: 'RevenueOther_Reduced:2.60', apaleoVatPercent: '2.6', abacusAccount: '3260', mwstCode: '312', mwstPercent: '2.6' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', abacusAccount: '1102' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', abacusAccount: '1090' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: '313', mwstPercent: '3.8' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', abacusAccount: '2039', mwstPercent: '0' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'LossOfAccountsReceivable', apaleoVatPercent: '3.8', abacusAccount: '3805', mwstCode: '313', mwstPercent: '3.8', kost: '10' }),
+      mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoVatPercent: '0', abacusAccount: '2210' }),
     ]);
     expect(findings).toEqual([]);
   });
 
-  it('reports a VAT mismatch naming the row and both rates', () => {
-    const [finding, ...rest] = check([revenue({ bmdAccount: '4020', bmdVatPercent: '20' })]);
-    expect(rest).toEqual([]);
-    expect(finding?.code).toBe('E-VAT-MISMATCH');
-    expect(finding?.message).toContain('line 2');
-    expect(finding?.message).toContain('VAT 10 %');
-    expect(finding?.message).toContain('books 20 % on BMD account 4020');
+  it('VAT mismatch: revenue at 3.8 % mapped to 3500 with 311 at 8.1 % names the row and both rates', () => {
+    const findings = check([revenue({ abacusAccount: '3500', mwstCode: '311', mwstPercent: '8.1' })]);
+    expect(codes(findings)).toEqual(['E-VAT-MISMATCH']);
+    expect(findings[0]?.message).toContain('line 2');
+    expect(findings[0]?.message).toContain('VAT 3.8 %');
+    expect(findings[0]?.message).toContain('books 8.1 % on Abacus account 3500');
   });
 
-  it('warns W-VAT-RATE-UNUSUAL for a German mapping copied at 7 %, naming the Austrian rates', () => {
-    const findings = check([revenue({ apaleoVatPercent: '7', bmdVatPercent: '7' })]);
-    expect(codes(findings)).toEqual(['W-VAT-RATE-UNUSUAL']);
-    expect(findings[0]?.message).toContain('line 2');
-    expect(findings[0]?.message).toContain('0 %, 4.9 %, 10 %, 13 %, 20 %');
+  it('Austrian mapping copied: 10 % on 3400 with code 1 warns W-VAT-RATE-UNUSUAL with the Swiss rates and W-MWST-CODE-UNCHECKED for code 1', () => {
+    const findings = check([revenue({ apaleoVatPercent: '10', mwstCode: '1', mwstPercent: '10' })]);
+    expect(codes(findings).sort()).toEqual(['W-MWST-CODE-UNCHECKED', 'W-VAT-RATE-UNUSUAL']);
+    const unusual = findings.find((f) => f.code === 'W-VAT-RATE-UNUSUAL');
+    expect(unusual?.message).toContain('line 2');
+    expect(unusual?.message).toContain('is not a Swiss MWST rate (0 %, 2.6 %, 3.8 %, 8.1 %)');
+    expect(unusual?.message).toContain('copied from a German or Austrian mapping');
+    expect(findings.find((f) => f.code === 'W-MWST-CODE-UNCHECKED')?.message).toContain('the MWST-Code 1');
   });
 
   it.each([
-    ['2', 'Vorsteuer'],
-    ['3', 'Vorsteuer-Berichtigung'],
-  ])('reports E-STEUERCODE-INPUT-TAX for the NTCS code %s on a revenue row', (code, meaning) => {
-    const findings = check([revenue({ steuercode: code })]);
-    expect(codes(findings)).toEqual(['E-STEUERCODE-INPUT-TAX']);
+    ['7.7', 'Normalsatz'],
+    ['3.7', 'Sondersatz Beherbergung'],
+    ['2.5', 'reduzierter Satz'],
+  ])('Old rate: %s %% was the %s until 2023-12-31', (percent, what) => {
+    const findings = check([revenue({ apaleoVatPercent: percent, mwstPercent: percent })]);
+    const unusual = findings.find((f) => f.code === 'W-VAT-RATE-UNUSUAL');
+    expect(unusual?.message).toContain(`${percent} % was the ${what} until 2023-12-31`);
+  });
+
+  it('Swapped codes: 313 on revenue at 8.1 % warns W-MWST-CODE-RATE naming the row, the code configured for Beherbergung at 3.8 % and the rate 8.1', () => {
+    const findings = check([revenue({ apaleoVatPercent: '8.1', abacusAccount: '3500', mwstPercent: '8.1' })]);
+    expect(codes(findings)).toEqual(['W-MWST-CODE-RATE']);
     expect(findings[0]?.message).toContain('line 2');
-    expect(findings[0]?.message).toContain(`Steuercode ${code} means ${meaning} in BMD NTCS`);
+    expect(findings[0]?.message).toContain('the MWST-Code 313 is configured for Beherbergung at 3.8 % (abacus.mwstCodes.beherbergung), but the row books it at 8.1 %');
   });
 
-  it('rejects input-tax codes on every revenue-side type, but not on a house row', () => {
-    for (const apaleoType of ['Liabilities', 'CityTaxes', 'SecondCityTax', 'GuestLevies', 'LossOfAccountsReceivable']) {
-      expect(codes(check([mappingRow({ apaleoAccount: 'X', apaleoType, bmdAccount: '3580', steuercode: '2', bmdVatPercent: '20' })])), apaleoType).toEqual([
-        'E-STEUERCODE-INPUT-TAX',
-      ]);
-    }
-    expect(codes(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', bmdAccount: '7000', steuercode: '2', bmdVatPercent: '20' })]))).toEqual([
-      'W-STEUERCODE-UNCHECKED',
-    ]);
+  it('checks the configured codes of the Mandant instead of the KMU sample codes', () => {
+    const mwstCodes = { normal: 'V81', reduziert: 'V26', beherbergung: 'V38' };
+    expect(check([revenue({ mwstCode: 'V38' })], { mwstCodes })).toEqual([]);
+    expect(codes(check([revenue()], { mwstCodes }))).toEqual(['W-MWST-CODE-UNCHECKED']);
+    expect(check([revenue()], { mwstCodes })[0]?.message).toContain('In the Abacus KMU sample Mandant, 313 is "Beherbergung" (Ziffer 343 of the MWST-Abrechnung)');
   });
 
-  it.each(['Payments', 'Receivables', 'AccountsReceivable'])('rejects a Steuercode on a %s row with E-STEUERCODE-NOT-ALLOWED', (apaleoType) => {
-    const findings = check([mappingRow({ apaleoAccount: '1200', apaleoType, bmdAccount: '2390', steuercode: '1', bmdVatPercent: '10' })]);
-    expect(codes(findings)).toEqual(['E-STEUERCODE-NOT-ALLOWED']);
+  it.each(['Payments', 'Receivables', 'AccountsReceivable'])('MWST-Code on a %s row: E-MWST-CODE-NOT-ALLOWED naming the row', (apaleoType) => {
+    const findings = check([mappingRow({ apaleoAccount: '1200', apaleoType, abacusAccount: '1101', mwstCode: '313', mwstPercent: '3.8' })]);
+    expect(codes(findings)).toEqual(['E-MWST-CODE-NOT-ALLOWED']);
     expect(findings[0]?.message).toContain('line 2');
     expect(findings[0]?.message).toContain(`apaleo type ${apaleoType} is a payment, guest claim or Debitor`);
-    expect(codes(check([mappingRow({ apaleoAccount: '1200', apaleoType, bmdAccount: '2390', steuercode: '0', bmdVatPercent: '0' })]))).toEqual([
-      'E-STEUERCODE-NOT-ALLOWED',
-    ]);
+    expect(findings[0]?.message).toContain('Abacus would book the MWST on this money or claim account');
   });
 
-  describe('deposit rows (Anzahlungen, b05)', () => {
-    const deposit = (steuercode: string) =>
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode, bmdVatPercent: '10' });
-
-    it('passes a deposit row at 10 % on 3200 with Steuercode 1 in NTCS', () => {
-      expect(check([deposit('1')], { dialect: 'ntcs' })).toEqual([]);
-    });
-
-    it.each([
-      ['2', 'Vorsteuer'],
-      ['3', 'Vorsteuer-Berichtigung'],
-    ])('refuses the input-tax code %s on a deposit row in NTCS with E-STEUERCODE-INPUT-TAX', (code, meaning) => {
-      const findings = check([deposit(code)], { dialect: 'ntcs' });
-      expect(codes(findings)).toEqual(['E-STEUERCODE-INPUT-TAX']);
-      expect(findings[0]?.message).toContain('line 2');
-      expect(findings[0]?.message).toContain(`Steuercode ${code} means ${meaning} in BMD NTCS`);
-      expect(findings[0]?.message).toContain('Use the Umsatzsteuer code 1');
-    });
+  it('Untaxed revenue with a code at rate 0: no E-MWST-CODE-MISSING or E-VAT-RATE-MISSING, W-MWST-CODE-UNCHECKED names 400 and Ziffer 230', () => {
+    const findings = check([mappingRow({ apaleoAccount: 'RevenueOther_Without:0.00', apaleoType: 'Revenues', apaleoVatPercent: '0', abacusAccount: '3600', mwstCode: '400', mwstPercent: '0' })]);
+    expect(codes(findings)).toEqual(['W-MWST-CODE-UNCHECKED']);
+    expect(findings[0]?.message).toContain('the MWST-Code 400');
+    expect(findings[0]?.message).toContain('Ziffer 230');
+    expect(findings[0]?.message).toContain('Confirm with your Treuhänder');
   });
 
-  it('accepts the BMD 5.5 Soll-USt code 3 with bmd.dialect bmd55, and rejects 0 there', () => {
-    expect(check([revenue({ steuercode: '3' })], { dialect: 'bmd55' })).toEqual([]);
-    expect(check([revenue({ steuercode: '1' })], { dialect: 'bmd55' })).toEqual([]);
-    const findings = check([revenue({ steuercode: '0' })], { dialect: 'bmd55' });
-    expect(codes(findings)).toEqual(['E-STEUERCODE-INPUT-TAX']);
-    expect(findings[0]?.message).toContain('Steuercode 0 means Vorsteuer in BMD 5.5');
+  it('Kurtaxe with the Ziffer-900 sample code: 490 names Ziffer 900 and says that a collected Kurtaxe is a durchlaufender Posten', () => {
+    const findings = check([mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoVatPercent: '0', abacusAccount: '2210', mwstCode: '490', mwstPercent: '0' })]);
+    expect(codes(findings)).toEqual(['W-MWST-CODE-UNCHECKED']);
+    expect(findings[0]?.message).toContain('490 is "Subvention Kurtaxen" (Ziffer 900');
+    expect(findings[0]?.message).toContain('not for a Kurtaxe the hotel collects');
+    expect(findings[0]?.message).toContain('a collected Kurtaxe is a durchlaufender Posten without MWST-Code or with a Ziffer-910 code such as 491');
+    expect(check([mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoVatPercent: '0', abacusAccount: '2210', mwstCode: '491', mwstPercent: '0' })])[0]?.message).toContain('Ziffer 910');
   });
 
-  it('accepts a non-taxable code at rate 0 with W-STEUERCODE-UNCHECKED only', () => {
-    const findings = check([mappingRow({ apaleoAccount: 'RevenueCancellationFees_Without:0.00', apaleoType: 'Revenues', apaleoVatPercent: '0', bmdAccount: '4090', steuercode: '81', bmdVatPercent: '0' })]);
-    expect(codes(findings)).toEqual(['W-STEUERCODE-UNCHECKED']);
-    expect(findings[0]?.message).toContain('Steuercode 81');
+  it('names a Vorsteuer code of the KMU sample Mandant as one', () => {
+    expect(check([revenue({ mwstCode: '111' })])[0]?.message).toContain('it is a Vorsteuer code, but apaleo lines are sales');
   });
 
-  it('warns W-UNTAXED-REVENUE for revenue at 0 % without Steuercode: the BMD account must not carry a fixed Steuercode', () => {
-    const findings = check([mappingRow({ apaleoAccount: 'RevenueCancellationFees_Without:0.00', apaleoType: 'Revenues', apaleoVatPercent: '0', bmdAccount: '4090' })]);
+  it('Untaxed revenue without MWST-Code: W-UNTAXED-REVENUE says that the Abacus account must not carry a default MWST-Code', () => {
+    const findings = check([mappingRow({ apaleoAccount: 'RevenueOther_Without:0.00', apaleoType: 'Revenues', apaleoVatPercent: '0', abacusAccount: '3600', mwstPercent: '0' })]);
     expect(codes(findings)).toEqual(['W-UNTAXED-REVENUE']);
     expect(findings[0]?.message).toContain('line 2');
-    expect(findings[0]?.message).toContain('must not carry a fixed Steuercode');
+    expect(findings[0]?.message).toContain('The Abacus account must not carry a default MWST-Code');
+    expect(findings[0]?.message).toContain('"MWST berechnen"');
   });
 
-  it('warns W-KOST-IGNORED for a Kostenstelle on a payment row, and E-KOST-FORMAT for one that is not digits', () => {
-    const ignored = check([mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', bmdAccount: '2890', kost: '10' })]);
+  it('Kostenstelle on a payment row: W-KOST-IGNORED, and K10 is E-KOST-FORMAT; 1 to 11 digits pass', () => {
+    const ignored = check([mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', abacusAccount: '1090', kost: '10' })]);
     expect(codes(ignored)).toEqual(['W-KOST-IGNORED']);
     expect(ignored[0]?.message).toContain('line 2');
-    expect(codes(check([mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', bmdAccount: '2890', kost: 'K10' })]))).toEqual(['E-KOST-FORMAT']);
-    expect(codes(check([revenue({ kost: '1234567890' })]))).toEqual(['E-KOST-FORMAT']);
-    expect(check([revenue({ kost: '123456789' })])).toEqual([]);
+    expect(ignored[0]?.message).toContain('Abacus accepts a Kostenstelle only on Erfolgskonten');
+    expect(codes(check([mappingRow({ apaleoAccount: '1102', apaleoType: 'Payments', abacusAccount: '1090', kost: 'K10' })]))).toEqual(['E-KOST-FORMAT']);
+    expect(codes(check([revenue({ kost: '123456789012' })]))).toEqual(['E-KOST-FORMAT']);
+    expect(check([revenue({ kost: '12345678901' })])).toEqual([]);
   });
 
-  it('reports E-STEUERCODE-MISSING for a rate without Steuercode, and E-VAT-RATE-MISSING for a Steuercode without rate', () => {
-    expect(codes(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', bmdAccount: '7000', bmdVatPercent: '10' })]))).toEqual(['E-STEUERCODE-MISSING']);
-    // Without a Steuercode BMD books no tax, so a 10 % apaleo account also mismatches.
-    expect(codes(check([mappingRow({ apaleoAccount: 'X', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', bmdVatPercent: '10' })]))).toEqual([
-      'E-STEUERCODE-MISSING',
+  it('Rate without MWST-Code: E-MWST-CODE-MISSING; a code without rate: E-VAT-RATE-MISSING', () => {
+    expect(codes(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', abacusAccount: '6000', mwstPercent: '8.1' })]))).toEqual(['E-MWST-CODE-MISSING']);
+    // Without an MWST-Code Abacus books no MWST, so an 8.1 % apaleo account also mismatches.
+    expect(codes(check([mappingRow({ apaleoAccount: 'X', apaleoType: 'Liabilities', apaleoVatPercent: '8.1', abacusAccount: '2031', mwstPercent: '8.1' })]))).toEqual([
+      'E-MWST-CODE-MISSING',
       'E-VAT-MISMATCH',
     ]);
-    expect(codes(check([revenue({ bmdVatPercent: '' })]))).toEqual(['E-VAT-RATE-MISSING']);
+    expect(codes(check([revenue({ mwstPercent: '' })]))).toEqual(['E-VAT-RATE-MISSING']);
   });
 
-  it('rejects a Steuercode that is not a whole number from 0 to 99 and a rate that is no percentage', () => {
-    expect(codes(check([revenue({ steuercode: '100' })]))).toEqual(['E-STEUERCODE-FORMAT']);
-    expect(codes(check([revenue({ steuercode: 'U1' })]))).toEqual(['E-STEUERCODE-FORMAT']);
-    expect(codes(check([revenue({ bmdVatPercent: 'zehn' })]))).toEqual(['E-VAT-PERCENT']);
+  it('rejects an MWST-Code that is not 1 to 3 characters of A-Z, a-z and 0-9, and a rate that is no percentage', () => {
+    for (const code of ['3133', 'V-8', 'ü1']) expect(codes(check([revenue({ mwstCode: code })])), code).toEqual(['E-MWST-CODE-FORMAT']);
+    expect(codes(check([revenue({ mwstPercent: 'acht' })]))).toEqual(['E-VAT-PERCENT']);
   });
 
-  it('reports E-ACCOUNT-LENGTH for 2890 at Sachkontenlänge 5, suggesting 28900 and never padding to 02890', () => {
-    const [finding, ...rest] = check([mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', bmdAccount: '2890' })], { sachkontenlaenge: 5 });
-    expect(rest).toEqual([]);
-    expect(finding?.code).toBe('E-ACCOUNT-LENGTH');
-    expect(finding?.message).toContain('needs exactly 5 digits as a Sachkonto');
-    expect(finding?.message).toContain('for example 28900');
-    expect(finding?.message).toContain('format the column as Text');
-    expect(finding?.message).not.toContain('02890');
-  });
-
-  it('accepts the Sammeldebitor 200000 as Personenkonto on an AccountsReceivable row, and a Sachkonto there too', () => {
-    expect(check([mappingRow({ apaleoAccount: 'CollectiveDebitor_AccountsReceivable', apaleoType: 'AccountsReceivable', bmdAccount: '200000' })])).toEqual([]);
-    expect(check([mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', bmdAccount: '2000' })])).toEqual([]);
-    expect(codes(check([mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', bmdAccount: '200000' })], { personenkontenlaenge: 5 }))).toEqual([
-      'E-ACCOUNT-LENGTH',
-    ]);
-    // Only AccountsReceivable rows may name a Personenkonto.
-    expect(codes(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', bmdAccount: '200000' })]))).toEqual(['E-ACCOUNT-LENGTH']);
-  });
-
-  it('rejects an account that is not digits only', () => {
-    const findings = check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', bmdAccount: '40O0' })]);
-    expect(codes(findings)).toEqual(['E-ACCOUNT-LENGTH']);
-    expect(findings[0]?.message).toContain('must contain digits only');
+  it('Account with letters: 34OO and a 12-digit number report E-ACCOUNT-FORMAT with the rule of 1 to 11 digits', () => {
+    for (const account of ['34OO', '123456789012', '34 00']) {
+      const findings = check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', abacusAccount: account })]);
+      expect(codes(findings), account).toEqual(['E-ACCOUNT-FORMAT']);
+      expect(findings[0]?.message).toContain('1 to 11 digits');
+    }
+    expect(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', abacusAccount: '12345678901' })])).toEqual([]);
+    expect(check([mappingRow({ apaleoAccount: '9000', apaleoType: 'House', abacusAccount: '6' })])).toEqual([]);
   });
 
   it('ignores rows for Vat and VatOnLiabilities accounts with a note', () => {
     const findings = check([
-      mappingRow({ apaleoAccount: 'Vat_VeryReduced:10.00', apaleoType: 'Vat', bmdAccount: 'x' }),
-      mappingRow({ apaleoAccount: 'LiabilitiesVat_VeryReduced:10.00', apaleoType: 'VatOnLiabilities' }),
+      mappingRow({ apaleoAccount: 'Vat_Special:3.80', apaleoType: 'Vat', abacusAccount: 'x' }),
+      mappingRow({ apaleoAccount: 'LiabilitiesVat_Special:3.80', apaleoType: 'VatOnLiabilities' }),
     ]);
     expect(codes(findings)).toEqual(['N-VAT-ROW-IGNORED']);
     expect(findings[0]?.message).toContain('2 row(s)');
+    expect(findings[0]?.message).toContain('Abacus books the MWST from the TaxData');
   });
 
   it('warns about unknown apaleo types', () => {
-    expect(codes(check([mappingRow({ apaleoAccount: '1', apaleoType: 'Revenue', bmdAccount: '4000' })]))).toEqual(['W-UNKNOWN-TYPE']);
+    expect(codes(check([mappingRow({ apaleoAccount: '1', apaleoType: 'Revenue', abacusAccount: '3400' })]))).toEqual(['W-UNKNOWN-TYPE']);
   });
 
-  it('gives the rate of a row: bmd_vat_percent with a Steuercode, 0 without one', () => {
-    expect(rowRate({ steuercode: '1', bmdVatPercent: '4,9' })).toBe(4.9);
-    expect(rowRate({ steuercode: '', bmdVatPercent: '' })).toBe(0);
-    expect(rowRate({ steuercode: '1', bmdVatPercent: '' })).toBeUndefined();
+  it('gives the rate of a row: mwst_percent with an MWST-Code, 0 without one', () => {
+    expect(rowRate({ mwstCode: '311', mwstPercent: '8,1' })).toBe(8.1);
+    expect(rowRate({ mwstCode: '', mwstPercent: '' })).toBe(0);
+    expect(rowRate({ mwstCode: '311', mwstPercent: '' })).toBeUndefined();
   });
 });
 
 describe('checkCoverage', () => {
   const lines = (overrides: Partial<LedgerLine>[]) => overrides.map((o) => ledgerLine(o));
   const coverage = (mapping: Mapping, ledger: LedgerLine[], chart?: ChartIndex, options: Partial<CoverageOptions> = {}) =>
-    checkCoverage(mapping, ledger, chart, { sachkontenlaenge: 4, rateOf: releaseRateOf(ledger, chart), ...options });
-  const RECEIVABLES = mappingRow({ apaleoAccount: '*', apaleoType: 'Receivables', bmdAccount: '2390' });
+    checkCoverage(mapping, ledger, chart, { rateOf: releaseRateOf(ledger, chart), ...options });
+  const RECEIVABLES = mappingRow({ apaleoAccount: '*', apaleoType: 'Receivables', abacusAccount: '1101' });
+  const t38 = (cents: number) => [tax('Special', 3.8, cents)];
 
-  it('reports a new revenue account with number, type, name, line count and gross total, and writes no file', () => {
+  it('New revenue account: reports 5010 with type, name, line count and gross total', () => {
     const mapping = mappingOf([RECEIVABLES]);
     const credit = { number: '5010', name: 'Spa', type: 'Revenues' };
     const findings = coverage(mapping, lines([{ credit, grossCents: 5000 }, { credit, grossCents: 2550 }]));
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({ code: 'E-UNMAPPED', value: '5010' });
     expect(findings[0]?.message).toBe(
-      'apaleo account 5010 (Revenues, "Spa") is not mapped (2 lines, gross 75.50): add a row with apaleo_account 5010, apaleo_type Revenues and a BMD account',
+      'apaleo account 5010 (Revenues, "Spa") is not mapped (2 lines, gross 75.50): add a row with apaleo_account 5010, apaleo_type Revenues and an Abacus account',
     );
   });
 
-  it('treats a row without a BMD account as unmapped and points at its line: Ortstaxe until the user fills it in', () => {
+  it('treats a row without an Abacus account as unmapped and points at its line: Kurtaxe until the user fills it in', () => {
     const mapping = mappingOf([RECEIVABLES, mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes' })]);
-    const [finding] = coverage(mapping, lines([{ credit: { number: '3501', name: 'City Tax (no VAT)', type: 'CityTaxes' }, taxes: [] }]));
+    const [finding] = coverage(mapping, lines([{ credit: { number: '3501', name: 'Kurtaxe', type: 'CityTaxes' }, taxes: [] }]));
     expect(finding).toMatchObject({ code: 'E-UNMAPPED', value: '3501' });
-    expect(finding?.message).toContain('fill in bmd_account on line 3');
+    expect(finding?.message).toContain('fill in abacus_account on line 3');
   });
 
-  it('suggests the Sammeldebitor at the Personenkontenlänge for an unmapped AccountsReceivable account', () => {
-    const debit = { number: 'BSP-X-1_AccountsReceivable', name: 'AR', type: 'AccountsReceivable', parentNumber: '9999' };
-    const [six] = coverage(mappingOf([RECEIVABLES]), lines([{ debit, credit: { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' } }]));
-    expect(six?.message).toContain('`*;AccountsReceivable;;;200000` (Sammeldebitor)');
-    const [five] = coverage(mappingOf([RECEIVABLES]), lines([{ debit, credit: { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' } }]), undefined, {
-      personenkontenlaenge: 5,
-    });
-    expect(five?.message).toContain('`*;AccountsReceivable;;;20000` (Sammeldebitor)');
-  });
-
-  it('suggests a rate wildcard with the Steuercode for a VAT-relevant account without a row', () => {
+  it('suggests a rate wildcard with the MWST-Code of the rate for a VAT-relevant account without a row', () => {
     const credit = { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' };
-    const [finding] = coverage(mappingOf([RECEIVABLES]), lines([{ credit }]));
-    expect(finding?.message).toContain('or a wildcard row (*) for Liabilities at 10 %: `*;Liabilities;;10;<BMD account>;1;10` (template: 3200)');
-    const [bmd55] = coverage(mappingOf([RECEIVABLES]), lines([{ credit }]), undefined, { dialect: 'bmd55' });
-    expect(bmd55?.message).toContain('`*;Liabilities;;10;<BMD account>;3;10`');
+    const [finding] = coverage(mappingOf([RECEIVABLES]), lines([{ credit, grossCents: 20_760, taxes: t38(760) }]));
+    expect(finding?.message).toContain('or a wildcard row (*) for Liabilities at 3.8 %: `*;Liabilities;;3.8;<Abacus account>;313;3.8` (template: 2030)');
+    const [v38] = coverage(mappingOf([RECEIVABLES]), lines([{ credit, grossCents: 20_760, taxes: t38(760) }]), undefined, { mwstCodes: { normal: 'V81', reduziert: 'V26', beherbergung: 'V38' } });
+    expect(v38?.message).toContain('`*;Liabilities;;3.8;<Abacus account>;V38;3.8`');
   });
 
-  it('resolves an untaxed deposit release with the inferred rate only, never through the 0 % row', () => {
+  it('Untaxed deposit release: resolves through the inferred 3.8 % wildcard, never through the 0 % row', () => {
     const liabilities = { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' };
     const receivables = { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' };
-    const release = ledgerLine({ debit: liabilities, credit: receivables, taxes: [], reference: 'BSP-X-1' });
+    const release = ledgerLine({ debit: liabilities, credit: receivables, grossCents: 20_760, taxes: [], reference: 'BSP-X-1' });
     const without = ledgerLine({ debit: liabilities, credit: receivables, taxes: [tax('Without', 0, 0)] });
-    const taxed = ledgerLine({ debit: liabilities, credit: receivables, taxes: [tax('VeryReduced', 10, 1_000)] });
+    const taxed = ledgerLine({ debit: liabilities, credit: receivables, grossCents: 20_760, taxes: t38(760) });
     const untaxedRevenue = ledgerLine({ credit: { number: 'R0', name: 'No VAT', type: 'Revenues' }, taxes: [] });
     const rateOf = releaseRateOf([release, without, taxed, untaxedRevenue], undefined);
-    expect([release, without, taxed, untaxedRevenue].map(rateOf)).toEqual([undefined, undefined, 10, 0]);
+    expect([release, without, taxed, untaxedRevenue].map(rateOf)).toEqual([undefined, undefined, 3.8, 0]);
 
     const pair = ledgerLine({
-      debit: { number: 'LiabilitiesVat_VeryReduced:10.00', name: 'LiabilitiesVat Very Reduced (10%)', type: 'VatOnLiabilities' },
+      debit: { number: 'LiabilitiesVat_Special:3.80', name: 'LiabilitiesVat Special (3.8%)', type: 'VatOnLiabilities' },
       credit: liabilities,
       command: 'PostPrepaymentVat',
-      grossCents: 1_000,
-      taxes: [tax('VeryReduced', 10, 1_000)],
+      grossCents: 760,
+      taxes: t38(760),
       reference: 'BSP-X-1',
     });
-    expect(releaseRateOf([release, pair], undefined)(release)).toBe(10);
+    expect(releaseRateOf([release, pair], undefined)(release)).toBe(3.8);
 
     // An untaxed refund resolves through the same pair; without it, it stays at 0 %.
-    const refund = ledgerLine({ debit: liabilities, credit: { number: '1102', name: 'Visa', type: 'Payments' }, taxes: [], reference: 'BSP-X-1' });
-    expect(releaseRateOf([refund, pair], undefined)(refund)).toBe(10);
+    const refund = ledgerLine({ debit: liabilities, credit: { number: '1102', name: 'Visa', type: 'Payments' }, grossCents: 20_760, taxes: [], reference: 'BSP-X-1' });
+    expect(releaseRateOf([refund, pair], undefined)(refund)).toBe(3.8);
     expect(releaseRateOf([refund], undefined)(refund)).toBe(0);
 
-    // mapping check --from --to: the release resolves through the 10 % wildcard and passes.
     const mapping = mappingOf([
       RECEIVABLES,
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode: '1', bmdVatPercent: '10' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', bmdAccount: '3209', bmdVatPercent: '0' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: '313', mwstPercent: '3.8' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', abacusAccount: '2039', mwstPercent: '0' }),
     ]);
     expect(coverage(mapping, [release, pair])).toEqual([]);
   });
 
   it('skips lines with a Vat or VatOnLiabilities side and accepts rates from the caller', () => {
     const mapping = mappingOf([
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode: '1', bmdVatPercent: '10' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: '313', mwstPercent: '3.8' }),
       RECEIVABLES,
     ]);
     const liabilities = { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' };
-    const vat = { number: 'LiabilitiesVat_VeryReduced:10.00', name: 'LiabilitiesVat', type: 'VatOnLiabilities' };
+    const vat = { number: 'LiabilitiesVat_Special:3.80', name: 'LiabilitiesVat', type: 'VatOnLiabilities' };
     const release = { debit: liabilities, credit: { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' }, taxes: [] };
     expect(coverage(mapping, lines([{ debit: liabilities, credit: vat }]))).toEqual([]);
     expect(codes(coverage(mapping, lines([release])))).toEqual(['E-VAT-RATE-UNKNOWN']);
-    expect(coverage(mapping, lines([release]), undefined, { rateOf: () => 10 })).toEqual([]);
+    expect(coverage(mapping, lines([release]), undefined, { rateOf: () => 3.8 })).toEqual([]);
   });
 
   it('finds the unmapped accounts of the Hotel Beispiel fixtures through a FakeSource', async () => {
@@ -284,11 +249,11 @@ describe('checkCoverage', () => {
     const chart = new ChartIndex(await fake.getChartOfAccounts(BSP));
     const ledger = await fake.getLedger(BSP, '2026-09-14', '2026-09-23');
     const mapping = mappingOf([
-      revenue(),
-      mappingRow({ apaleoAccount: '1200', apaleoType: 'Receivables', bmdAccount: '2390' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', bmdAccount: '2890' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode: '1', bmdVatPercent: '10' }),
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', bmdAccount: '3209', bmdVatPercent: '0' }),
+      mappingRow({ apaleoAccount: 'RevenueAccommodation_VeryReduced:10.00', apaleoType: 'Revenues', apaleoVatPercent: '10', abacusAccount: '3400', mwstCode: 'V10', mwstPercent: '10' }),
+      mappingRow({ apaleoAccount: '1200', apaleoType: 'Receivables', abacusAccount: '1101' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', abacusAccount: '1090' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', abacusAccount: '2030', mwstCode: 'V10', mwstPercent: '10' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', abacusAccount: '2039', mwstPercent: '0' }),
       mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes' }),
     ]);
     expect(coverage(mapping, ledger, chart).map((f) => [f.code, f.value])).toEqual([
@@ -299,7 +264,7 @@ describe('checkCoverage', () => {
     ]);
   });
 
-  it('reports untaxed deposit releases without an inferable rate once, never through the 0 % row', () => {
+  it('Untaxed deposit release without a rate source: E-VAT-RATE-UNKNOWN once for all such lines, never naming the 0 % row', () => {
     const release = (n: number) => ({
       debit: { number: `BSP-X-${n}_Liabilities`, name: 'Liabilities', type: 'Liabilities' },
       credit: { number: `BSP-X-${n}_Receivables`, name: 'R', type: 'Receivables' },
@@ -308,37 +273,37 @@ describe('checkCoverage', () => {
       reference: `BSP-X-${n}`,
     });
     const ledger = lines([release(1), release(2), release(3), release(4), release(1)]);
-    const zero = mappingOf([RECEIVABLES, mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', bmdAccount: '3209', bmdVatPercent: '0' })]);
+    const zero = mappingOf([RECEIVABLES, mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '0', abacusAccount: '2039', mwstPercent: '0' })]);
     const findings = coverage(zero, ledger);
     expect(codes(findings)).toEqual(['E-VAT-RATE-UNKNOWN']);
     expect(findings[0]).toMatchObject({ value: 'BSP-X-1_Liabilities' });
     expect(findings[0]?.message).toMatch(
       /^5 deposit releases \(5 lines, gross 250\.00, accounts BSP-X-1_Liabilities, BSP-X-2_Liabilities, BSP-X-3_Liabilities and 1 more\): apaleo settled a guest's prepaid deposit against the bill without a VAT amount, and the VAT rate cannot be found/,
     );
-    expect(findings[0]?.message).not.toContain('3209');
+    expect(findings[0]?.message).not.toContain('2039');
   });
 
-  it('asks for a deposit row at the inferred rate of 20 % when the mapping has none', () => {
+  it('Untaxed deposit release without deposit rows: an inferred 8.1 % asks for a * Liabilities row at 8.1 %', () => {
     const liabilities = { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' };
     const ledger = lines([
-      { debit: liabilities, credit: { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' }, taxes: [], grossCents: 12_000, reference: 'BSP-X-1' },
+      { debit: liabilities, credit: { number: 'BSP-X-1_Receivables', name: 'R', type: 'Receivables' }, taxes: [], grossCents: 10_810, reference: 'BSP-X-1' },
       {
-        debit: { number: 'LiabilitiesVat_Normal:20.00', name: 'LiabilitiesVat Normal (20%)', type: 'VatOnLiabilities' },
+        debit: { number: 'LiabilitiesVat_Normal:8.10', name: 'LiabilitiesVat Normal (8.1%)', type: 'VatOnLiabilities' },
         credit: liabilities,
         command: 'PostPrepaymentVat',
-        grossCents: 2_000,
-        taxes: [tax('Normal', 20, 2_000)],
+        grossCents: 810,
+        taxes: [tax('Normal', 8.1, 810)],
         reference: 'BSP-X-1',
       },
     ]);
     const mapping = mappingOf([
       RECEIVABLES,
-      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '10', bmdAccount: '3200', steuercode: '1', bmdVatPercent: '10' }),
+      mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: '313', mwstPercent: '3.8' }),
     ]);
     const [finding, ...rest] = coverage(mapping, ledger);
     expect(rest).toEqual([]);
     expect(finding).toMatchObject({ code: 'E-UNMAPPED', value: 'BSP-X-1_Liabilities' });
-    expect(finding?.message).toContain('or a wildcard row (*) for Liabilities at 20 %: `*;Liabilities;;20;<BMD account>;1;20` (template: 3201)');
+    expect(finding?.message).toContain('or a wildcard row (*) for Liabilities at 8.1 %: `*;Liabilities;;8.1;<Abacus account>;311;8.1` (template: 2031)');
   });
 
   describe('accounts of reservations and folios (outside the chart, with a parent)', () => {
@@ -347,21 +312,21 @@ describe('checkCoverage', () => {
       { number: '9999', name: 'Accounts Receivable', type: 'AccountsReceivable', ledger: 'guest', isArchived: false, hasChildren: true },
     ]);
     const receivables = { number: 'R-1_Receivables', name: 'Receivables for Reservation R-1', type: 'Receivables', parentNumber: '1200' };
-    const deposit = (id: string) => ({ number: `${id}_Liabilities/Reduced:13.00`, name: `Liabilities for Reservation ${id} (13%)`, type: 'Liabilities', parentNumber: '3000' });
-    const base = [RECEIVABLES, mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', bmdAccount: '2890' })];
-    const atThirteen = (id: string) => ledgerLine({ debit: receivables, credit: deposit(id), command: 'PostCharge', grossCents: -1130, taxes: [tax('Reduced', 13, -130)] });
+    const deposit = (id: string) => ({ number: `${id}_Liabilities/Special:3.80`, name: `Liabilities for Reservation ${id} (3.8%)`, type: 'Liabilities', parentNumber: '3000' });
+    const base = [RECEIVABLES, mappingRow({ apaleoAccount: '*', apaleoType: 'Payments', abacusAccount: '1090' })];
+    const deposit38 = (id: string) => ledgerLine({ debit: receivables, credit: deposit(id), command: 'PostCharge', grossCents: -1038, taxes: t38(-38) });
 
-    it('reports three deposits at 13 % under the empty 3000 row on line 40 once, with the wildcard row to add and the template account 3202', () => {
+    it('Deposits under an empty parent without wildcards: one finding names 3000, line 40, three accounts and the wildcard row at 3.8 % with the template 2030', () => {
       const filler = Array.from({ length: 36 }, (_, i) => mappingRow({ apaleoAccount: `H${i}`, apaleoType: 'House' }));
       const mapping = mappingOf([...base, ...filler, mappingRow({ apaleoAccount: '3000', apaleoType: 'Liabilities', apaleoName: 'Liabilities' })]);
       expect(mapping.rows.at(-1)?.line).toBe(40);
-      const findings = coverage(mapping, ['A-1', 'B-1', 'C-1'].map(atThirteen), chart);
+      const findings = coverage(mapping, ['A-1', 'B-1', 'C-1'].map(deposit38), chart);
       expect(findings).toHaveLength(1);
       expect(findings[0]).toMatchObject({ code: 'E-UNMAPPED', value: '3000' });
       expect(findings[0]?.message).toBe(
-        '3 Liabilities accounts of reservations or folios under parent 3000 at 13 % (A-1_Liabilities/Reduced:13.00, B-1_Liabilities/Reduced:13.00, ' +
-          'C-1_Liabilities/Reduced:13.00) are not mapped (3 lines, gross -33.90): the parent row for 3000 on line 40 has no BMD account ' +
-          'and does not apply to Liabilities at different VAT rates; add a wildcard row `*;Liabilities;;13;<BMD account>;1;13` (template: 3202)',
+        '3 Liabilities accounts of reservations or folios under parent 3000 at 3.8 % (A-1_Liabilities/Special:3.80, B-1_Liabilities/Special:3.80, ' +
+          'C-1_Liabilities/Special:3.80) are not mapped (3 lines, gross -31.14): the parent row for 3000 on line 40 has no Abacus account ' +
+          'and does not apply to Liabilities at different VAT rates; add a wildcard row `*;Liabilities;;3.8;<Abacus account>;313;3.8` (template: 2030)',
       );
       expect(findings[0]?.message).not.toContain('fill in');
     });
@@ -370,23 +335,22 @@ describe('checkCoverage', () => {
       const mapping = mappingOf([
         ...base,
         mappingRow({ apaleoAccount: '3000', apaleoType: 'Liabilities', apaleoName: 'Liabilities' }),
-        mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '13' }),
+        mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8' }),
       ]);
-      const [finding, ...rest] = coverage(mapping, [atThirteen('A-1')], chart);
+      const [finding, ...rest] = coverage(mapping, [deposit38('A-1')], chart);
       expect(rest).toEqual([]);
       expect(finding?.message).toContain(
-        'the parent row for 3000 on line 4 has no BMD account and does not apply to Liabilities at different VAT rates; ' +
-          'fill in bmd_account on the wildcard row for Liabilities at 13 % on line 5',
+        'the parent row for 3000 on line 4 has no Abacus account and does not apply to Liabilities at different VAT rates; ' +
+          'fill in abacus_account on the wildcard row for Liabilities at 3.8 % on line 5',
       );
       expect(finding?.message).not.toContain('add a wildcard row');
     });
 
-    it('suggests the wildcard row with the template account when there is no parent row at all, scaled to the Sachkontenlänge', () => {
-      expect(coverage(mappingOf(base), [atThirteen('A-1')], chart)[0]?.message).toMatch(/: add a wildcard row `\*;Liabilities;;13;<BMD account>;1;13` \(template: 3202\)$/);
-      expect(coverage(mappingOf(base), [atThirteen('A-1')], chart, { sachkontenlaenge: 5 })[0]?.message).toMatch(/\(template: 32020\)$/);
+    it('suggests the wildcard row with the template account when there is no parent row at all', () => {
+      expect(coverage(mappingOf(base), [deposit38('A-1')], chart)[0]?.message).toMatch(/: add a wildcard row `\*;Liabilities;;3\.8;<Abacus account>;313;3\.8` \(template: 2030\)$/);
     });
 
-    it('reports a per-reservation debtor and its /Offset once and suggests a 9999 row or the Sammeldebitor wildcard', () => {
+    it('Accounts receivable without a row: one finding for the debtor and its /Offset, suggesting a 9999 row or *;AccountsReceivable;;;1102 (Debitoren apaleo)', () => {
       const debtor = { number: 'AHTJTGFK-1_AccountsReceivable', name: 'AccountsReceivable for Reservation AHTJTGFK-1', type: 'AccountsReceivable', parentNumber: '9999' };
       const offset = { ...debtor, number: `${debtor.number}/Offset`, name: `${debtor.name} (Offset)` };
       const ledger = [
@@ -396,36 +360,88 @@ describe('checkCoverage', () => {
       const findings = coverage(mappingOf(base), ledger, chart);
       expect(findings).toHaveLength(1);
       expect(findings[0]?.message).toMatch(
-        /^2 AccountsReceivable accounts of reservations or folios under parent 9999 \(AHTJTGFK-1_AccountsReceivable, AHTJTGFK-1_AccountsReceivable\/Offset\) are not mapped \(3 lines, gross [-\d.]+\): add a row for 9999 AccountsReceivable or the wildcard row `\*;AccountsReceivable;;;200000` \(Sammeldebitor\)$/,
+        /^2 AccountsReceivable accounts of reservations or folios under parent 9999 \(AHTJTGFK-1_AccountsReceivable, AHTJTGFK-1_AccountsReceivable\/Offset\) are not mapped \(3 lines, gross [-\d.]+\): add a row for 9999 AccountsReceivable or the wildcard row `\*;AccountsReceivable;;;1102` \(Debitoren apaleo\)$/,
       );
     });
 
     it('passes once the AccountsReceivable wildcard exists', () => {
       const debtor = { number: 'AHTJTGFK-1_AccountsReceivable', name: 'AR', type: 'AccountsReceivable', parentNumber: '9999' };
-      const mapping = mappingOf([...base, mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', bmdAccount: '200000' })]);
+      const mapping = mappingOf([...base, mappingRow({ apaleoAccount: '*', apaleoType: 'AccountsReceivable', abacusAccount: '1102' })]);
       expect(coverage(mapping, [ledgerLine({ debit: debtor, credit: receivables, taxes: [] })], chart)).toEqual([]);
     });
   });
 
-  it('reports E-VAT-MISMATCH when only the parent row 5000 maps revenue at 20 % and the period books 10 %', () => {
-    const mapping = mappingOf([mappingRow({ apaleoAccount: '5000', apaleoType: 'Revenues', apaleoName: 'Revenues', bmdAccount: '4030', steuercode: '1', bmdVatPercent: '20' }), RECEIVABLES]);
-    const accommodation = { number: 'RevenueAccommodation_VeryReduced:10.00', name: 'Revenues Accommodation (10%)', type: 'Revenues', parentNumber: '5000' };
-    const food = { number: 'RevenueFoodAndBeverages_VeryReduced:10.00', name: 'Revenues Food and beverages (10%)', type: 'Revenues', parentNumber: '5000' };
-    const drinks = { number: 'RevenueFoodAndBeverages_Normal:20.00', name: 'Revenues Food and beverages (20%)', type: 'Revenues', parentNumber: '5000' };
-    const ledger = lines([{ credit: accommodation }, { credit: food, grossCents: 1320, taxes: [tax('VeryReduced', 10, 120)] }, { credit: food, grossCents: 1320, taxes: [tax('VeryReduced', 10, 120)] }, { credit: drinks, grossCents: 360, taxes: [tax('Normal', 20, 60)] }]);
+  it('Parent row with the wrong VAT rate: 5000 on 3500 at 8.1 % reports E-VAT-MISMATCH for 5011 and 5111 booked at 3.8 %', () => {
+    const mapping = mappingOf([mappingRow({ apaleoAccount: '5000', apaleoType: 'Revenues', apaleoName: 'Revenues', abacusAccount: '3500', mwstCode: '311', mwstPercent: '8.1' }), RECEIVABLES]);
+    const logis = { number: '5011', name: 'Logis', type: 'Revenues', parentNumber: '5000' };
+    const breakfast = { number: '5111', name: 'Frühstück im Zimmerpreis', type: 'Revenues', parentNumber: '5000' };
+    const minibar = { number: '5211', name: 'Minibar', type: 'Revenues', parentNumber: '5000' };
+    const ledger = lines([
+      { credit: logis, grossCents: 20_760, taxes: t38(760) },
+      { credit: breakfast, grossCents: 2_076, taxes: t38(76) },
+      { credit: breakfast, grossCents: 2_076, taxes: t38(76) },
+      { credit: minibar, grossCents: 1_081, taxes: [tax('Normal', 8.1, 81)] },
+    ]);
     const findings = coverage(mapping, ledger);
     expect(codes(findings)).toEqual(['E-VAT-MISMATCH', 'E-VAT-MISMATCH']);
-    expect(findings.map((f) => f.value)).toEqual([accommodation.number, food.number]);
+    expect(findings.map((f) => f.value)).toEqual(['5011', '5111']);
     expect(findings[1]?.message).toBe(
-      'apaleo account RevenueFoodAndBeverages_VeryReduced:10.00 (Revenues, "Revenues Food and beverages (10%)") is booked at 10 % (2 lines, gross 26.40), ' +
-        'but it uses line 2 (apaleo account 5000) of the mapping, which books 20 % on BMD account 4030. ' +
-        'Add a row for RevenueFoodAndBeverages_VeryReduced:10.00 Revenues with a BMD account for 10 %',
+      'apaleo account 5111 (Revenues, "Frühstück im Zimmerpreis") is booked at 3.8 % (2 lines, gross 41.52), ' +
+        'but it uses line 2 (apaleo account 5000) of the mapping, which books 8.1 % on Abacus account 3500. ' +
+        'Add a row for 5111 Revenues with an Abacus account for 3.8 %',
     );
   });
 
   it('leaves the rate of a row with its own apaleo_vat_percent to checkMapping', () => {
-    const mapping = mappingOf([revenue({ bmdAccount: '4020', bmdVatPercent: '20' }), RECEIVABLES]);
-    expect(coverage(mapping, lines([{}]))).toEqual([]);
-    expect(codes(checkMapping(mapping, { sachkontenlaenge: 4, personenkontenlaenge: 6 }))).toEqual(['E-VAT-MISMATCH']);
+    const mapping = mappingOf([revenue({ abacusAccount: '3500', mwstCode: '311', mwstPercent: '8.1' }), RECEIVABLES]);
+    const line = ledgerLine({ credit: { number: ACC38, name: 'Accommodation', type: 'Revenues' }, grossCents: 20_760, netCents: 20_000, taxes: t38(760) });
+    expect(coverage(mapping, [line])).toEqual([]);
+    expect(codes(checkMapping(mapping))).toEqual(['E-VAT-MISMATCH']);
+  });
+});
+
+describe('checkUsedMwstCodes', () => {
+  const RECEIVABLES = mappingRow({ apaleoAccount: '*', apaleoType: 'Receivables', abacusAccount: '1101' });
+  const credit = { number: ACC38, name: 'Logis', type: 'Revenues' };
+  const logis = ledgerLine({ credit, grossCents: 20_760, netCents: 20_000, taxes: [tax('Special', 3.8, 760)] });
+  const used = (rows: MappingRowValues[], ledger: LedgerLine[] = [logis], options: Partial<CoverageOptions> = {}) =>
+    checkUsedMwstCodes(mappingOf(rows), ledger, undefined, { rateOf: releaseRateOf(ledger, undefined), ...options });
+
+  it('Swapped codes: 311 on the 3.8 % accommodation row that a line uses warns W-MWST-CODE-RATE, although the posting guard passes it', () => {
+    const findings = used([RECEIVABLES, revenue({ mwstCode: '311' })]);
+    expect(findings.map((f) => [f.code, f.value])).toEqual([['W-MWST-CODE-RATE', '311']]);
+    expect(findings[0]?.message).toBe(
+      'line 3 of the mapping file: the MWST-Code 311 is configured for the Normalsatz at 8.1 % (abacus.mwstCodes.normal), but the row books it at 3.8 %. Check that the codes are not swapped',
+    );
+  });
+
+  it('Vorsteuer code: 111 on a used row warns W-MWST-CODE-UNCHECKED with the Ziffer of the KMU sample', () => {
+    const [finding] = used([RECEIVABLES, revenue({ mwstCode: '111' })]);
+    expect(finding?.code).toBe('W-MWST-CODE-UNCHECKED');
+    expect(finding?.message).toContain('it is a Vorsteuer code, but apaleo lines are sales');
+  });
+
+  it('reports only the rows the lines resolve to, and nothing for the configured codes at their own rate', () => {
+    const unused = mappingRow({ apaleoAccount: 'RevenueOther_Normal:8.10', apaleoType: 'Revenues', apaleoVatPercent: '8.1', abacusAccount: '3200', mwstCode: '313', mwstPercent: '8.1' });
+    expect(used([RECEIVABLES, revenue(), unused])).toEqual([]);
+    expect(codes(checkMapping(mappingOf([RECEIVABLES, revenue(), unused])))).toEqual(['W-MWST-CODE-RATE']);
+  });
+
+  it('gives one finding per warning that names every row it concerns, and checks against abacus.mwstCodes', () => {
+    const deposits = mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: 'V38', mwstPercent: '3.8' });
+    const prepayment = ledgerLine({
+      debit: { number: '1090', name: 'Visa', type: 'Payments' },
+      credit: { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' },
+      command: 'PostPrepayment',
+      grossCents: 20_760,
+      netCents: 20_000,
+      taxes: [tax('Special', 3.8, 760)],
+    });
+    const visa = mappingRow({ apaleoAccount: '1090', apaleoType: 'Payments', abacusAccount: '1090' });
+    const rows = [RECEIVABLES, revenue({ mwstCode: 'V38' }), deposits, visa];
+    const findings = used(rows, [logis, prepayment]);
+    expect(findings.map((f) => [f.code, f.value])).toEqual([['W-MWST-CODE-UNCHECKED', 'V38']]);
+    expect(findings[0]?.message).toMatch(/^lines 3, 4 of the mapping file: the tool does not know the MWST-Code V38 /);
+    expect(used(rows, [logis, prepayment], { mwstCodes: { normal: 'V81', reduziert: 'V26', beherbergung: 'V38' } })).toEqual([]);
   });
 });

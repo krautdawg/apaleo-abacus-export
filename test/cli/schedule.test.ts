@@ -6,19 +6,20 @@ import { runCli } from '../../src/cli/run.js';
 import type { LocalDate } from '../../src/core/date.js';
 import { BSP, FIXTURE_ENV, apaleoFixtureHandler } from '../helpers/apaleo.js';
 import { createTestContext, type TestContext } from '../helpers/context.js';
-import { BEISPIEL_MAPPING, addSecondProperty, exportConfig, exportSetup, type ExportSetup } from '../helpers/export.js';
+import { BEISPIEL_MAPPING_TEXT, addSecondProperty, exportConfig, exportSetup, stripPlaceholderCodes, type ExportSetup } from '../helpers/export.js';
 
 /**
  * `schedule --once` end to end through `runCli`. The Hotel Beispiel fixtures
  * lie in September 2026, so the monthly scenarios of the spec (October, due on
  * 3 November) run one month earlier: September, due on 3 October.
  */
-const SEPTEMBER_FILE = 'BMD_Buchungsimport_20260901-20260930_BSP.csv';
+const SEPTEMBER_FILE = 'ABACUS_Buchungen_20260901-20260930_BSP.xml';
 const ONCE = ['schedule', '--once'];
 /** A catch-up window that reaches back to September's due date (3 October) but not to August's (3 September). */
 const ONE_MONTH = ['schedule:', '  catchUpDays: 30'];
 
-const lines = (ctx: TestContext) => ctx.out().trimEnd().split('\n');
+/** The output lines, without the W-MWST-CODE-UNCHECKED warnings for the fixture's placeholder codes V10 and V20. */
+const lines = (ctx: TestContext) => stripPlaceholderCodes(ctx.out()).trimEnd().split('\n');
 const setClock = (ctx: TestContext, at: string) => void (ctx.now = () => new Date(at));
 
 /** A copy of the fixture's first logis charge on another business day. */
@@ -50,8 +51,8 @@ describe('apaleo-abacus schedule', () => {
 describe('monthly cadence', () => {
   it('exports the due month for every configured property and exits 0, as a cron job would call it', async () => {
     const setup = exportSetup({
-      config: exportConfig('  - id: BSP2', '    buchsymbol: HO2', ...ONE_MONTH),
-      files: { 'mapping-BSP2.csv': BEISPIEL_MAPPING },
+      config: exportConfig('  - id: BSP2', '    geschaeftsbereich: 2', ...ONE_MONTH),
+      files: { 'mapping-BSP2.csv': BEISPIEL_MAPPING_TEXT },
       data: addSecondProperty,
       // 07:30 in Vienna on the due day (schedule.timezone not set).
       now: new Date('2026-10-03T05:30:00Z'),
@@ -59,7 +60,7 @@ describe('monthly cadence', () => {
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
     expect(lines(setup.ctx)).toEqual([
       `2026-10-03T07:30:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}`,
-      `2026-10-03T07:30:00+02:00 BSP2 2026-09 written exports/BSP2/2026-09/${SEPTEMBER_FILE.replace('_BSP.csv', '_BSP2.csv')}`,
+      `2026-10-03T07:30:00+02:00 BSP2 2026-09 written exports/BSP2/2026-09/${SEPTEMBER_FILE.replace('_BSP.xml', '_BSP2.xml')}`,
     ]);
     expect(ledgerCalls(setup)).toEqual(['getLedger BSP 2026-09-01 2026-10-01', 'getLedger BSP2 2026-09-01 2026-10-01']);
   });
@@ -74,8 +75,8 @@ describe('monthly cadence', () => {
 
   it('names the property, the period and E-UNMAPPED for a failed month, still exports the other property, and exits 1', async () => {
     const setup = exportSetup({
-      config: exportConfig('  - id: BSP2', '    buchsymbol: HO2', ...ONE_MONTH),
-      files: { 'mapping-BSP.csv': BEISPIEL_MAPPING.replace(/^RevenueFoodAndBeverages_Normal:20\.00;.*\r?\n/m, ''), 'mapping-BSP2.csv': BEISPIEL_MAPPING },
+      config: exportConfig('  - id: BSP2', '    geschaeftsbereich: 2', ...ONE_MONTH),
+      files: { 'mapping-BSP.csv': BEISPIEL_MAPPING_TEXT.replace(/^RevenueFoodAndBeverages_Normal:20\.00;.*\r?\n/m, ''), 'mapping-BSP2.csv': BEISPIEL_MAPPING_TEXT },
       data: addSecondProperty,
       now: new Date('2026-10-05T04:00:00Z'),
     });
@@ -89,26 +90,26 @@ describe('monthly cadence', () => {
 
   it('retries a failed month on the next run and skips the month that was written', async () => {
     const setup = exportSetup({
-      config: exportConfig('  - id: BSP2', '    buchsymbol: HO2', ...ONE_MONTH),
-      files: { 'mapping-BSP.csv': BEISPIEL_MAPPING.replace(/^RevenueFoodAndBeverages_Normal:20\.00;.*\r?\n/m, ''), 'mapping-BSP2.csv': BEISPIEL_MAPPING },
+      config: exportConfig('  - id: BSP2', '    geschaeftsbereich: 2', ...ONE_MONTH),
+      files: { 'mapping-BSP.csv': BEISPIEL_MAPPING_TEXT.replace(/^RevenueFoodAndBeverages_Normal:20\.00;.*\r?\n/m, ''), 'mapping-BSP2.csv': BEISPIEL_MAPPING_TEXT },
       data: addSecondProperty,
       now: new Date('2026-10-05T04:00:00Z'),
     });
     expect(await runCli(ONCE, setup.ctx)).toBe(1);
-    await setup.ctx.fs.writeFile(join(setup.ctx.cwd, 'mapping-BSP.csv'), BEISPIEL_MAPPING);
+    await setup.ctx.fs.writeFile(join(setup.ctx.cwd, 'mapping-BSP.csv'), BEISPIEL_MAPPING_TEXT);
     setup.fake.calls.length = 0;
     setClock(setup.ctx, '2026-10-05T05:00:00Z');
     const before = setup.ctx.out().length;
 
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before).trimEnd().split('\n')).toEqual([
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before)).trimEnd().split('\n')).toEqual([
       expect.stringMatching(/^2026-10-05T07:00:00\+02:00 BSP 2026-09 written /),
-      expect.stringMatching(/^2026-10-05T07:00:00\+02:00 BSP2 2026-09 already exported exports\/BSP2\/2026-09\/BMD_/),
+      expect.stringMatching(/^2026-10-05T07:00:00\+02:00 BSP2 2026-09 already exported exports\/BSP2\/2026-09\/ABACUS_/),
     ]);
     expect(ledgerCalls(setup)).toEqual(['getLedger BSP 2026-09-01 2026-10-01']);
   });
 
-  it('exports a whole calendar month: BMD files have no fiscal year to split at', async () => {
+  it('exports a whole calendar month: the files stay inside one calendar month', async () => {
     const setup = exportSetup({ config: `${exportConfig()}schedule:\n  catchUpDays: 10\n`, now: new Date('2027-08-03T08:00:00Z') });
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
     expect(lines(setup.ctx)).toEqual(['2027-08-03T10:00:00+02:00 BSP 2027-07 no bookings']);
@@ -119,7 +120,7 @@ describe('skipping what is already exported', () => {
   /** The real apaleo adapter against the fixture server: every request shows up in `ctx.fetchCalls`. */
   function apaleoSetup(env: Record<string, string> = FIXTURE_ENV): TestContext {
     return createTestContext({
-      files: { 'config/apaleo-abacus.config.yaml': exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING },
+      files: { 'config/apaleo-abacus.config.yaml': exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING_TEXT },
       env,
       fetchHandler: apaleoFixtureHandler(),
     });
@@ -151,7 +152,7 @@ describe('skipping what is already exported', () => {
     expect(lines(ctx).at(-1)).toContain('BSP 2026-09 already exported');
   });
 
-  it('counts a BMD file of the period on disk as exported when there is no manifest', async () => {
+  it('counts an Abacus file of the period on disk as exported when there is no manifest', async () => {
     const ctx = apaleoSetup();
     ctx.env = { ...FIXTURE_ENV, APALEO_ABACUS_CONFIG: join(ctx.cwd, 'config/apaleo-abacus.config.yaml') };
     expect(await runCli(ONCE, ctx)).toBe(0);
@@ -189,7 +190,7 @@ describe('daily cadence', () => {
     expect(lines(setup.ctx)).toEqual([
       '2026-10-20T10:00:00+02:00 BSP 2026-10-16 no bookings',
       '2026-10-20T10:00:00+02:00 BSP 2026-10-17 no bookings',
-      '2026-10-20T10:00:00+02:00 BSP 2026-10-18 written exports/BSP/2026-10/BMD_Buchungsimport_20261018-20261018_BSP.csv',
+      '2026-10-20T10:00:00+02:00 BSP 2026-10-18 written exports/BSP/2026-10/ABACUS_Buchungen_20261018-20261018_BSP.xml',
     ]);
   });
 
@@ -250,11 +251,11 @@ describe('periods that are not final yet', () => {
     setClock(setup.ctx, '2026-10-02T04:05:00Z');
     before = setup.ctx.out().length;
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before)).toBe(`2026-10-02T06:05:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before))).toBe(`2026-10-02T06:05:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
     expect(ledgerCalls(setup)).toEqual(['getLedger BSP 2026-09-01 2026-10-01']);
     const manifest = readFileSync(join(setup.ctx.cwd, 'exports', BSP, '2026-09', 'manifest.json'), 'utf8');
     expect(manifest).toContain('20260901-20260930');
-    expect(readFileSync(join(setup.ctx.cwd, 'exports', BSP, '2026-09', SEPTEMBER_FILE), 'latin1')).toContain(';30.09.2026;30.09.2026;HO;2;10;1;-89,09;-8,91;Erlös Logis 10 %;;BSP-ABCDEF-1-V1;E;A');
+    expect(readFileSync(join(setup.ctx.cwd, 'exports', BSP, '2026-09', SEPTEMBER_FILE), 'utf8')).toContain('<EntryDate>2026-09-30</EntryDate>');
   });
 
   it('holds the day before yesterday back at 00:05 with the default offsetDays 2, and yesterday with offsetDays 1', async () => {
@@ -272,7 +273,7 @@ describe('periods that are not final yet', () => {
     setClock(setup.ctx, '2026-10-21T04:05:00Z');
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
     expect(setup.ctx.out()).toContain(
-      '2026-10-21T06:05:00+02:00 BSP 2026-10-19 written exports/BSP/2026-10/BMD_Buchungsimport_20261019-20261019_BSP.csv',
+      '2026-10-21T06:05:00+02:00 BSP 2026-10-19 written exports/BSP/2026-10/ABACUS_Buchungen_20261019-20261019_BSP.xml',
     );
   });
 
@@ -292,7 +293,7 @@ describe('periods that are not final yet', () => {
     setClock(setup.ctx, '2026-10-02T21:30:00Z');
     const before = setup.ctx.out().length;
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before)).toBe(`2026-10-03T06:30:00+09:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before))).toBe(`2026-10-03T06:30:00+09:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
   });
 
   it("exports a day held back in the property's zone on the next daily run with the smallest catch-up window", async () => {
@@ -305,7 +306,7 @@ describe('periods that are not final yet', () => {
 
     setClock(setup.ctx, '2026-09-18T21:30:00Z');
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out()).toMatch(/2026-09-19T06:30:00\+09:00 BSP 2026-09-16 written exports\/BSP\/2026-09\/BMD_/);
+    expect(setup.ctx.out()).toMatch(/2026-09-19T06:30:00\+09:00 BSP 2026-09-16 written exports\/BSP\/2026-09\/ABACUS_/);
     expect(setup.ctx.out()).toContain('2026-09-19T06:30:00+09:00 BSP 2026-09-17 not yet final N-NOT-FINAL');
   });
 
@@ -325,8 +326,8 @@ describe('file system errors in the output folder', () => {
     Object.assign(new Error(`EACCES: permission denied, ${syscall} '${path}'`), { code: 'EACCES', syscall, path });
   const twoProperties = () =>
     exportSetup({
-      config: exportConfig('  - id: BSP2', '    buchsymbol: HO2', ...ONE_MONTH),
-      files: { 'mapping-BSP2.csv': BEISPIEL_MAPPING },
+      config: exportConfig('  - id: BSP2', '    geschaeftsbereich: 2', ...ONE_MONTH),
+      files: { 'mapping-BSP2.csv': BEISPIEL_MAPPING_TEXT },
       data: addSecondProperty,
       now: new Date('2026-10-03T05:30:00Z'),
     });
@@ -375,14 +376,14 @@ describe('file system errors in the output folder', () => {
       }) as typeof nodeFs.mkdir,
     };
     expect(await runCli(ONCE, setup.ctx)).not.toBe(0);
-    expect(setup.ctx.out()).toMatch(/^2026-10-03T07:30:00\+02:00 BSP 2026-09 written exports\/BSP\/2026-09\/BMD_/);
+    expect(setup.ctx.out()).toMatch(/^2026-10-03T07:30:00\+02:00 BSP 2026-09 written exports\/BSP\/2026-09\/ABACUS_/);
     expect(setup.ctx.err()).toContain('Unexpected error: something broke');
   });
 });
 
 describe('warnings and notes on lines that did not fail', () => {
   /** The Hotel Beispiel mapping with an extra "Notiz" column, which the mapping loader reports as W-UNKNOWN-COLUMN. */
-  const withNoteColumn = BEISPIEL_MAPPING.replace(/^\uFEFF/, '')
+  const withNoteColumn = BEISPIEL_MAPPING_TEXT.replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .map((row) => (row === '' || row.startsWith('#') ? row : `${row.startsWith('apaleo_account;') ? 'Notiz' : ''};${row}`))
     .join('\n');
@@ -394,6 +395,18 @@ describe('warnings and notes on lines that did not fail', () => {
       `2026-10-03T07:30:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE} W-UNKNOWN-COLUMN`,
       '  W-UNKNOWN-COLUMN: the column "notiz" is not used and is ignored',
     ]);
+  });
+
+  it('warns about a swapped MWST-Code of a used mapping row, which only mapping check reported before', async () => {
+    const swapped = BEISPIEL_MAPPING_TEXT.replace('(10%);10;3400;V10;10;', '(10%);10;3400;311;10;');
+    const setup = exportSetup({ config: exportConfig(...ONE_MONTH), files: { 'mapping-BSP.csv': swapped }, now: new Date('2026-10-03T05:30:00Z') });
+    expect(await runCli(ONCE, setup.ctx)).toBe(0);
+    const out = setup.ctx.out().trimEnd().split('\n');
+    expect(out[0]).toBe(`2026-10-03T07:30:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE} W-MWST-CODE-RATE W-MWST-CODE-UNCHECKED`);
+    expect(out).toContain(
+      '  W-MWST-CODE-RATE (mwst_code): line 3 of the mapping file: the MWST-Code 311 is configured for the Normalsatz at 8.1 % (abacus.mwstCodes.normal), ' +
+        'but the row books it at 10 %. Check that the codes are not swapped',
+    );
   });
 
   it('appends the codes to a no-bookings line but leaves out N-NO-BOOKINGS, which the result already says', async () => {

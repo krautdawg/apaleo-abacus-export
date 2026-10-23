@@ -45,23 +45,15 @@ Every subcommand SHALL receive a `CommandContext` (`env`, `stdout`, `stderr`, `c
 - **THEN** its output depends only on that instant, not on the machine clock
 
 ### Requirement: Config file and environment loading
-The CLI SHALL load configuration from the file given by `--config`, else from `APALEO_ABACUS_CONFIG`, else from `./apaleo-abacus.config.yaml`, accepting YAML or JSON. Values SHALL be validated against a schema, and every validation error SHALL name the offending key path. Secrets SHALL only be read from environment variables, and a secret key present in the config file SHALL be rejected. Environment overrides SHALL be limited to a documented allow-list of scalar keys; any other `APALEO_ABACUS_*` variable SHALL be rejected with an error naming it. A `datev` section SHALL be rejected with an error that names the `bmd` section. The `bmd` section SHALL accept `dialect` (`ntcs` or `bmd55`, default `ntcs`), `sachkontenlaenge`, `personenkontenlaenge`, `buchsymbol` (required, no default) and `buchsymbolZahlung` (optional), and each property MAY override `buchsymbol` and `buchsymbolZahlung`; a Buchungssymbol SHALL be 1 to 4 characters of `A-Z` and `0-9`, at most 2 with `bmd55`. `doctor` and the export protocol SHALL warn `W-BUCHSYMBOL-SHARED` when two configured properties have the same effective Buchungssymbol. The `abacus` section SHALL accept `mandant` (required in the section, 1 to 6 digits, no default), `leitwaehrung` (`CHF` or `EUR`, default `CHF`), `abrechnungsart` (`vereinbart` or `vereinnahmt`, default `vereinbart`), `version` (`2015.00`, `2020.00`, `2022.00` or `2024.00`, default `2015.00`), `mwstKonto` (1 to 11 digits, default `2200`), `mwstHilfskonto` (1 to 11 digits, default `2202`), `mwstCodes.normal`, `mwstCodes.reduziert` and `mwstCodes.beherbergung` (1 to 3 characters of `A-Z`, `a-z`, `0-9`, defaults `311`, `312` and `313`) and `geschaeftsbereich` (0 to 99999999, default `0`), and each property MAY override `mandant` and `geschaeftsbereich`. A Mandant, account or MWST-Code written as a YAML or JSON number SHALL be read as its digits only when the number's source text is its decimal form (`311`, `2200`); any other number there (`011`, `0x1F`, `1e2`, `311.0`) SHALL be rejected with an error that names the key and asks to quote the value, because the parser has already changed its digits. `doctor` and the export protocol SHALL warn `W-MANDANT-SHARED` when two configured properties have the same effective Mandant and Geschäftsbereich. Variables of the former names (`APALEO_BMD_*`, `APALEO_DATEV_*`) SHALL NOT be read.
+The CLI SHALL load configuration from the file given by `--config`, else from `APALEO_ABACUS_CONFIG`, else from `./apaleo-abacus.config.yaml`, accepting YAML or JSON. Values SHALL be validated against a schema, and every validation error SHALL name the offending key path. Secrets SHALL only be read from environment variables, and a secret key present in the config file SHALL be rejected. Environment overrides SHALL be limited to a documented allow-list of scalar keys; any other `APALEO_ABACUS_*` variable SHALL be rejected with an error naming it. A `bmd` or `datev` section SHALL be rejected with an error that names the `abacus` section. The `abacus` section SHALL be required and SHALL accept `mandant` (required, 1 to 6 digits, no default), `leitwaehrung` (`CHF` or `EUR`, default `CHF`), `abrechnungsart` (`vereinbart` or `vereinnahmt`, default `vereinbart`), `version` (`2015.00`, `2020.00`, `2022.00` or `2024.00`, default `2015.00`), `mwstKonto` (1 to 11 digits, default `2200`), `mwstHilfskonto` (1 to 11 digits, default `2202`), `mwstCodes.normal`, `mwstCodes.reduziert` and `mwstCodes.beherbergung` (1 to 3 characters of `A-Z`, `a-z`, `0-9`, defaults `311`, `312` and `313`) and `geschaeftsbereich` (0 to 99999999, default `0`), and each property MAY override `mandant` and `geschaeftsbereich`. `doctor` and the export protocol SHALL warn `W-MANDANT-SHARED` when two configured properties have the same effective Mandant and Geschäftsbereich. Variables of the former names (`APALEO_BMD_*`, `APALEO_DATEV_*`) SHALL NOT be read.
 
 #### Scenario: Invalid config value
-- **WHEN** the config file sets `bmd.sachkontenlaenge: 3`
-- **THEN** loading fails with an error that names `bmd.sachkontenlaenge` and the allowed range
+- **WHEN** the config file sets `abacus.geschaeftsbereich: -1`
+- **THEN** loading fails with an error that names `abacus.geschaeftsbereich` and the allowed range
 
-#### Scenario: Buchungssymbol missing
-- **WHEN** the config file has a `bmd` section without `buchsymbol`
-- **THEN** loading fails with an error that names `bmd.buchsymbol` as required and points to `docs/bmd-import.md` for creating the symbol in BMD
-
-#### Scenario: Symbol too long for BMD 5.5
-- **WHEN** the config file sets `bmd.dialect: bmd55` and `bmd.buchsymbol: PMS`
-- **THEN** loading fails with an error that names `bmd.buchsymbol` and the limit of 2 characters
-
-#### Scenario: Two properties share a symbol
-- **WHEN** properties `BSP` and `BS2` are configured and neither overrides `bmd.buchsymbol`
-- **THEN** `doctor` warns `W-BUCHSYMBOL-SHARED` naming both properties and the symbol, and explains that in one Mandant their Belegnummern would repeat
+#### Scenario: Abacus section missing
+- **WHEN** the config file has no `abacus` section
+- **THEN** loading fails with an error that names `abacus.mandant` as required and points to `docs/configuration.md`
 
 #### Scenario: Mandant missing
 - **WHEN** the config file has an `abacus` section without `mandant`
@@ -83,9 +75,13 @@ The CLI SHALL load configuration from the file given by `--config`, else from `A
 - **WHEN** properties `BSP` and `BS2` are configured with the same `abacus.mandant` and neither sets `geschaeftsbereich`
 - **THEN** `doctor` warns `W-MANDANT-SHARED` naming both properties, and explains that their Belegnummern could repeat and that each property needs its own Geschäftsbereich or Mandant
 
+#### Scenario: Old BMD section
+- **WHEN** the config file contains `bmd.buchsymbol`
+- **THEN** loading fails with an error saying that `bmd` is not a section of apaleo-abacus and naming `abacus`
+
 #### Scenario: Old DATEV section
 - **WHEN** the config file contains `datev.beraternummer`
-- **THEN** loading fails with an error saying that `datev` is not a section of apaleo-abacus and naming `bmd`
+- **THEN** loading fails with an error saying that `datev` is not a section of apaleo-abacus and naming `abacus`
 
 #### Scenario: Secret in config file
 - **WHEN** the config file contains `apaleo.clientSecret`
@@ -96,7 +92,7 @@ The CLI SHALL load configuration from the file given by `--config`, else from `A
 - **THEN** loading fails with an error that gives the file path, line, column and kind of error, and does not quote any content of the file
 
 #### Scenario: Empty section or value
-- **WHEN** a section such as `apaleo:` has all its keys commented out, or a value such as `bmd.buchsymbol:` is left empty
+- **WHEN** a section such as `apaleo:` has all its keys commented out, or a value such as `abacus.mandant:` is left empty
 - **THEN** the key is treated as missing, so defaults apply and a required key is reported as `is required`, whether or not an environment override is set
 
 #### Scenario: Environment override

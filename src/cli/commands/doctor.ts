@@ -1,4 +1,4 @@
-import { ConfigNotFoundError, EXAMPLE_CONFIG_FILE, loadConfig, resolveConfigPath, sharedBuchsymbolFindings, sharedMandantFindings } from '../../core/config.js';
+import { ConfigNotFoundError, EXAMPLE_CONFIG_FILE, loadConfig, resolveConfigPath, sharedMandantFindings } from '../../core/config.js';
 import { formatFinding } from '../../core/findings.js';
 import { CONFIG_OPTION, EXIT_OK, stringOption, type Command } from '../command.js';
 import { VERSION } from '../version.js';
@@ -22,11 +22,9 @@ export const doctor: Command = {
       print('Config', 'valid');
       print('Client id', loaded.config.apaleo.clientId ? 'set' : 'not set (apaleo.clientId or APALEO_CLIENT_ID)');
       print('Client secret', loaded.secrets.apaleoClientSecret ? 'set (APALEO_CLIENT_SECRET)' : 'not set (APALEO_CLIENT_SECRET)');
-      print('BMD', `${loaded.config.bmd.dialect}, Buchungssymbol ${loaded.config.bmd.buchsymbol}`);
       const { abacus } = loaded.config;
-      if (abacus) print('Abacus', `Mandant ${abacus.mandant}, Leitwährung ${abacus.leitwaehrung}, ${abacus.abrechnungsart}, version ${abacus.version}`);
-      const shared = [...sharedBuchsymbolFindings(loaded.config), ...sharedMandantFindings(loaded.config)];
-      for (const finding of shared) ctx.stdout.write(`${formatFinding(finding)}\n`);
+      print('Abacus', `Mandant ${abacus.mandant}, Leitwährung ${abacus.leitwaehrung}, ${abacus.abrechnungsart}, version ${abacus.version}`);
+      for (const finding of sharedMandantFindings(loaded.config)) ctx.stdout.write(`${formatFinding(finding)}\n`);
     } catch (error) {
       if (!(error instanceof ConfigNotFoundError)) throw error;
       print('Config', `not found (copy ${EXAMPLE_CONFIG_FILE} to get started)`);

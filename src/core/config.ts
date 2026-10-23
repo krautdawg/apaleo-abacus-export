@@ -14,7 +14,7 @@ const ENV_PREFIX = 'APALEO_ABACUS_';
 
 // ---------------------------------------------------------------------------
 // Schema. Each section is exported so later slices can extend it, for example
-// `bmdSection.extend({ ... })`, and add new sections to `configSections`.
+// `abacusSection.extend({ ... })`, and add new sections to `configSections`.
 // ---------------------------------------------------------------------------
 
 function wholeNumber(min: number, max: number) {
@@ -49,32 +49,6 @@ export const apaleoSection = z.strictObject({
 
 export const outputSection = z.strictObject({
   dir: z.string().min(1, 'must not be empty').default('./exports'),
-});
-
-export const BMD_DIALECTS = ['ntcs', 'bmd55'] as const;
-export type BmdDialectName = (typeof BMD_DIALECTS)[number];
-
-/** Longest Buchungssymbol per dialect: NTCS takes 4 characters, BMD 5.5 two. */
-export const MAX_SYMBOL_LENGTH: Readonly<Record<BmdDialectName, number>> = { ntcs: 4, bmd55: 2 };
-
-const SYMBOL_MESSAGE = 'must be 1 to 4 characters of A-Z and 0-9 (a Buchungssymbol the Kanzlei created in BMD)';
-const buchsymbol = z.string({ error: SYMBOL_MESSAGE }).regex(/^[A-Z0-9]{1,4}$/, SYMBOL_MESSAGE);
-
-/** Where the docs explain how the Kanzlei creates the Buchungssymbol; named in the "is required" error. */
-export const BUCHSYMBOL_DOC = 'docs/bmd-import.md';
-
-/** What the Kanzlei's BMD Mandant decides about every file. */
-export const bmdSection = z.strictObject({
-  /** `ntcs` (BMD NTCS, default) or `bmd55` (BMD 5.5 header names, dates and Steuercodes). */
-  dialect: z.enum(BMD_DIALECTS, { error: 'must be "ntcs" or "bmd55"' }).default('ntcs'),
-  /** Digits of a Sachkonto in the Kanzlei's Kontenplan (4 in the EKR). */
-  sachkontenlaenge: wholeNumber(4, 9).default(4),
-  /** Digits of a Personenkonto (Debitor). */
-  personenkontenlaenge: wholeNumber(5, 9).default(6),
-  /** The Buchungssymbol of every booking. No default: the Kanzlei must create it in BMD first. */
-  buchsymbol,
-  /** The Buchungssymbol of payment lines; default `buchsymbol`. */
-  buchsymbolZahlung: buchsymbol.optional(),
 });
 
 /**
@@ -135,10 +109,10 @@ export const abacusSection = z.strictObject({
   geschaeftsbereich: geschaeftsbereich.default(0),
 });
 
-/** How the posting rules fill BMD fields. */
+/** How the posting rules fill Abacus fields. */
 export const postingSection = z.strictObject({
-  /** extbelegnr: the receipt (invoice) number when there is one (default), or always the reservation reference. */
-  extbelegnr: z.enum(['receipt', 'reference'], { error: 'must be "receipt" or "reference"' }).default('receipt'),
+  /** `Text2`: the receipt (invoice) number when there is one (default), or always the reservation reference. */
+  text2: z.enum(['receipt', 'reference'], { error: 'must be "receipt" or "reference"' }).default('receipt'),
 });
 
 export const propertyEntry = z.strictObject({
@@ -146,10 +120,6 @@ export const propertyEntry = z.strictObject({
   id: z.string().trim().min(1, 'must not be empty'),
   /** The mapping CSV, relative to the working directory. Default `./mapping-<id>.csv`. */
   mapping: z.string().trim().min(1, 'must not be empty').optional(),
-  /** Overrides `bmd.buchsymbol` for this property's bookings. */
-  buchsymbol: buchsymbol.optional(),
-  /** Overrides `bmd.buchsymbolZahlung` for this property's payment lines. */
-  buchsymbolZahlung: buchsymbol.optional(),
   /** Overrides `abacus.mandant` for this property's file. */
   mandant: mandant.optional(),
   /** Overrides `abacus.geschaeftsbereich` for this property's file. */
@@ -200,7 +170,7 @@ const finalAfterTime = z.string({ error: FINAL_AFTER_MESSAGE }).refine((value) =
  */
 export const MIN_CATCH_UP_DAYS = { daily: 5, monthly: 3 } as const;
 
-/** When `schedule --once` exports what. One cadence per install, so daily and monthly files never both reach BMD. */
+/** When `schedule --once` exports what. One cadence per install, so daily and monthly files never both reach Abacus. */
 export const scheduleSection = z
   .strictObject({
     /** "Today" for the due-period computation is the date in this zone. */
@@ -233,73 +203,21 @@ export const scheduleSection = z
 export const configSections = {
   apaleo: apaleoSection.prefault({}),
   output: outputSection.prefault({}),
-  bmd: bmdSection,
-  /** Optional until the export switches to the Abacus target (a03). */
-  abacus: abacusSection.optional(),
+  /** Required: `abacus.mandant` has no default, so a missing section reports that key. */
+  abacus: abacusSection.prefault({ mandant: undefined }),
   posting: postingSection.prefault({}),
   properties: propertiesSection.default([]),
   checks: checksSection.prefault({}),
   schedule: scheduleSection.prefault({}),
 };
 
-export const configSchema = z.strictObject(configSections).superRefine((config, issue) => {
-  // Every Buchungssymbol must fit the dialect: BMD 5.5 takes only two characters.
-  const max = MAX_SYMBOL_LENGTH[config.bmd.dialect];
-  const symbols: [PropertyKey[], string | undefined][] = [
-    [['bmd', 'buchsymbol'], config.bmd.buchsymbol],
-    [['bmd', 'buchsymbolZahlung'], config.bmd.buchsymbolZahlung],
-    ...config.properties.flatMap((p, i): [PropertyKey[], string | undefined][] => [
-      [['properties', i, 'buchsymbol'], p.buchsymbol],
-      [['properties', i, 'buchsymbolZahlung'], p.buchsymbolZahlung],
-    ]),
-  ];
-  for (const [path, symbol] of symbols) {
-    if (symbol !== undefined && symbol.length > max) {
-      issue.addIssue({ code: 'custom', path, message: `must have at most ${max} characters with bmd.dialect ${config.bmd.dialect}` });
-    }
-  }
-});
+export const configSchema = z.strictObject(configSections);
 
 export type Config = z.infer<typeof configSchema>;
 export type PostingConfig = z.infer<typeof postingSection>;
-export type BmdConfig = z.infer<typeof bmdSection>;
 export type AbacusConfig = z.infer<typeof abacusSection>;
 export type PropertyConfig = z.infer<typeof propertyEntry>;
 export type ScheduleConfig = z.infer<typeof scheduleSection>;
-
-/** The Buchungssymbole of one property: its own, else the `bmd` section's; payments default to the main symbol. */
-export interface Buchsymbole {
-  buchsymbol: string;
-  buchsymbolZahlung: string;
-}
-
-export function buchsymboleOf(config: Pick<Config, 'bmd' | 'properties'>, propertyId: string): Buchsymbole {
-  const property = config.properties.find((p) => p.id === propertyId);
-  const buchsymbol = property?.buchsymbol ?? config.bmd.buchsymbol;
-  return { buchsymbol, buchsymbolZahlung: property?.buchsymbolZahlung ?? config.bmd.buchsymbolZahlung ?? buchsymbol };
-}
-
-/**
- * `W-BUCHSYMBOL-SHARED` for each Buchungssymbol that two or more configured
- * properties use: the Belegnummern of their files start alike (`MMDD` and a
- * counter), so in one BMD Mandant they would repeat under that symbol.
- */
-export function sharedBuchsymbolFindings(config: Pick<Config, 'bmd' | 'properties'>): Finding[] {
-  const users = new Map<string, string[]>();
-  for (const { id } of config.properties) {
-    const { buchsymbol, buchsymbolZahlung } = buchsymboleOf(config, id);
-    for (const symbol of new Set([buchsymbol, buchsymbolZahlung])) users.set(symbol, [...(users.get(symbol) ?? []), id]);
-  }
-  return [...users]
-    .filter(([, ids]) => ids.length > 1)
-    .map(([symbol, ids]) => ({
-      code: 'W-BUCHSYMBOL-SHARED',
-      message:
-        `the properties ${ids.join(', ')} all book under the Buchungssymbol ${symbol}. If the Kanzlei imports them into one BMD Mandant, ` +
-        'their Belegnummern would repeat; give each property its own symbol (properties[].buchsymbol) or its own Mandant',
-      value: symbol,
-    }));
-}
 
 /** The Abacus Mandant and Geschäftsbereich a property's file books into: its own, else the `abacus` section's. */
 export interface AbacusUnit {
@@ -321,11 +239,9 @@ export function abacusUnitKey({ mandant, geschaeftsbereich }: AbacusUnit): strin
  * `W-MANDANT-SHARED` for each Mandant and Geschäftsbereich that two or more
  * configured properties book into: the Belegnummern of their files start alike
  * (`MMDD` and a counter), so in one Mandant and Geschäftsbereich they could repeat.
- * No finding without an `abacus` section.
  */
 export function sharedMandantFindings(config: Pick<Config, 'abacus' | 'properties'>): Finding[] {
   const { abacus } = config;
-  if (!abacus) return [];
   const users = new Map<string, { unit: AbacusUnit; ids: string[] }>();
   for (const { id } of config.properties) {
     const unit = abacusUnitOf(abacus, config.properties, id);
@@ -411,7 +327,7 @@ export async function loadConfig({ path, env, readFile }: LoadConfigOptions): Pr
   checkEnvVariables(env);
   const { raw, numberSources } = parseConfigText(await readConfigFile(path, readFile), path);
   rejectSecretsInFile(raw, path);
-  rejectDatevSection(raw, path);
+  rejectForeignSections(raw, path);
   rejectRewrittenCodes(numberSources, path);
   const fromEnv = applyEnvOverrides(raw, env);
 
@@ -616,21 +532,23 @@ function rejectSecretsInFile(raw: Record<string, unknown>, path: string): void {
   }
 }
 
-/** A config of the DATEV tool this one started from: say so instead of listing every DATEV key as unknown. */
-function rejectDatevSection(raw: Record<string, unknown>, path: string): void {
-  if (raw.datev === undefined) return;
+/** The sections of the tools this one started from (apaleo-datev-export, apaleo-bmd-export). */
+const FOREIGN_SECTIONS = ['datev', 'bmd'] as const;
+
+/** A config of the DATEV or BMD tool this one started from: say so instead of listing every key as unknown. */
+function rejectForeignSections(raw: Record<string, unknown>, path: string): void {
+  const section = FOREIGN_SECTIONS.find((name) => raw[name] !== undefined);
+  if (!section) return;
   throw new UserError(
-    `datev is not a section of apaleo-abacus (${path}): this tool writes BMD files. ` +
-      'Replace the datev section with a bmd section (bmd.buchsymbol, bmd.sachkontenlaenge, bmd.personenkontenlaenge, bmd.dialect); ' +
+    `${section} is not a section of apaleo-abacus (${path}): this tool writes Abacus files. ` +
+      'Replace the section with an abacus section (abacus.mandant, abacus.leitwaehrung, abacus.mwstCodes); ' +
       `see ${EXAMPLE_CONFIG_FILE} and docs/configuration.md.`,
   );
 }
 
 /** Extra words for a missing required key: what to do before the key can be filled in. */
 const REQUIRED_HINTS: Readonly<Record<string, string>> = {
-  bmd: `add a bmd section with bmd.buchsymbol, the Buchungssymbol the Kanzlei created in BMD (see ${BUCHSYMBOL_DOC})`,
-  'bmd.buchsymbol': `name the Buchungssymbol the Kanzlei created in BMD for these bookings, for example HO (see ${BUCHSYMBOL_DOC})`,
-  'abacus.mandant': 'name the Mandantennummer of the hotel in Abacus, for example 1234 (the Treuhänder knows it)',
+  'abacus.mandant': 'name the Mandantennummer of the hotel in Abacus, for example 1234 (the Treuhänder knows it); see docs/configuration.md',
 };
 
 /** Writes env values into the raw object and returns which key paths they set. */

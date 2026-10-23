@@ -4,10 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ConfigNotFoundError,
   ENV_OVERRIDES,
-  buchsymboleOf,
   loadConfig,
   resolveConfigPath,
-  sharedBuchsymbolFindings,
   sharedMandantFindings,
   type Env,
 } from '../../src/core/config.js';
@@ -16,8 +14,17 @@ import { runCli } from '../../src/cli/run.js';
 import { EXIT_OK, type Command } from '../../src/cli/command.js';
 import { createTestContext } from '../helpers/context.js';
 
-const VALID = 'bmd:\n  buchsymbol: HO\n';
-const BMD_DEFAULTS = { dialect: 'ntcs', sachkontenlaenge: 4, personenkontenlaenge: 6, buchsymbol: 'HO' };
+const VALID = 'abacus:\n  mandant: 1234\n';
+const ABACUS_DEFAULTS = {
+  mandant: '1234',
+  leitwaehrung: 'CHF',
+  abrechnungsart: 'vereinbart',
+  version: '2015.00',
+  mwstKonto: '2200',
+  mwstHilfskonto: '2202',
+  mwstCodes: { normal: '311', reduziert: '312', beherbergung: '313' },
+  geschaeftsbereich: 0,
+};
 const APALEO_DEFAULTS = { baseUrl: 'https://api.apaleo.com', identityUrl: 'https://identity.apaleo.com' };
 
 async function load(content: string, env: Env = {}, fileName = 'apaleo-abacus.config.yaml') {
@@ -48,8 +55,8 @@ describe('loading', () => {
     expect(config).toEqual({
       apaleo: APALEO_DEFAULTS,
       output: { dir: './exports' },
-      bmd: BMD_DEFAULTS,
-      posting: { extbelegnr: 'receipt' },
+      abacus: ABACUS_DEFAULTS,
+      posting: { text2: 'receipt' },
       properties: [],
       checks: { aggregates: false },
       schedule: { timezone: 'Europe/Vienna', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 },
@@ -57,64 +64,45 @@ describe('loading', () => {
     expect(secrets.apaleoClientSecret).toBeUndefined();
   });
 
-  it('reads the bmd section: dialect, account lengths and both Buchungssymbole', async () => {
-    const { config } = await load('bmd:\n  dialect: bmd55\n  sachkontenlaenge: 5\n  personenkontenlaenge: 7\n  buchsymbol: HO\n  buchsymbolZahlung: HZ\n');
-    expect(config.bmd).toEqual({ dialect: 'bmd55', sachkontenlaenge: 5, personenkontenlaenge: 7, buchsymbol: 'HO', buchsymbolZahlung: 'HZ' });
+  it('Abacus section missing: names abacus.mandant as required and points to docs/configuration.md', async () => {
+    const error = await loadError('output:\n  dir: ./x\n');
+    expect(error.message).toContain('abacus.mandant: is required');
+    expect(error.message).toContain('docs/configuration.md');
   });
 
-  it('rejects an unknown dialect and account lengths outside their ranges', async () => {
-    const error = await loadError(`${VALID}  dialect: bmd60\n  sachkontenlaenge: 3\n  personenkontenlaenge: 10\n`);
-    expect(error.message).toContain('bmd.dialect: must be "ntcs" or "bmd55" (got "bmd60")');
-    expect(error.message).toContain('bmd.sachkontenlaenge: must be a whole number between 4 and 9 (got 3)');
-    expect(error.message).toContain('bmd.personenkontenlaenge: must be a whole number between 5 and 9 (got 10)');
-  });
-
-  it('requires bmd.buchsymbol and points to docs/bmd-import.md for creating it in BMD', async () => {
-    const error = await loadError('bmd:\n  sachkontenlaenge: 4\n');
-    expect(error.message).toContain('bmd.buchsymbol: is required');
-    expect(error.message).toContain('docs/bmd-import.md');
-    expect((await loadError('output:\n  dir: ./x\n')).message).toMatch(/bmd: is required: .*bmd\.buchsymbol.*docs\/bmd-import\.md/);
-  });
-
-  it('accepts 1 to 4 characters of A-Z and 0-9 as Buchungssymbol, at most 2 with bmd55', async () => {
-    for (const symbol of ['H', 'HO', 'HO26']) expect((await load(`bmd:\n  buchsymbol: ${symbol}\n`)).config.bmd.buchsymbol).toBe(symbol);
-    for (const symbol of ['ho', 'HOTEL', 'H-O', '""']) {
-      expect((await loadError(`bmd:\n  buchsymbol: ${symbol}\n`)).message).toMatch(/bmd\.buchsymbol: (must be 1 to 4 characters of A-Z and 0-9|is required)/);
+  it.each([
+    ['bmd:\n  buchsymbol: HO\n', 'bmd'],
+    ['datev:\n  beraternummer: 1234567\n  mandantennummer: 42\n', 'datev'],
+  ])('Old BMD or DATEV section: rejects %j, saying the section is not one of apaleo-abacus and naming abacus', async (text, section) => {
+    for (const file of [text, `${VALID}${text}`]) {
+      const error = await loadError(file);
+      expect(error.message).toContain(`${section} is not a section of apaleo-abacus`);
+      expect(error.message).toContain('abacus section');
+      expect(error.message).toContain('abacus.mandant');
     }
-    const error = await loadError('bmd:\n  dialect: bmd55\n  buchsymbol: PMS\n  buchsymbolZahlung: HZ\n');
-    expect(error.message).toContain('bmd.buchsymbol: must have at most 2 characters with bmd.dialect bmd55');
-    expect(error.message).not.toContain('bmd.buchsymbolZahlung');
   });
 
-  it('rejects a datev section and names the bmd section', async () => {
-    const error = await loadError('datev:\n  beraternummer: 1234567\n  mandantennummer: 42\n');
-    expect(error.message).toContain('datev is not a section of apaleo-abacus');
-    expect(error.message).toContain('bmd section');
-    expect(error.message).toContain('bmd.buchsymbol');
-  });
-
-  it('reads a Buchungssymbol per property and checks.aggregates', async () => {
-    const { config } = await load(`${VALID}properties:\n  - id: BSP\n    buchsymbol: HO2\n    buchsymbolZahlung: HZ2\nchecks:\n  aggregates: true\n`);
-    expect(config.properties).toEqual([{ id: 'BSP', buchsymbol: 'HO2', buchsymbolZahlung: 'HZ2' }]);
+  it('reads checks.aggregates and refuses the Buchungssymbol keys of the BMD tool on a property', async () => {
+    const { config } = await load(`${VALID}properties:\n  - id: BSP\nchecks:\n  aggregates: true\n`);
     expect(config.checks).toEqual({ aggregates: true });
-    const error = await loadError(`bmd:\n  dialect: bmd55\n  buchsymbol: HO\nproperties:\n  - id: BSP\n    buchsymbol: HO2X\n    mandantennummer: 43\nchecks:\n  aggregates: yes please\n`);
+    const error = await loadError(`${VALID}properties:\n  - id: BSP\n    buchsymbol: HO2\n    mandantennummer: 43\nchecks:\n  aggregates: yes please\n`);
+    expect(error.message).toContain('properties.0.buchsymbol: unknown key');
     expect(error.message).toContain('properties.0.mandantennummer: unknown key');
     expect(error.message).toContain('checks.aggregates: must be true or false');
   });
 
-  it('reads posting.extbelegnr and rejects other values and the old belegfeld1', async () => {
-    const { config } = await load(`${VALID}posting:\n  extbelegnr: reference\n`);
-    expect(config.posting).toEqual({ extbelegnr: 'reference' });
-    await expect(load(`${VALID}posting:\n  extbelegnr: invoice\n`)).rejects.toThrow(
-      'posting.extbelegnr: must be "receipt" or "reference" (got "invoice")',
-    );
+  it('reads posting.text2 and rejects other values and the old extbelegnr and belegfeld1', async () => {
+    const { config } = await load(`${VALID}posting:\n  text2: reference\n`);
+    expect(config.posting).toEqual({ text2: 'reference' });
+    await expect(load(`${VALID}posting:\n  text2: invoice\n`)).rejects.toThrow('posting.text2: must be "receipt" or "reference" (got "invoice")');
+    await expect(load(`${VALID}posting:\n  extbelegnr: receipt\n`)).rejects.toThrow('posting.extbelegnr: unknown key');
     await expect(load(`${VALID}posting:\n  belegfeld1: receipt\n`)).rejects.toThrow('posting.belegfeld1: unknown key');
   });
 
   it('loads JSON by extension', async () => {
-    const json = JSON.stringify({ bmd: { buchsymbol: 'HO', sachkontenlaenge: 6 } });
+    const json = JSON.stringify({ abacus: { mandant: '1234', leitwaehrung: 'EUR' } });
     const { config } = await load(json, {}, 'config.json');
-    expect(config.bmd.sachkontenlaenge).toBe(6);
+    expect(config.abacus.leitwaehrung).toBe('EUR');
   });
 
   it('reads the client secret from the environment only', async () => {
@@ -124,13 +112,14 @@ describe('loading', () => {
 
   const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
 
-  it('accepts the example config, which names the Buchungssymbol HO with the note that it must exist in BMD', async () => {
-    expect(example).toMatch(/BMD zuerst anlegen[\s\S]*buchsymbol: HO/);
+  it('accepts the example config, whose abacus section holds the defaults and the example Mandant 1234', async () => {
+    expect(example).toMatch(/abacus:\n[\s\S]*mandant: 1234/);
+    expect(example).not.toMatch(/^bmd:/m);
     const { config } = await load(example, { APALEO_CLIENT_ID: 'client-1' });
     expect(config.output.dir).toBe('./exports');
     expect(config.apaleo.clientId).toBe('client-1');
-    expect(config.bmd).toEqual(BMD_DEFAULTS);
-    expect(config.posting).toEqual({ extbelegnr: 'receipt' });
+    expect(config.abacus).toEqual(ABACUS_DEFAULTS);
+    expect(config.posting).toEqual({ text2: 'receipt' });
     expect(config.checks).toEqual({ aggregates: false });
     expect(config.schedule).toEqual({ timezone: 'Europe/Vienna', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 });
   });
@@ -145,10 +134,10 @@ describe('loading', () => {
   });
 
   it('reports an empty required value as required', async () => {
-    const error = await loadError('bmd:\n  buchsymbol:\n  sachkontenlaenge: 4\n');
-    expect(error.message).toContain('bmd.buchsymbol: is required');
-    expect(await loadError('bmd:\n').then((e) => e.message)).toContain('bmd: is required');
-    expect(await loadError('bmd:\n  buchsymbol:\n', { APALEO_CLIENT_ID: 'x' }).then((e) => e.message)).toContain('bmd.buchsymbol: is required');
+    const error = await loadError('abacus:\n  mandant:\n  leitwaehrung: CHF\n');
+    expect(error.message).toContain('abacus.mandant: is required');
+    expect(await loadError('abacus:\n').then((e) => e.message)).toContain('abacus.mandant: is required');
+    expect(await loadError('abacus:\n  mandant:\n', { APALEO_CLIENT_ID: 'x' }).then((e) => e.message)).toContain('abacus.mandant: is required');
   });
 });
 
@@ -187,33 +176,24 @@ describe('apaleo section', () => {
 });
 
 describe('validation errors name the key path', () => {
-  it('rejects bmd.sachkontenlaenge: 3 with the allowed range', async () => {
-    const error = await loadError(`${VALID}  sachkontenlaenge: 3\n`);
-    expect(error.message).toContain('bmd.sachkontenlaenge: must be a whole number between 4 and 9 (got 3)');
-  });
-
-  it.each([
-    ['personenkontenlaenge: 4', 'bmd.personenkontenlaenge'],
-    ['personenkontenlaenge: 6.5', 'bmd.personenkontenlaenge'],
-    ['personenkontenlaenge: "6"', 'bmd.personenkontenlaenge'],
-  ])('rejects %s', async (line, key) => {
-    const error = await loadError(`${VALID}  ${line}\n`);
-    expect(error.message).toContain(`${key}: must be a whole number between 5 and 9`);
+  it('Invalid config value: abacus.geschaeftsbereich -1 names the key and the allowed range', async () => {
+    const error = await loadError(`${VALID}  geschaeftsbereich: -1\n`);
+    expect(error.message).toContain('abacus.geschaeftsbereich: must be a whole number between 0 and 99999999 (got -1)');
   });
 
   it('reports missing required keys', async () => {
     const error = await loadError('output:\n  dir: ./x\n');
-    expect(error.message).toContain('bmd: is required');
+    expect(error.message).toContain('abacus.mandant: is required');
   });
 
   it('reports unknown keys with their path', async () => {
-    const error = await loadError(`${VALID}  buchsymbl: HO\nfoo: 1\n`);
-    expect(error.message).toContain('bmd.buchsymbl: unknown key');
+    const error = await loadError(`${VALID}  mandnat: 1\nfoo: 1\n`);
+    expect(error.message).toContain('abacus.mandnat: unknown key');
     expect(error.message).toContain('foo: unknown key');
   });
 
   it('reports YAML syntax errors with the file path', async () => {
-    const error = await loadError('bmd: [unclosed\n');
+    const error = await loadError('abacus: [unclosed\n');
     expect(error.message).toMatch(/Cannot parse config file .*apaleo-abacus\.config\.yaml: line \d+, column \d+: /);
   });
 
@@ -241,42 +221,30 @@ describe('validation errors name the key path', () => {
 });
 
 describe('abacus section', () => {
-  const ABACUS_DEFAULTS = {
-    mandant: '1234',
-    leitwaehrung: 'CHF',
-    abrechnungsart: 'vereinbart',
-    version: '2015.00',
-    mwstKonto: '2200',
-    mwstHilfskonto: '2202',
-    mwstCodes: { normal: '311', reduziert: '312', beherbergung: '313' },
-    geschaeftsbereich: 0,
-  };
-
-  it('is optional while BMD is the default target', async () => {
-    expect((await load(VALID)).config.abacus).toBeUndefined();
-    expect((await load(`${VALID}abacus:\n  # mandant: 1234\n`)).config.abacus).toBeUndefined();
+  it('is required: a section whose keys are all commented out names abacus.mandant', async () => {
+    expect((await loadError('abacus:\n  # mandant: 1234\n')).message).toContain('abacus.mandant: is required');
   });
 
   it('Abacus defaults: only mandant set', async () => {
-    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\n`);
+    const { config } = await load(VALID);
     expect(config.abacus).toEqual(ABACUS_DEFAULTS);
   });
 
   it('Mandant missing: names abacus.mandant as required and says it is the Mandantennummer in Abacus', async () => {
-    const error = await loadError(`${VALID}abacus:\n  leitwaehrung: CHF\n`);
+    const error = await loadError(`abacus:\n  leitwaehrung: CHF\n`);
     expect(error.message).toContain('abacus.mandant: is required');
     expect(error.message).toContain('Mandantennummer of the hotel in Abacus');
   });
 
   it('Invalid Leitwährung: names abacus.leitwaehrung and the allowed values CHF and EUR', async () => {
-    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  leitwaehrung: USD\n`);
+    const error = await loadError(`abacus:\n  mandant: 1234\n  leitwaehrung: USD\n`);
     expect(error.message).toContain('abacus.leitwaehrung: must be "CHF" or "EUR"');
     expect(error.message).toContain('(got "USD")');
   });
 
   it('reads every key, numbers and quoted text alike, and the version written as a YAML number', async () => {
     const { config } = await load(
-      `${VALID}abacus:\n  mandant: "7777"\n  leitwaehrung: EUR\n  abrechnungsart: vereinnahmt\n  version: 2024.00\n` +
+      `abacus:\n  mandant: "7777"\n  leitwaehrung: EUR\n  abrechnungsart: vereinnahmt\n  version: 2024.00\n` +
         '  mwstKonto: "2200"\n  mwstHilfskonto: 2209\n  mwstCodes:\n    normal: V81\n    reduziert: 312\n    beherbergung: V38\n  geschaeftsbereich: 12\n',
     );
     expect(config.abacus).toEqual({
@@ -289,7 +257,7 @@ describe('abacus section', () => {
       mwstCodes: { normal: 'V81', reduziert: '312', beherbergung: 'V38' },
       geschaeftsbereich: 12,
     });
-    expect((await load(`${VALID}abacus:\n  mandant: 1\n  version: "2020.00"\n`)).config.abacus?.version).toBe('2020.00');
+    expect((await load(`abacus:\n  mandant: 1\n  version: "2020.00"\n`)).config.abacus?.version).toBe('2020.00');
   });
 
   it.each([
@@ -304,12 +272,12 @@ describe('abacus section', () => {
     ['geschaeftsbereich: -1', 'abacus.geschaeftsbereich: must be a whole number between 0 and 99999999'],
   ])('rejects %s', async (line, message) => {
     const section = line.startsWith('mandant:') ? `  ${line}\n` : `  mandant: 1234\n  ${line}\n`;
-    const error = await loadError(`${VALID}abacus:\n${section}`);
+    const error = await loadError(`abacus:\n${section}`);
     expect(error.message).toContain(message);
   });
 
   it('rejects an MWST-Code that is not 1 to 3 characters of A-Z, a-z and 0-9, and an unknown key', async () => {
-    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "3111"\n    reduziert: "V-2"\n  mwstcode: 311\n`);
+    const error = await loadError(`abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "3111"\n    reduziert: "V-2"\n  mwstcode: 311\n`);
     expect(error.message).toContain('abacus.mwstCodes.normal: must be an MWST-Code of the Mandant: 1 to 3 characters of A-Z, a-z and 0-9');
     expect(error.message).toContain('abacus.mwstCodes.reduziert: must be an MWST-Code');
     expect(error.message).toContain('abacus.mwstcode: unknown key');
@@ -320,38 +288,38 @@ describe('abacus section', () => {
     ['reduziert: 0x1F', 'abacus.mwstCodes.reduziert: 0x1F is read as the number 31, not as the text "0x1F"; write it in quotes, for example reduziert: "0x1F"'],
     ['beherbergung: 1e2', 'abacus.mwstCodes.beherbergung: 1e2 is read as the number 100, not as the text "1e2"'],
   ])('MWST-Code written as a rewritten YAML number: rejects %s with a hint to quote it', async (line, message) => {
-    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    ${line}\n`);
+    const error = await loadError(`abacus:\n  mandant: 1234\n  mwstCodes:\n    ${line}\n`);
     expect(error.message).toContain(message);
   });
 
   it('rejects a rewritten number as Mandant or account, also for a property and in JSON, and keeps quoted codes', async () => {
-    const yaml = await loadError(`${VALID}abacus:\n  mandant: 0x4D2\n  mwstKonto: 02200\nproperties:\n  - id: BSP\n    mandant: 1.0e3\n`);
+    const yaml = await loadError(`abacus:\n  mandant: 0x4D2\n  mwstKonto: 02200\nproperties:\n  - id: BSP\n    mandant: 1.0e3\n`);
     expect(yaml.message).toContain('abacus.mandant: 0x4D2 is read as the number 1234');
     expect(yaml.message).toContain('abacus.mwstKonto: 02200 is read as the number 2200');
     expect(yaml.message).toContain('properties.0.mandant: 1.0e3 is read as the number 1000');
-    const json = await loadError(JSON.stringify({ bmd: { buchsymbol: 'HO' }, abacus: { mandant: 1234 } }).replace('1234', '1e2'), {}, 'config.json');
+    const json = await loadError(JSON.stringify({ abacus: { mandant: 1234 } }).replace('1234', '1e2'), {}, 'config.json');
     expect(json.message).toContain('abacus.mandant: 1e2 is read as the number 100, not as the text "1e2"; write it in quotes, for example "mandant": "1e2"');
-    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "011"\n    reduziert: 312\n`);
+    const { config } = await load(`abacus:\n  mandant: 1234\n  mwstCodes:\n    normal: "011"\n    reduziert: 312\n`);
     expect(config.abacus?.mwstCodes).toEqual({ normal: '011', reduziert: '312', beherbergung: '313' });
-    const other = await load(`${VALID}abacus:\n  mandant: 1234\n  geschaeftsbereich: 0x0C\n`);
+    const other = await load(`abacus:\n  mandant: 1234\n  geschaeftsbereich: 0x0C\n`);
     expect(other.config.abacus?.geschaeftsbereich).toBe(12);
   });
 
-  it('the commented abacus block of the example config, uncommented, holds the defaults and has no "ß"', async () => {
+  it('the abacus section of the example config holds the defaults and has no "ß"', async () => {
     const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
     const lines = example.split('\n');
-    const start = lines.indexOf('# abacus:');
-    const end = lines.findIndex((line, i) => i > start && !line.startsWith('#'));
+    const start = lines.indexOf('abacus:');
+    const end = lines.findIndex((line, i) => i > start && /^\S/.test(line));
     const block = lines.slice(start, end);
     expect(block.join('\n')).not.toContain('ß');
-    const { config } = await load(`${VALID}${block.map((line) => line.replace(/^# ?/, '')).join('\n')}\n`);
+    const { config } = await load(`${block.join('\n')}\n`);
     expect(config.abacus).toEqual(ABACUS_DEFAULTS);
   });
 
   it('lets each property override mandant and geschaeftsbereich', async () => {
-    const { config } = await load(`${VALID}abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n    mandant: 4711\n    geschaeftsbereich: 2\n`);
+    const { config } = await load(`abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n  - id: BS2\n    mandant: 4711\n    geschaeftsbereich: 2\n`);
     expect(config.properties).toEqual([{ id: 'BSP' }, { id: 'BS2', mandant: '4711', geschaeftsbereich: 2 }]);
-    const error = await loadError(`${VALID}abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n    mandant: 12A\n`);
+    const error = await loadError(`abacus:\n  mandant: 1234\nproperties:\n  - id: BSP\n    mandant: 12A\n`);
     expect(error.message).toContain('properties.0.mandant: must be the Mandantennummer in Abacus');
   });
 });
@@ -377,12 +345,11 @@ describe('Abacus Mandanten of the properties', () => {
     expect(finding?.message).toContain('its own Geschäftsbereich (properties[].geschaeftsbereich) or its own Mandant (properties[].mandant)');
   });
 
-  it('does not warn when each property has its own Geschäftsbereich or Mandant, or without an abacus section', () => {
+  it('does not warn when each property has its own Geschäftsbereich or Mandant', () => {
     const own = (properties: { id: string; mandant?: string; geschaeftsbereich?: number }[]) => sharedMandantFindings({ abacus, properties });
     expect(own([{ id: 'BSP' }, { id: 'BS2', geschaeftsbereich: 2 }])).toEqual([]);
     expect(own([{ id: 'BSP' }, { id: 'BS2', mandant: '4711' }])).toEqual([]);
     expect(own([{ id: 'BSP', geschaeftsbereich: 2 }, { id: 'BS2' }, { id: 'BS3', geschaeftsbereich: 2 }]).map((f) => f.value)).toEqual(['1234/2']);
-    expect(sharedMandantFindings({ properties: [{ id: 'BSP' }, { id: 'BS2' }] })).toEqual([]);
   });
 });
 
@@ -540,31 +507,6 @@ describe('environment overrides', () => {
       'APALEO_CLIENT_ID',
       'APALEO_ABACUS_TIMEZONE',
     ]);
-  });
-});
-
-describe('Buchungssymbole of the properties', () => {
-  const bmd = { dialect: 'ntcs' as const, sachkontenlaenge: 4, personenkontenlaenge: 6, buchsymbol: 'HO' };
-
-  it('uses the property symbol, else the bmd section, and the main symbol for payments without buchsymbolZahlung', () => {
-    const config = { bmd, properties: [{ id: 'BSP' }, { id: 'BS2', buchsymbol: 'HO2' }] };
-    expect(buchsymboleOf(config, 'BSP')).toEqual({ buchsymbol: 'HO', buchsymbolZahlung: 'HO' });
-    expect(buchsymboleOf(config, 'BS2')).toEqual({ buchsymbol: 'HO2', buchsymbolZahlung: 'HO2' });
-    expect(buchsymboleOf({ bmd: { ...bmd, buchsymbolZahlung: 'HZ' }, properties: [] }, 'BSP')).toEqual({ buchsymbol: 'HO', buchsymbolZahlung: 'HZ' });
-  });
-
-  it('warns W-BUCHSYMBOL-SHARED when two properties book under the same symbol', () => {
-    const [finding, ...rest] = sharedBuchsymbolFindings({ bmd, properties: [{ id: 'BSP' }, { id: 'BS2' }] });
-    expect(rest).toEqual([]);
-    expect(finding).toMatchObject({ code: 'W-BUCHSYMBOL-SHARED', value: 'HO' });
-    expect(finding?.message).toContain('BSP, BS2');
-    expect(finding?.message).toContain('Belegnummern would repeat');
-  });
-
-  it('does not warn when each property has its own symbol, and warns for a shared payment symbol', () => {
-    expect(sharedBuchsymbolFindings({ bmd, properties: [{ id: 'BSP' }, { id: 'BS2', buchsymbol: 'HO2' }] })).toEqual([]);
-    const shared = sharedBuchsymbolFindings({ bmd: { ...bmd, buchsymbolZahlung: 'HZ' }, properties: [{ id: 'BSP' }, { id: 'BS2', buchsymbol: 'HO2' }] });
-    expect(shared.map((f) => f.value)).toEqual(['HZ']);
   });
 });
 

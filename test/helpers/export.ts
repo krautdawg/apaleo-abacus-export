@@ -5,8 +5,33 @@ import { createTestContext, type TestContext } from './context.js';
 import { FakeSource, type FakeSourceData } from './fake-source.js';
 import { BEISPIEL } from './posting.js';
 
-/** The EKR mapping of Hotel Beispiel (`test/fixtures/mapping/ekr-beispiel.csv`) as text. */
-export const BEISPIEL_MAPPING = readFileSync(new URL('../fixtures/mapping/ekr-beispiel.csv', import.meta.url), 'utf8');
+/** The Abacus test mapping of Hotel Beispiel (`test/fixtures/mapping/abacus-beispiel.csv`) as text. */
+export const BEISPIEL_MAPPING_TEXT = readFileSync(new URL('../fixtures/mapping/abacus-beispiel.csv', import.meta.url), 'utf8');
+
+/**
+ * The Hotel Beispiel mapping books the Austrian rates 10 and 20 % with the
+ * placeholder codes V10 and V20 (the recorded VIE day also V13), so every export of it warns
+ * `W-MWST-CODE-UNCHECKED` for them. Tests about something else drop those
+ * warnings with these helpers; the warning itself is tested in
+ * `test/export/pipeline.test.ts` and `test/cli/schedule.test.ts`.
+ */
+const PLACEHOLDER_CODES = new Set(['V10', 'V13', 'V20']);
+const isPlaceholderWarning = (finding: { code: string; value?: string | undefined }) =>
+  finding.code === 'W-MWST-CODE-UNCHECKED' && PLACEHOLDER_CODES.has(finding.value ?? '');
+
+/** The findings without the `W-MWST-CODE-UNCHECKED` warnings for the placeholder codes V10, V13 and V20. */
+export function withoutPlaceholderCodes<T extends { code: string; value?: string | undefined }>(findings: readonly T[]): T[] {
+  return findings.filter((finding) => !isPlaceholderWarning(finding));
+}
+
+/** CLI output without the `W-MWST-CODE-UNCHECKED` lines and codes for the placeholder codes V10, V13 and V20. */
+export function stripPlaceholderCodes(out: string): string {
+  return out
+    .split('\n')
+    .filter((line) => !/^ {2}W-MWST-CODE-UNCHECKED \(mwst_code\): .*the MWST-Code V(10|13|20) /.test(line))
+    .map((line) => line.replace(/ W-MWST-CODE-UNCHECKED(?=\s|$)/, ''))
+    .join('\n');
+}
 
 /** The fixture config with property BSP and the given lines appended. */
 export function exportConfig(...extra: string[]): string {
@@ -28,7 +53,7 @@ export interface ExportSetupOptions {
 }
 
 /**
- * A test context for the export: the fixture config, the Hotel Beispiel mapping
+ * A test context for the export: the fixture config (Abacus Mandant 1234, Leitwährung EUR), the Hotel Beispiel mapping
  * as `mapping-BSP.csv`, a `FakeSource` over the fixtures (shared by every call,
  * so a test can change `data` between runs) and the fixed clock 2026-10-20.
  */
@@ -37,7 +62,7 @@ export function exportSetup(options: ExportSetupOptions = {}): ExportSetup {
   options.data?.(data);
   const fake = new FakeSource(data);
   const ctx = createTestContext({
-    files: { 'apaleo-abacus.config.yaml': options.config ?? exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING, ...options.files },
+    files: { 'apaleo-abacus.config.yaml': options.config ?? exportConfig(), 'mapping-BSP.csv': BEISPIEL_MAPPING_TEXT, ...options.files },
     sourceFactory: () => fake,
     ...(options.now ? { now: options.now } : {}),
   });

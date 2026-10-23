@@ -1,5 +1,7 @@
 # Import in BMD
 
+> Das Tool schreibt Abacus-Dateien; diese Seite beschreibt den früheren BMD-Buchungsimport, dessen Writer noch im Quellcode liegt und bald entfällt. Die Konfiguration hat keinen Abschnitt bmd mehr.
+
 Für die Kanzlei: So kommt die Datei in BMD NTCS, und darauf solltest du beim ersten Import achten. Keine Gewähr, keine Steuerberatung. Was in der Datei steht und warum, beschreibt [bmd-format.md](bmd-format.md).
 
 Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A, dvo); ein erster Testimport mit einer Kanzlei steht noch aus. Mach den ersten Import deshalb in einem Testmandanten oder in die Vorerfassung, und schick uns das Ergebnis (siehe unten).
@@ -12,18 +14,18 @@ Jede Zeile ist eine Buchung mit `verbuchkz` `A` und `gegenbuchkz` `E`: BMD erzeu
 
 ## Buchungssymbol anlegen
 
-Das Tool schreibt kein `AR`. In NTCS hat das Symbol `AR` den Buchungstyp „Rechnung (umsatzrelevant)“ und Regeln für die erlaubten Kontenarten; die Passivkonten der Anzahlungen und der Ortstaxe lehnt es dann unter Umständen ab, und Zahlungen unter `AR` zählen als Rechnungen. Lege deshalb ein eigenes Buchungssymbol an und trag es in der Konfiguration ein (`bmd.buchsymbol`):
+Das Tool schreibt kein `AR`. In NTCS hat das Symbol `AR` den Buchungstyp „Rechnung (umsatzrelevant)“ und Regeln für die erlaubten Kontenarten; die Passivkonten der Anzahlungen und der Ortstaxe lehnt es dann unter Umständen ab, und Zahlungen unter `AR` zählen als Rechnungen. Lege deshalb ein eigenes Buchungssymbol an und trag es in der Konfiguration ein (bmd.buchsymbol):
 
 1. In BMD NTCS die Buchungssymbole öffnen und `AR` kopieren, zum Beispiel als `HO` (Hotel).
 2. Beim neuen Symbol alle Kontenarten erlauben, die das Hotel bucht: Erlöse, Anzahlungen, Verbindlichkeiten (Ortstaxe), Forderungen, Kassa und Geldverkehr.
 3. Die Kontrolle der Belegnummer je Buchungssymbol eingeschaltet lassen: Das Tool vergibt Belegnummern, die sich innerhalb eines Wirtschaftsjahres nicht wiederholen.
-4. Optional ein zweites Symbol mit Buchungstyp Zahlung anlegen, zum Beispiel `HZ`, und als `bmd.buchsymbolZahlung` eintragen. Dann kommen Zahlungen (Zeilen ohne Steuer mit einem Zahlungskonto) unter dieses Symbol, alles andere unter `bmd.buchsymbol`.
+4. Optional ein zweites Symbol mit Buchungstyp Zahlung anlegen, zum Beispiel `HZ`, und als bmd.buchsymbolZahlung eintragen. Dann kommen Zahlungen (Zeilen ohne Steuer mit einem Zahlungskonto) unter dieses Symbol, alles andere unter bmd.buchsymbol.
 
 Ein Symbol hat in NTCS höchstens 4 Zeichen, in BMD 5.5 höchstens 2 (`bmd.dialect: bmd55`).
 
 ## Ein Symbol oder ein Mandant pro Hotel
 
-Bucht die Kanzlei mehrere Hotels in einen Mandanten, braucht jedes Hotel ein eigenes Buchungssymbol (`properties[].buchsymbol`), sonst wiederholen sich die Belegnummern: Zwei Dateien desselben Zeitraums beginnen beide mit `MMTT` und dem Zähler `00001`. `apaleo-abacus doctor` und das Protokoll warnen in diesem Fall mit `W-BUCHSYMBOL-SHARED`. Hat jedes Hotel einen eigenen Mandanten, reicht ein Symbol.
+Bucht die Kanzlei mehrere Hotels in einen Mandanten, braucht jedes Hotel ein eigenes Buchungssymbol (properties[].buchsymbol), sonst wiederholen sich die Belegnummern: Zwei Dateien desselben Zeitraums beginnen beide mit `MMTT` und dem Zähler `00001`. `apaleo-abacus doctor` und das Protokoll warnen in diesem Fall mit `W-BUCHSYMBOL-SHARED`. Hat jedes Hotel einen eigenen Mandanten, reicht ein Symbol.
 
 ```yaml
 bmd:

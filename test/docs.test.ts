@@ -180,10 +180,11 @@ describe('the docs checks', () => {
 
   it('knows nested, defaulted and array keys of the schema', () => {
     const paths = configPaths();
-    for (const key of ['apaleo.clientId', 'bmd.buchsymbol', 'schedule.monthly.dayOfMonth', 'checks.aggregates', 'properties[].mapping']) {
+    for (const key of ['apaleo.clientId', 'abacus.mandant', 'posting.text2', 'schedule.monthly.dayOfMonth', 'checks.aggregates', 'properties[].mapping']) {
       expect(paths.has(key), key).toBe(true);
     }
-    expect(checkConfigKeys('docs/x.md', '`properties[].buchsymbol` and `properties[].kanzlei`')).toEqual([
+    for (const key of ['bmd.buchsymbol', 'properties[].buchsymbol', 'posting.extbelegnr']) expect(paths.has(key), key).toBe(false);
+    expect(checkConfigKeys('docs/x.md', '`properties[].geschaeftsbereich` and `properties[].kanzlei`')).toEqual([
       'docs/x.md: `properties[].kanzlei` is not a config key',
     ]);
     expect(checkConfigKeys('docs/configuration.md', 'Trag `bmd.beraternummer` ein.')).toEqual(['docs/configuration.md: `bmd.beraternummer` is not a config key']);

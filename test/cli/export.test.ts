@@ -3,12 +3,12 @@ import * as nodeFs from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../src/cli/run.js';
-import { DIALECTS } from '../../src/bmd/index.js';
 import { sha256, type Manifest } from '../../src/export/index.js';
 import { ApaleoError, ApaleoPermissionError } from '../../src/sources/apaleo/index.js';
 import { BSP } from '../helpers/apaleo.js';
 import { addSecondProperty, exportConfig, exportSetup, latePosting, type ExportSetup } from '../helpers/export.js';
-import { describeDifference, type FieldNamer } from '../helpers/golden.js';
+import { block, transaction, value, values } from '../helpers/abacus.js';
+import { describeDifference } from '../helpers/golden.js';
 
 /**
  * End-to-end through `runCli` with a fake context: fixed clock 2026-10-20, the
@@ -19,20 +19,19 @@ import { describeDifference, type FieldNamer } from '../helpers/golden.js';
  */
 const UPDATE = process.env.UPDATE_GOLDEN === '1';
 const GOLDEN = new URL('../golden/export/', import.meta.url);
-const FILE = 'BMD_Buchungsimport_20260901-20260930_BSP.csv';
-const PROTOCOL = 'BMD_Buchungsimport_20260901-20260930_BSP.protokoll.txt';
-const MAPPING = readFileSync(join(import.meta.dirname, '../fixtures/mapping/ekr-beispiel.csv'), 'utf8');
+const FILE = 'ABACUS_Buchungen_20260901-20260930_BSP.xml';
+const PROTOCOL = 'ABACUS_Buchungen_20260901-20260930_BSP.protokoll.txt';
+const MAPPING = readFileSync(join(import.meta.dirname, '../fixtures/mapping/abacus-beispiel.csv'), 'utf8');
 
 const folder = (setup: ExportSetup, month = '2026-09', property = BSP) => join(setup.ctx.cwd, 'exports', property, month);
 const read = (setup: ExportSetup, name: string, month?: string) => readFileSync(join(folder(setup, month), name));
 const manifestOf = (setup: ExportSetup, month?: string) => JSON.parse(read(setup, 'manifest.json', month).toString('utf8')) as Manifest;
-const lines = (bytes: Uint8Array) => new TextDecoder('windows-1252').decode(bytes).split('\r\n');
-const bmdField: FieldNamer = (_line, index) => DIALECTS.ntcs.header[index] ?? '?';
+const xmlOf = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
 function expectGolden(name: string, actual: Uint8Array): void {
   const path = new URL(name, GOLDEN);
   if (UPDATE) writeFileSync(path, actual);
-  const difference = describeDifference(readFileSync(path), actual, name.endsWith('.csv') ? bmdField : undefined);
+  const difference = describeDifference(readFileSync(path), actual);
   expect(difference, `${name} differs from the golden file:\n${difference}`).toBeUndefined();
 }
 
@@ -46,12 +45,12 @@ function chargeOn(day: `${number}-${number}-${number}`, entry: string) {
 }
 
 describe('apaleo-abacus export', () => {
-  it('writes the golden BMD file, its protocol and the manifest for a month and exits 0', async () => {
+  it('Files after a run: writes the golden Abacus file, its protocol with the Abacus import block and the manifest for a month, and exits 0', async () => {
     const setup = exportSetup();
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(0);
     expect(setup.ctx.out()).toContain(`BSP 2026-09 (2026-09-01 to 2026-09-30): written exports/BSP/2026-09/${FILE} (24 bookings)`);
     expect(setup.ctx.out()).toContain('Result: 1 written, 0 unchanged, 0 failed.');
-    expect(readdirSync(folder(setup)).sort()).toEqual([FILE, PROTOCOL, 'manifest.json']);
+    expect(readdirSync(folder(setup)).sort()).toEqual([FILE, PROTOCOL, 'manifest.json'].sort());
 
     const file = read(setup, FILE);
     expectGolden(FILE, file);
@@ -60,9 +59,9 @@ describe('apaleo-abacus export', () => {
     const [entry] = manifestOf(setup).files;
     expect(entry).toMatchObject({ file: FILE, status: 'current', sha256: sha256(file), bookings: 24 });
     expect(entry).not.toHaveProperty('bodySha256');
-    // What BMD's journal shows after the import: Konto, Gegenkonto and the tax posting, so Soll equals Haben,
-    // the sum of the gross amounts of the 24 bookings (test/posting/fixture-month.test.ts).
-    expect([entry?.sollTotal, entry?.habenTotal]).toEqual(['1828.40', '1828.40']);
+    // The journal total follows with the final manifest; the BMD Soll and Haben totals are gone.
+    expect(entry).not.toHaveProperty('sollTotal');
+    expect(entry).not.toHaveProperty('habenTotal');
     expect(entry?.taxByRate).toEqual([
       { ratePercent: 10, taxCents: 5_848 },
       { ratePercent: 20, taxCents: 767 },
@@ -70,7 +69,9 @@ describe('apaleo-abacus export', () => {
     expect(entry?.mappingSha256).toBe(sha256(readFileSync(join(setup.ctx.cwd, 'mapping-BSP.csv'))));
 
     const protocol = read(setup, PROTOCOL).toString('utf8');
-    expect(protocol).toContain('Totals per BMD account');
+    expect(protocol).toContain('Totals per Abacus account');
+    expect(protocol).toContain('Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):');
+    expect(protocol).toContain(`  File: ${FILE}`);
     expect(protocol).toContain(`SHA-256: ${sha256(file)}`);
     expect(protocol).toContain('Tool: apaleo-abacus 0.0.0');
   });
@@ -102,10 +103,10 @@ describe('apaleo-abacus export', () => {
   it('splits a range across two months into two files', async () => {
     const setup = exportSetup({ data: chargeOn('2026-10-02', 'BSPE0100') });
     expect(await runCli(['export', '--from', '2026-09-20', '--to', '2026-10-05', '--property', BSP], setup.ctx)).toBe(0);
-    expect(readdirSync(folder(setup, '2026-09'))).toContain('BMD_Buchungsimport_20260920-20260930_BSP.csv');
-    const october = read(setup, 'BMD_Buchungsimport_20261001-20261005_BSP.csv', '2026-10');
+    expect(readdirSync(folder(setup, '2026-09'))).toContain('ABACUS_Buchungen_20260920-20260930_BSP.xml');
+    const october = transaction(xmlOf(read(setup, 'ABACUS_Buchungen_20261001-20261005_BSP.xml', '2026-10')), 1);
     // The Belegnummer starts with MMDD of the file's first day.
-    expect(lines(october)[1]?.split(';').slice(1, 5)).toEqual(['4000', '2390', '100100001', '02.10.2026']);
+    expect([value(block(october, 'SingleInformation'), 'Account'), value(october, 'DocumentNumber'), value(october, 'EntryDate')]).toEqual(['3400', '1001000001', '2026-10-02']);
   });
 
   it('refuses a period that reaches today in the property time zone, taken from ctx.now()', async () => {
@@ -144,34 +145,31 @@ describe('apaleo-abacus export', () => {
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--dry-run'], setup.ctx)).toBe(0);
     const out = setup.ctx.out();
     for (const text of [
-      'Totals per BMD account (Konto with Betrag, Gegenkonto with Betrag plus Steuer):',
-      'Revenue and VAT per rate',
-      'Deposits and their VAT per rate',
-      'Ortstaxe and other guest levies (apaleo city tax): 6.40',
+      'Totals per Abacus account (Collective account with the gross amount, Single account with the gross amount minus the MWST):',
+      'Revenue and MWST per MWST-Code and rate',
+      'Deposits and their MWST per MWST-Code and rate',
+      'Kurtaxe and other guest levies (apaleo city tax): 6.40',
       'Payments per clearing account:',
       'Deposits: received 395.00, released 395.00, of it refunded 10.00',
-      'Accounts receivable (Sammeldebitor, Soll positive): 115.00',
+      'Accounts receivable (Debitoren, Soll positive): 115.00',
       'gross (unsigned)',
       'Skipped lines:',
       'Findings:',
     ]) {
       expect(out).toContain(text);
     }
-    expect(out).toContain('  10 %: net 584.82, tax 58.48, gross 643.30, apaleo VAT 58.48, difference 0.00 (apaleo precise 58.48181818)');
-    expect(out).toContain("Each booking carries apaleo's tax of its line, rounded to the cent");
+    expect(out).toContain('  V10 10 %: net 584.82, tax 58.48, gross 643.30, apaleo VAT 58.48, difference 0.00 (apaleo precise 58.48181818)');
+    expect(out).toContain("Each booking carries apaleo's tax of its line, rounded to the Rappen");
     // The import block, before the totals.
-    const block = out.indexOf('Import into BMD');
-    expect(block).toBeGreaterThan(0);
-    expect(block).toBeLessThan(out.indexOf('Totals per BMD account'));
+    const importBlock = out.indexOf('Import into Abacus FIBU');
+    expect(importBlock).toBeGreaterThan(0);
+    expect(importBlock).toBeLessThan(out.indexOf('Totals per Abacus account'));
     for (const line of [
       `  File: ${FILE}`,
-      '  Lines: 24 bookings (Satzart 0) after the header line',
-      '  Dialect: ntcs (BMD NTCS)',
-      '  Buchungssymbole: HO',
-      '  Belegnummern: 090100001 to 090100024',
-      '  verbuchkz A, gegenbuchkz E: BMD creates the Gegenbuchung and the tax posting itself',
-      '  Steuercodes: 1 (10 %, 20 %)',
-      '  Account lengths: Sachkonten 4, Personenkonten 6',
+      '  Bookings: 24 Einzelbuchungen (one Transaction each)',
+      '  Mandant: 1234, Geschäftsbereich 0, Leitwährung EUR',
+      '  Belegnummern: 0901000001 to 0901000024',
+      '  MWST-Codes: V10 (10 %; tax -58.48 EUR), V20 (20 %; tax -7.67 EUR)',
     ]) {
       expect(out).toContain(`\n${line}\n`);
     }
@@ -210,25 +208,22 @@ describe('re-running an export', () => {
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(1);
     const out = setup.ctx.out();
     expect(out).toContain('E-FILE-EXISTS');
-    expect(out).toContain('BMD does not recognise a file it has already imported, so importing both files would book those days twice.');
-    expect(out).toContain('If the Kanzlei has already imported the old file, it must first delete the imported bookings of that file in BMD NTCS');
+    expect(out).toContain('Abacus does not recognise a file it has already imported, so importing both files would book those days twice.');
+    expect(out).toContain('If the Treuhänder has already imported the old file, delete its bookings in Abacus first: in the Nebenjournal before they are transferred, or by reversing them');
     expect(out).toContain('--overwrite');
     expect(read(setup, FILE)).toEqual(before);
   });
 
-  it('with --overwrite keeps the old file as .replaced-<timestamp>.csv and records both in the manifest', async () => {
+  it('with --overwrite keeps the old file as .replaced-<timestamp>.xml and records both in the manifest', async () => {
     const setup = await exportedOnce();
     const old = read(setup, FILE);
     latePosting(setup.data);
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--overwrite'], setup.ctx)).toBe(0);
-    const backup = 'BMD_Buchungsimport_20260901-20260930_BSP.replaced-20261021T093000Z.csv';
-    expect(readdirSync(folder(setup)).sort()).toEqual([
-      FILE,
-      PROTOCOL,
-      backup,
-      'BMD_Buchungsimport_20260901-20260930_BSP.replaced-20261021T093000Z.protokoll.txt',
-      'manifest.json',
-    ]);
+    const backup = 'ABACUS_Buchungen_20260901-20260930_BSP.replaced-20261021T093000Z.xml';
+    expect(readdirSync(folder(setup)).sort()).toEqual(
+      [FILE, PROTOCOL, backup, 'ABACUS_Buchungen_20260901-20260930_BSP.replaced-20261021T093000Z.protokoll.txt', 'manifest.json'].sort(),
+    );
+    expect(setup.ctx.out()).toContain('the previous file was kept as .replaced-*.xml');
     expect(read(setup, backup)).toEqual(old);
     const fresh = read(setup, FILE);
     expect(manifestOf(setup).files.map((e) => [e.file, e.status, e.sha256, e.bookings])).toEqual([
@@ -258,7 +253,7 @@ describe('re-running an export', () => {
 
   it('rewrites a missing protocol and a stale manifest entry after an interrupted run, without touching the file', async () => {
     const setup = await exportedOnce();
-    const csv = read(setup, FILE);
+    const xml = read(setup, FILE);
     rmSync(join(folder(setup), PROTOCOL));
     const stale = manifestOf(setup);
     writeFileSync(join(folder(setup), 'manifest.json'), JSON.stringify({ files: stale.files.map((e) => ({ ...e, sha256: 'stale' })) }));
@@ -266,10 +261,10 @@ describe('re-running an export', () => {
     const out = setup.ctx.out();
     expect(out).toContain(`unchanged exports/BSP/2026-09/${FILE}`);
     expect(out).toContain(`N-COMPANIONS-REPAIRED: ${PROTOCOL} and manifest.json did not match ${FILE}`);
-    expect(read(setup, FILE)).toEqual(csv);
-    expect(read(setup, PROTOCOL).toString('utf8')).toContain(`\nSHA-256: ${sha256(csv)}\n`);
-    expect(manifestOf(setup).files.map((e) => [e.file, e.status, e.sha256])).toEqual([[FILE, 'current', sha256(csv)]]);
-    expect(readdirSync(folder(setup)).sort()).toEqual([FILE, PROTOCOL, 'manifest.json']);
+    expect(read(setup, FILE)).toEqual(xml);
+    expect(read(setup, PROTOCOL).toString('utf8')).toContain(`\nSHA-256: ${sha256(xml)}\n`);
+    expect(manifestOf(setup).files.map((e) => [e.file, e.status, e.sha256])).toEqual([[FILE, 'current', sha256(xml)]]);
+    expect(readdirSync(folder(setup)).sort()).toEqual([FILE, PROTOCOL, 'manifest.json'].sort());
   });
 
   it('writes nothing while another run holds the folder lock', async () => {
@@ -304,50 +299,31 @@ describe('re-running an export', () => {
     expect(await runCli(['export', '--from', '2026-09-20', '--to', '2026-09-30', '--property', BSP], setup.ctx)).toBe(1);
     expect(setup.ctx.out()).toContain('E-PERIOD-OVERLAP');
     expect(setup.ctx.out()).toContain(`${join(folder(setup), FILE)} already covers some of the days 2026-09-20 to 2026-09-30`);
-    expect(setup.ctx.out()).toContain('Importing both files would book those days twice in BMD NTCS');
+    expect(setup.ctx.out()).toContain('Importing both files would book those days twice in Abacus');
     expect(readdirSync(folder(setup))).toHaveLength(3);
   });
 
-  it('refuses a re-run after a change of bmd.dialect and replaces the file with --overwrite', async () => {
+  it('Config changed the content: a change of abacus.geschaeftsbereich refuses the re-run with E-FILE-EXISTS, and --overwrite writes the new Division', async () => {
     const setup = await exportedOnce();
     const configPath = join(setup.ctx.cwd, 'apaleo-abacus.config.yaml');
-    writeFileSync(configPath, readFileSync(configPath, 'utf8').replace('  buchsymbol: HO\n', '  buchsymbol: HO\n  dialect: bmd55\n'));
+    writeFileSync(configPath, readFileSync(configPath, 'utf8').replace('  mandant: 1234\n', '  mandant: 1234\n  geschaeftsbereich: 5\n'));
     const old = read(setup, FILE);
-    expect(lines(old)[0]).toMatch(/^satzart;konto;gkonto;/);
+    expect(values(xmlOf(old), 'Division').every((division) => division === '0')).toBe(true);
 
     const start = setup.ctx.out().length;
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(1);
     const refused = setup.ctx.out().slice(start);
     expect(refused).toContain('E-FILE-EXISTS');
-    expect(refused).toContain('A change of bmd.dialect or bmd.buchsymbol also changes every line');
+    expect(refused).toContain('A change of the abacus section (Mandant, Geschäftsbereich, Abrechnungsart, version, MWST accounts) also changes the file');
     expect(refused).not.toContain('unchanged exports');
     expect(read(setup, FILE)).toEqual(old);
 
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--overwrite'], setup.ctx)).toBe(0);
-    expect(setup.ctx.out()).toContain('the previous file was kept as .replaced-*.csv');
-    expect(lines(read(setup, FILE))[0]).toMatch(/^satzart;konto;gkto;/);
+    const divisions = values(xmlOf(read(setup, FILE)), 'Division');
+    expect(divisions).toHaveLength(24);
+    expect(divisions.every((division) => division === '5')).toBe(true);
+    expect(read(setup, PROTOCOL).toString('utf8')).toContain('  Mandant: 1234, Geschäftsbereich 5, Leitwährung EUR\n');
     expect(manifestOf(setup).files.map((e) => e.status)).toEqual(['replaced', 'current']);
-  });
-
-  it('refuses a re-run after a change of bmd.buchsymbol, and with --overwrite the new lines carry the new symbol', async () => {
-    const setup = await exportedOnce();
-    const configPath = join(setup.ctx.cwd, 'apaleo-abacus.config.yaml');
-    writeFileSync(configPath, readFileSync(configPath, 'utf8').replace('  buchsymbol: HO\n', '  buchsymbol: HX\n'));
-    const old = read(setup, FILE);
-
-    const start = setup.ctx.out().length;
-    expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(1);
-    const refused = setup.ctx.out().slice(start);
-    expect(refused).toContain('E-FILE-EXISTS');
-    expect(refused).toContain('bmd.buchsymbol');
-    expect(read(setup, FILE)).toEqual(old);
-
-    expect(await runCli(['export', '--month', '2026-09', '--property', BSP, '--overwrite'], setup.ctx)).toBe(0);
-    const rows = lines(read(setup, FILE)).slice(1, -1);
-    expect(rows).toHaveLength(24);
-    expect(rows.every((row) => row.split(';')[6] === 'HX')).toBe(true);
-    expect(lines(old).slice(1, -1).every((row) => row.split(';')[6] === 'HO')).toBe(true);
-    expect(read(setup, PROTOCOL).toString('utf8')).toContain('  Buchungssymbole: HX\n');
   });
 
   it('reads a manifest of an earlier version with fields it does not know, and keeps them', async () => {
@@ -368,10 +344,10 @@ describe('re-running an export', () => {
     expect(current?.taxByRate?.[0]).toEqual({ ratePercent: 10, taxCents: 5_848 + 891 });
   });
 
-  it('compares the whole file: the BMD file has no creation time', async () => {
+  it('compares the whole file: the Abacus file has no creation time', async () => {
     const setup = await exportedOnce();
     const file = read(setup, FILE);
-    expect(lines(file)[0]).not.toMatch(/\d{17}/);
+    expect(xmlOf(file)).not.toMatch(/2026-10-2\dT|\d{17}/);
     expect(await runCli(['export', '--month', '2026-09', '--property', BSP], setup.ctx)).toBe(0);
     expect(read(setup, FILE)).toEqual(file);
   });

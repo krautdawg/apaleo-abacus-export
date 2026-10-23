@@ -2,10 +2,10 @@ import type { ChartIndex } from '../core/chart.js';
 import { REPORT_PROBLEM_HINT } from '../core/errors.js';
 import type { Finding } from '../core/findings.js';
 import type { AccountRef, LedgerLine } from '../core/source.js';
-import { KOST_TYPES, NO_TAX_TYPES, VAT_ACCOUNT_TYPES, checkCoverage, parseSteuercode, resolve, rowRate, type Mapping, type MappingRow } from '../mapping/index.js';
+import { KOST_TYPES, NO_TAX_TYPES, VAT_ACCOUNT_TYPES, checkCoverage, mwstCodeOf, resolve, rowRate, type Mapping, type MappingRow } from '../mapping/index.js';
 import { apaleoVatOf, type ApaleoVat } from './apaleo-vat.js';
 import { accountText, lineFinding, percentText, rowText } from './describe.js';
-import { buchungstext, extbelegnr, kostOf } from './fields.js';
+import { kostOf, text1, text2 } from './fields.js';
 import { guardVat, type PostedSide } from './guard.js';
 import { inferReleaseRates, isUntaxedRelease, resolutionRate, type ReleaseRate } from './release.js';
 import { SummaryBuilder } from './summary.js';
@@ -38,7 +38,7 @@ interface PostingContext {
 }
 
 /**
- * Turns ledger lines into BMD bookings, one booking per line (no aggregation).
+ * Turns ledger lines into Abacus Einzelbuchungen, one booking per line (no Sammelbuchung).
  * Pure and deterministic: the same lines and mapping always give the same result.
  * Every line is either booked, listed in `skipped` with its reason, or named in
  * an `E-` finding that blocks the export. Unmapped accounts are reported once
@@ -48,12 +48,7 @@ export function buildBookings(lines: readonly LedgerLine[], mapping: Mapping, ch
   const releases = inferReleaseRates(lines, chart);
   const context: PostingContext = { mapping, chart, options, releases };
   const rateOf = (line: LedgerLine) => resolutionRate(line, releases);
-  const findings: Finding[] = checkCoverage(mapping, lines, chart, {
-    rateOf,
-    sachkontenlaenge: options.sachkontenlaenge,
-    personenkontenlaenge: options.personenkontenlaenge,
-    dialect: options.dialect,
-  }).filter(
+  const findings: Finding[] = checkCoverage(mapping, lines, chart, { rateOf, mwstCodes: options.mwstCodes }).filter(
     (finding) => finding.code === 'E-UNMAPPED',
   );
   const bookings: PostedBooking[] = [];
@@ -90,7 +85,7 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
   if (percents.length > 1) {
     return fail(
       'E-VAT-MIXED',
-      `it carries more than one VAT rate (${percents.map(percentText).join(', ')}), but a BMD booking has one. ${REPORT_PROBLEM_HINT}`,
+      `it carries more than one VAT rate (${percents.map(percentText).join(', ')}), but an Abacus booking has one. ${REPORT_PROBLEM_HINT}`,
     );
   }
   const release = context.releases.get(line);
@@ -107,7 +102,7 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
   const creditRow = mappedRow(line.credit, rate, context);
   // checkCoverage resolves with the same rate and reports the account once as E-UNMAPPED.
   if (!debitRow || !creditRow) return { kind: 'unmapped' };
-  if (debitRow.bmdAccount === creditRow.bmdAccount) return { kind: 'skip', reason: 'SAME_ACCOUNT' };
+  if (debitRow.abacusAccount === creditRow.abacusAccount) return { kind: 'skip', reason: 'SAME_ACCOUNT' };
 
   const d = postedSide(line.debit, debitRow);
   const c = postedSide(line.credit, creditRow);
@@ -115,16 +110,16 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
     if (side.kind === 'no-rate') {
       return fail(
         'E-VAT-RATE-MISSING',
-        `${rowText(side.row)} has the Steuercode "${side.row.steuercode}" but no valid bmd_vat_percent ("${side.row.bmdVatPercent}"), so the rate BMD books is unknown. ` +
-          'Fill in bmd_vat_percent on that line, and run "apaleo-abacus mapping check"',
+        `${rowText(side.row)} has the MWST-Code "${side.row.mwstCode}" but no valid mwst_percent ("${side.row.mwstPercent}"), so the rate Abacus books is unknown. ` +
+          'Fill in mwst_percent on that line, and run "apaleo-abacus mapping check"',
       );
     }
     if (side.kind === 'no-tax-type') {
       return fail(
-        'E-STEUERCODE-NOT-ALLOWED',
-        `${accountText(side.ref)} uses ${rowText(side.row)}, which has the Steuercode ${side.row.steuercode}, but a ${side.ref.type} account books no tax: ` +
-          'BMD would book the tax on it instead of the revenue or deposit account. Leave steuercode and bmd_vat_percent empty on that line, ' +
-          'put the Steuercode on the revenue or deposit row, and run "apaleo-abacus mapping check"',
+        'E-MWST-CODE-NOT-ALLOWED',
+        `${accountText(side.ref)} uses ${rowText(side.row)}, which has the MWST-Code ${side.row.mwstCode}, but a ${side.ref.type} account books no MWST: ` +
+          'Abacus would book the MWST on it instead of the revenue or deposit account. Leave mwst_code and mwst_percent empty on that line, ' +
+          'put the MWST-Code on the revenue or deposit row, and run "apaleo-abacus mapping check"',
       );
     }
   }
@@ -132,8 +127,8 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
   if (d.vat && c.vat) {
     return fail(
       'E-TWO-VAT-SIDES',
-      `both accounts have a Steuercode (debit ${d.ref.number} on ${rowText(d.row)}, credit ${c.ref.number} on ${rowText(c.row)}), ` +
-        'but BMD computes the tax on the leading account only. Ask your Steuerberatung how to book such moves, for example through a transit account',
+      `both accounts have an MWST-Code (debit ${d.ref.number} on ${rowText(d.row)}, credit ${c.ref.number} on ${rowText(c.row)}), ` +
+        'but an Abacus booking carries the MWST on its Single account only. Ask your Treuhänder how to book such moves, for example through a transfer account',
     );
   }
   const vatSide = d.vat ? d : c.vat ? c : undefined;
@@ -152,35 +147,35 @@ function postLine(line: LedgerLine, context: PostingContext): LineOutcome {
   };
 }
 
-/** The row for one side, or undefined when it is missing or has no BMD account (reported as `E-UNMAPPED`). */
+/** The row for one side, or undefined when it is missing or has no Abacus account (reported as `E-UNMAPPED`). */
 function mappedRow(account: AccountRef, rate: number | undefined, { mapping, chart }: PostingContext): MappingRow | undefined {
   const row = resolve(mapping, account, { rate, chart });
-  return row && row.bmdAccount !== '' ? row : undefined;
+  return row && row.abacusAccount !== '' ? row : undefined;
 }
 
 type SideOutcome = ({ kind: 'ok' } & PostedSide) | { kind: 'no-rate' | 'no-tax-type'; ref: AccountRef; row: MappingRow };
 
 /**
- * The side with its Steuercode and rate; `no-rate` when a Steuercode has no known
- * rate, `no-tax-type` when a payment, guest claim or Debitor row has a Steuercode.
+ * The side with its MWST-Code and rate; `no-rate` when an MWST-Code has no known
+ * rate, `no-tax-type` when a payment, guest claim or Debitor row has an MWST-Code.
  */
 function postedSide(ref: AccountRef, row: MappingRow): SideOutcome {
-  const code = parseSteuercode(row.steuercode);
+  const code = mwstCodeOf(row);
   if (code !== undefined && (NO_TAX_TYPES.has(row.apaleoType) || NO_TAX_TYPES.has(ref.type))) return { kind: 'no-tax-type', ref, row };
   const rate = rowRate(row);
   if (rate === undefined) return { kind: 'no-rate', ref, row };
-  return { kind: 'ok', ref, row, steuercode: code, rate, vat: code !== undefined };
+  return { kind: 'ok', ref, row, mwstCode: code, rate, vat: code !== undefined };
 }
 
 /**
- * Direction rule (design decision 1): the VAT side leads as `konto`, because
- * BMD computes and books the tax only on the leading account; `betrag` is the
- * gross minus the tax and `steuer` the tax, both signed from `konto` (negative
- * when it is credited). Without a VAT side a revenue or bad-debt side (one
- * whose `kost` BMD reads as Kostenstelle) leads with the signed gross, so an
- * untaxed charge keeps its Kostenstelle like its reduction does. Otherwise
- * `konto` is the debited account and `betrag` the absolute gross; a negative
- * gross swaps the sides.
+ * Side rule (design decision 5): the VAT side is always the Single account,
+ * because only `SingleInformation` carries `TaxData`, and `DebitCredit` is the
+ * side of the Collective account (`D` when the line debits it; a negative gross
+ * swaps the sides). Without a VAT side, a revenue or write-off side (the one whose
+ * Kostenstelle Abacus accepts) is the Single account, so an untaxed charge keeps
+ * its Kostenstelle like its allowance does. Otherwise the debited account is the
+ * Collective account with `D`. The amount is the absolute gross; the tax is
+ * apaleo's tax rounded to Rappen, negative when the VAT side is credited.
  */
 function toBooking(
   line: LedgerLine,
@@ -191,30 +186,31 @@ function toBooking(
   { chart, options }: PostingContext,
 ): PostedBooking {
   const negative = line.grossCents < 0;
-  const leading = vatSide ?? kostSide(debit, credit);
-  const [konto, gkonto] = leading ? [leading, leading === debit ? credit : debit] : negative ? [credit, debit] : [debit, credit];
-  // Soll (+) when konto is the debited account of a positive line, or the credited account of a negative one.
-  const sign = (konto === debit) !== negative ? 1 : -1;
-  const gross = Math.abs(line.grossCents);
-  const betragCents = sign * (gross - (vatSide ? steuerCents : 0));
+  // The account the line really debits, and the one it credits, after a negative gross swaps them.
+  const [debited, credited] = negative ? [credit, debit] : [debit, credit];
+  const single = vatSide ?? kostSide(debit, credit) ?? credited;
+  const collective = single === debit ? credit : debit;
+  const debitCredit = collective === debited ? 'D' : 'C';
   const labelled = vatSide ?? credit;
-  const kost = kostOf(konto.row);
-  const text = buchungstext(line, labelled.ref, chart, vatSide?.rate ?? 0);
+  const kost = kostOf(single.row);
+  const text = text1(line, labelled.ref, chart, vatSide?.rate ?? 0);
+  const reference = text2(line, options.text2);
+  const taxCents = steuerCents === 0 ? 0 : debitCredit === 'D' ? -steuerCents : steuerCents;
   return {
-    konto: konto.row.bmdAccount,
-    gkonto: gkonto.row.bmdAccount,
+    collectiveAccount: collective.row.abacusAccount,
+    singleAccount: single.row.abacusAccount,
+    debitCredit,
     businessDate: line.businessDate,
-    buchsymbol: !vatSide && (line.debit.type === 'Payments' || line.credit.type === 'Payments') ? options.buchsymbolZahlung : options.buchsymbol,
-    betragCents,
-    ...(vatSide ? { tax: { steuercode: vatSide.steuercode ?? 0, prozent: vatSide.rate, steuerCents: steuerCents === 0 ? 0 : sign * steuerCents } } : {}),
-    ...(text === '' ? {} : { text }),
+    grossCents: Math.abs(line.grossCents),
+    ...(vatSide ? { tax: { mwstCode: vatSide.mwstCode ?? '', percent: vatSide.rate, taxCents } } : {}),
     ...(kost === undefined ? {} : { kost }),
-    extbelegnr: extbelegnr(line, options.extbelegnr),
+    text1: text,
+    ...(reference === '' ? {} : { text2: reference }),
     sourceEntryNumbers: [line.sourceEntryNumber],
   };
 }
 
-/** The one side whose row type takes a Kostenstelle (revenue, bad debt), or undefined when none or both do. */
+/** The one side whose row type takes a Kostenstelle (revenue, write-off), or undefined when none or both do. */
 function kostSide(debit: PostedSide, credit: PostedSide): PostedSide | undefined {
   const d = KOST_TYPES.has(debit.row.apaleoType);
   const c = KOST_TYPES.has(credit.row.apaleoType);

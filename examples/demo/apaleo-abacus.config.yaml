@@ -1,11 +1,11 @@
-# Config of "apaleo-abacus export --demo". The demo reads only this file, never
-# your own config or environment. The hotel is made up: never import a demo
-# file into a real BMD Mandant.
-bmd:
-  buchsymbol: HO
-  sachkontenlaenge: 4
-  personenkontenlaenge: 6
+# Konfiguration von "apaleo-abacus export --demo". Die Demo liest nur diese
+# Datei, nie deine eigene Konfiguration oder Umgebung. Das Hotel ist erfunden:
+# importiere eine Demo-Datei nie in einen echten Abacus-Mandanten.
+abacus:
+  mandant: 7777
+  # Die Demo-Daten buchen noch in EUR.
+  leitwaehrung: EUR
 properties:
   - id: BSP
-    # Relative to this folder (examples/demo/).
+    # Relativ zu diesem Ordner (examples/demo/).
     mapping: mapping-BSP.csv

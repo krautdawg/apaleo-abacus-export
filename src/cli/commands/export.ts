@@ -1,3 +1,4 @@
+import { extname } from 'node:path';
 import { UsageError } from '../../core/errors.js';
 import { formatFinding } from '../../core/findings.js';
 import { demoRun } from '../../demo/index.js';
@@ -9,7 +10,7 @@ import { createSource, loadCommandConfig } from '../source.js';
 
 export const exportCommand: Command = {
   name: 'export',
-  summary: 'Write the BMD Buchungsimport files of a month or period, one per property and month, after every check',
+  summary: 'Write the Abacus XML Buchungen files of a month or period, one per property and month, after every check',
   usage: '--month YYYY-MM | --from YYYY-MM-DD --to YYYY-MM-DD [--property <id>] [--dry-run] [--overwrite] [--demo] [--config <path>]',
   options: {
     month: { type: 'string', valueName: '<YYYY-MM>', description: 'Export one calendar month' },
@@ -83,7 +84,7 @@ function report(ctx: CommandContext, outcome: PartOutcome, dryRun: boolean): voi
   }
   const what: Record<PartStatus, string> = {
     written: `written ${file} (${outcome.bookings} bookings)`,
-    replaced: `written ${file} (${outcome.bookings} bookings); the previous file was kept as .replaced-*.csv`,
+    replaced: `written ${file} (${outcome.bookings} bookings); the previous file was kept as .replaced-*${extname(file ?? '')}`,
     unchanged: `unchanged ${file} (same bookings as the existing file, nothing written)`,
     checked: 'checked',
     empty: 'no bookings, no file',

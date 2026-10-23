@@ -6,18 +6,30 @@ export const MAPPING_COLUMNS = [
   'apaleo_type',
   'apaleo_name',
   'apaleo_vat_percent',
-  'bmd_account',
-  'steuercode',
-  'bmd_vat_percent',
+  'abacus_account',
+  'mwst_code',
+  'mwst_percent',
   'kost',
   'comment',
 ] as const;
 
 export type MappingColumn = (typeof MAPPING_COLUMNS)[number];
 
-/** Header columns of the DATEV mapping of apaleo-datev-export, and of the Grman "Datev Connector" export: such files are refused. */
+/**
+ * Header columns of mapping files of other tools, which are refused: the DATEV
+ * mapping of apaleo-datev-export, the BMD mapping of apaleo-bmd-export and the
+ * account export of a paid apaleo-DATEV connector (lower case, as read).
+ */
 export const DATEV_COLUMNS: readonly string[] = ['datev_account', 'bu_key', 'datev_vat_percent'];
-export const GRMAN_COLUMNS: readonly string[] = ['apaleoaccountnumber', 'datevaccountnumber'];
+export const BMD_COLUMNS: readonly string[] = ['bmd_account', 'steuercode', 'bmd_vat_percent'];
+export const DATEV_CONNECTOR_COLUMNS: readonly string[] = ['apaleoaccountnumber', 'datevaccountnumber'];
+
+/**
+ * The columns of the account export of a paid apaleo-Abacus connector (research §3),
+ * as written in its header. `init-mapping --accounts-from` reads such a file; as a
+ * mapping it is refused.
+ */
+export const CONNECTOR_EXPORT_COLUMNS = ['Apaleo Kontonummer', 'Kontoname', 'Kontotyp', 'Abacus Kontonummer', 'Kostenstelle'] as const;
 
 /** `apaleo_account` of a row that matches every account of its type. */
 export const WILDCARD = '*';
@@ -40,22 +52,19 @@ export const VAT_RELEVANT_TYPES: ReadonlySet<string> = new Set([
   'Revenues',
 ]);
 
-/** apaleo's own VAT accounts. Their lines are always skipped (BMD books the tax from `steuer`), so they need no row. */
+/** apaleo's own VAT accounts. Their lines are always skipped (Abacus books the MWST from `TaxData`), so they need no row. */
 export const VAT_ACCOUNT_TYPES: ReadonlySet<string> = new Set(['Vat', 'VatOnLiabilities']);
-
-/** The type whose rows may name a Personenkonto (Debitor) instead of a Sachkonto. */
-export const PERSONAL_ACCOUNT_TYPE = 'AccountsReceivable';
 
 /** Types whose bookings are sales, deposits, levies or bad debt: they owe output tax, never input tax. */
 export const OUTPUT_TAX_TYPES: ReadonlySet<string> = new Set(['Revenues', 'Liabilities', 'CityTaxes', 'SecondCityTax', 'GuestLevies', 'LossOfAccountsReceivable']);
 
 /**
- * Types that are money or a claim on a guest or Debitor (Zahlungsmittel, Verrechnung, Personenkonto): a Steuercode on their
- * row would put the tax on the wrong side of a sale, so their rows must never carry one.
+ * Types that are money or a claim on a guest or Debitor (Zahlungsmittel, Transferkonto, Gästeforderung, Debitoren): an
+ * MWST-Code on their row would make Abacus book the MWST on the money or claim account, so their rows must never carry one.
  */
 export const NO_TAX_TYPES: ReadonlySet<string> = new Set(['Payments', 'Receivables', 'AccountsReceivable']);
 
-/** Types whose `kost` BMD reads as Kostenstelle (profit and loss); on any other booking `kost` would be a Belegnummer. */
+/** Types whose `kost` becomes the Kostenstelle (`BookingLevel1`): Abacus accepts one only on Erfolgskonten. */
 export const KOST_TYPES: ReadonlySet<string> = new Set(['Revenues', 'LossOfAccountsReceivable']);
 
 /** One row of a mapping file. Every value is kept as the text in the file. */
@@ -66,13 +75,13 @@ export interface MappingRow {
   readonly apaleoType: string;
   readonly apaleoName: string;
   readonly apaleoVatPercent: string;
-  /** Sachkonto or Personenkonto in BMD; empty means unmapped. */
-  readonly bmdAccount: string;
-  /** BMD Steuercode; empty means no tax on this row. */
-  readonly steuercode: string;
-  /** The VAT rate BMD books with the Steuercode (0 allowed); empty without one. */
-  readonly bmdVatPercent: string;
-  /** Kostenstelle, written only on revenue and bad-debt bookings. */
+  /** Abacus account number (1 to 11 digits); empty means unmapped. */
+  readonly abacusAccount: string;
+  /** MWST-Code of the Mandant's MWST-Tabelle, kept as text (`311`, `V81`); empty means no MWST on this row. */
+  readonly mwstCode: string;
+  /** The MWST rate Abacus books with the MWST-Code (0 allowed); empty without one. */
+  readonly mwstPercent: string;
+  /** Kostenstelle, written only on revenue and write-off bookings. */
   readonly kost: string;
   readonly comment: string;
 }
@@ -84,9 +93,9 @@ export const ROW_FIELDS: Readonly<Record<MappingColumn, keyof MappingRowValues>>
   apaleo_type: 'apaleoType',
   apaleo_name: 'apaleoName',
   apaleo_vat_percent: 'apaleoVatPercent',
-  bmd_account: 'bmdAccount',
-  steuercode: 'steuercode',
-  bmd_vat_percent: 'bmdVatPercent',
+  abacus_account: 'abacusAccount',
+  mwst_code: 'mwstCode',
+  mwst_percent: 'mwstPercent',
   kost: 'kost',
   comment: 'comment',
 };
@@ -94,12 +103,12 @@ export const ROW_FIELDS: Readonly<Record<MappingColumn, keyof MappingRowValues>>
 export interface Mapping {
   readonly path: string;
   readonly rows: readonly MappingRow[];
-  /** Notes and warnings from reading the file, for example restored leading zeros (`W-PADDED`). */
+  /** Notes and warnings from reading the file, for example an unknown column (`W-UNKNOWN-COLUMN`). */
   readonly findings: readonly Finding[];
 }
 
 /**
- * A VAT percent as written in the file: `10`, `4,9`, `4.90` or `10 %`. Undefined
+ * A VAT percent as written in the file: `8.1`, `8,1`, `3.80` or `8,1 %`. Undefined
  * for an empty cell, NaN for anything else.
  */
 export function parsePercent(text: string): number | undefined {
@@ -120,20 +129,19 @@ export function lineLabel(row: Pick<MappingRow, 'line'>): string {
   return `line ${row.line}`;
 }
 
-/** The Steuercode of a row: undefined when empty, NaN when it is not a whole number from 0 to 99. */
-export function parseSteuercode(text: string): number | undefined {
-  const value = text.trim();
-  if (value === '') return undefined;
-  return /^\d{1,2}$/.test(value) ? Number(value) : Number.NaN;
+/** The MWST-Code of a row, or undefined when the cell is empty. */
+export function mwstCodeOf(row: Pick<MappingRow, 'mwstCode'>): string | undefined {
+  const code = row.mwstCode.trim();
+  return code === '' ? undefined : code;
 }
 
 /**
- * The VAT rate BMD books on a row: `bmd_vat_percent` with a Steuercode, 0 without
- * one. Undefined when it cannot be known (a Steuercode without rate, or a rate that
- * is not a number).
+ * The MWST rate Abacus books on a row: `mwst_percent` with an MWST-Code, 0
+ * without one. Undefined when it cannot be known (an MWST-Code without rate, or a
+ * rate that is not a number).
  */
-export function rowRate(row: Pick<MappingRow, 'steuercode' | 'bmdVatPercent'>): number | undefined {
-  if (row.steuercode.trim() === '') return 0;
-  const rate = parsePercent(row.bmdVatPercent);
+export function rowRate(row: Pick<MappingRow, 'mwstCode' | 'mwstPercent'>): number | undefined {
+  if (mwstCodeOf(row) === undefined) return 0;
+  const rate = parsePercent(row.mwstPercent);
   return rate === undefined || Number.isNaN(rate) ? undefined : rate;
 }

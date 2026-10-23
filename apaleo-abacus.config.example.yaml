@@ -24,76 +24,56 @@ apaleo:
   # baseUrl: https://api.apaleo.com
   # identityUrl: https://identity.apaleo.com
 
-# Was der BMD-Mandant der Kanzlei festlegt. Frag deine Kanzlei.
-bmd:
-  # Das Buchungssymbol jeder Buchung. Es hat absichtlich keinen Standardwert:
-  # Die Kanzlei muss es in BMD zuerst anlegen (zum Beispiel HO, kopiert von AR mit
-  # allen Kontenarten erlaubt), sonst lehnt BMD den Import ab. Siehe docs/bmd-import.md.
-  # 1 bis 4 Zeichen A-Z und 0-9 (mit dialect bmd55 höchstens 2).
-  buchsymbol: HO
-  # Optional: ein eigenes Buchungssymbol für Zahlungen (Buchungstyp Zahlung).
-  # Ohne Angabe gilt buchsymbol.
-  # buchsymbolZahlung: HZ
-  # Sachkontenlänge im Kontenplan der Kanzlei, 4 bis 9. Der EKR nutzt 4.
-  sachkontenlaenge: 4
-  # Personenkontenlänge (Debitoren), 5 bis 9, zum Beispiel 6 für 200000.
-  personenkontenlaenge: 6
-  # "ntcs" für BMD NTCS (Standard) oder "bmd55" für BMD 5.5 (andere Spaltennamen,
-  # Datum JJJJMMTT und Steuercode 3 statt 1 für die Umsatzsteuer).
-  dialect: ntcs
-
 # Was der Abacus-Mandant deines Treuhänders festlegt. Frag deinen Treuhänder.
-# Der Abschnitt ist noch freiwillig, solange das Tool BMD-Dateien schreibt.
-# Entferne die # vor den Zeilen, die du brauchst; siehe docs/configuration.md
-# und docs/abacus-format.md.
-# abacus:
-#   # Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Ohne Standardwert.
-#   mandant: 1234
-#   # Die Leitwährung des Mandanten: CHF (Standard) oder EUR. Jedes Hotel muss
-#   # in dieser Währung buchen, das Tool rechnet nicht um.
-#   leitwaehrung: CHF
-#   # Die MWST-Abrechnungsart: vereinbart (Standard) oder vereinnahmt.
-#   abrechnungsart: vereinbart
-#   # Die Version der AbaConnect-Schnittstelle: "2015.00" (Standard), "2020.00",
-#   # "2022.00" oder "2024.00". Nur ändern, wenn Abacus die Datei ablehnt.
-#   version: "2015.00"
-#   # Steuerkonto und Hilfskonto der MWST-Codes, wie im KMU-Mustermandanten.
-#   mwstKonto: 2200
-#   mwstHilfskonto: 2202
-#   # Die MWST-Codes aus der MWST-Tabelle des Mandanten.
-#   mwstCodes:
-#     normal: 311        # Normalsatz 8,1 %
-#     reduziert: 312     # reduzierter Satz 2,6 %
-#     beherbergung: 313  # Sondersatz Beherbergung 3,8 %
-#   # Der Geschäftsbereich, 0 ohne Geschäftsbereiche. Bucht dein Treuhänder zwei
-#   # Hotels in denselben Mandanten, gib jedem einen eigenen Geschäftsbereich
-#   # (properties[].geschaeftsbereich), sonst warnt das Tool mit W-MANDANT-SHARED.
-#   geschaeftsbereich: 0
+# Siehe docs/configuration.md und docs/abacus-format.md.
+abacus:
+  # Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Ohne Standardwert.
+  mandant: 1234
+  # Die Leitwährung des Mandanten: CHF (Standard) oder EUR. Jedes Hotel muss
+  # in dieser Währung buchen, das Tool rechnet nicht um.
+  leitwaehrung: CHF
+  # Die MWST-Abrechnungsart: vereinbart (Standard) oder vereinnahmt.
+  abrechnungsart: vereinbart
+  # Die Version der AbaConnect-Schnittstelle: "2015.00" (Standard), "2020.00",
+  # "2022.00" oder "2024.00". Nur ändern, wenn Abacus die Datei ablehnt.
+  version: "2015.00"
+  # Steuerkonto und Hilfskonto der MWST-Codes, wie im KMU-Mustermandanten.
+  mwstKonto: 2200
+  mwstHilfskonto: 2202
+  # Die MWST-Codes aus der MWST-Tabelle des Mandanten. init-mapping schreibt sie
+  # in die Kontenzuordnung, mapping check prüft sie.
+  mwstCodes:
+    normal: 311        # Normalsatz 8,1 %
+    reduziert: 312     # reduzierter Satz 2,6 %
+    beherbergung: 313  # Sondersatz Beherbergung 3,8 %
+  # Der Geschäftsbereich, 0 ohne Geschäftsbereiche. Bucht dein Treuhänder zwei
+  # Hotels in denselben Mandanten, gib jedem einen eigenen Geschäftsbereich
+  # (properties[].geschaeftsbereich), sonst warnt das Tool mit W-MANDANT-SHARED.
+  geschaeftsbereich: 0
 
 posting:
-  # Was in extbelegnr steht, der externen Belegnummer, mit der BMD offene Posten
-  # zuordnet: "receipt" nimmt den Beleg aus apaleo (Rechnung, Zahlungsreferenz)
-  # und sonst die Reservierungsreferenz; "reference" nimmt immer die
-  # Reservierungsreferenz.
-  extbelegnr: receipt
+  # Was in Text2 jeder Buchung steht: "receipt" nimmt den Beleg aus apaleo
+  # (Rechnung, Zahlungsreferenz) und sonst die Reservationsreferenz;
+  # "reference" nimmt immer die Reservationsreferenz. Nie ein Gastname.
+  text2: receipt
 
 output:
-  # Ordner für die erzeugten BMD-Dateien, relativ zum Arbeitsverzeichnis.
+  # Ordner für die erzeugten Abacus-Dateien, relativ zum Arbeitsverzeichnis.
   dir: ./exports
 
 # Die apaleo-Hotels, mit denen das Tool arbeitet, jedes mit seiner Kontenzuordnung
 # (CSV, relativ zum Arbeitsverzeichnis; Standard ./mapping-<id>.csv). Leg die
-# Kontenzuordnung mit "apaleo-abacus init-mapping --property BSP --template ekr" an
-# und lass sie von deiner Steuerberatung prüfen. Die IDs listet "apaleo-abacus properties".
+# Kontenzuordnung mit "apaleo-abacus init-mapping --property BSP --template kmu-hotel" an
+# und lass sie von deinem Treuhänder prüfen. Die IDs listet "apaleo-abacus properties".
 # "apaleo-abacus export --month 2026-10" exportiert jedes hier eingetragene Hotel.
-# Bucht die Kanzlei zwei Hotels in einen Mandanten, braucht jedes ein eigenes
-# Buchungssymbol, sonst wiederholen sich die Belegnummern (W-BUCHSYMBOL-SHARED).
+# Bucht dein Treuhänder zwei Hotels in einen Mandanten, braucht jedes einen eigenen
+# Geschäftsbereich, sonst können sich die Belegnummern wiederholen (W-MANDANT-SHARED).
 # properties:
 #   - id: BSP
 #     mapping: ./mapping-BSP.csv
 #   - id: BSP2
 #     mapping: ./mapping-BSP2.csv
-#     buchsymbol: HO2
+#     geschaeftsbereich: 2
 
 checks:
   # Vergleicht das Buchungsjournal zusätzlich mit den Tagessummen von apaleo pro
@@ -110,7 +90,7 @@ schedule:
   # Auch APALEO_ABACUS_TIMEZONE.
   timezone: Europe/Vienna
   # Ein Rhythmus pro Installation, damit nie tägliche und monatliche Dateien bei
-  # BMD ankommen: "monthly" (eine Importdatei pro Monat für die Kanzlei) oder "daily"
+  # Abacus ankommen: "monthly" (eine Importdatei pro Monat für den Treuhänder) oder "daily"
   # (etwa 30 Importe im Monat).
   cadence: monthly
   monthly:

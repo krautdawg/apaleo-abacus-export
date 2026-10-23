@@ -4,7 +4,7 @@ import type { PeriodPart } from './period.js';
 
 /** What a target needs to name and render the file of one property and period. */
 export interface TargetFileMeta {
-  /** The whole config: a target reads its own section (for example `bmd`). */
+  /** The whole config: a target reads its own section (for example `abacus`). */
   config: Config;
   propertyId: string;
   part: PeriodPart;
@@ -27,7 +27,7 @@ export interface RenderedFile {
  * `sameContent`.
  */
 export interface TargetWriter<B> {
-  /** Short id, for example `bmd`. */
+  /** Short id, for example `abacus`. */
   readonly id: string;
   /**
    * The one currency (ISO 4217) every amount of the file is booked in, for this
@@ -48,7 +48,13 @@ export interface TargetWriter<B> {
   /** True when `existing` and `next` differ at most in what changes on every run (such as a creation time). */
   sameContent(existing: Uint8Array, next: Uint8Array): boolean;
   /**
-   * The import block of the protocol and the dry run: what the Kanzlei checks
+   * The movement model of one booking: the signed amount (Soll positive) each
+   * account of the booking moves by in the target, without the tax leg on the
+   * target's own tax account. The plausibility checks compare it with apaleo.
+   */
+  movements(booking: B): [account: string, cents: number][];
+  /**
+   * The import block of the protocol and the dry run: what the Treuhänder checks
    * before importing the file (its name, number of lines, the settings of the
    * program it is imported into). One string per line, the first a title.
    */

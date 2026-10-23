@@ -4,19 +4,27 @@
 The account mapping from apaleo accounts to DATEV accounts: the editable mapping CSV (with Excel and Grman-export input), the resolution order for ledger accounts, offline validation, the SKR03 and SKR04 hotel templates, the `init-mapping` and `mapping check` commands, and the guard that blocks unmapped booked accounts.
 ## Requirements
 ### Requirement: Mapping file format
-The tool SHALL read and write a mapping CSV with the columns `apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;bmd_account;steuercode;bmd_vat_percent;kost;comment`, keyed by apaleo account number and type. Written files SHALL be UTF-8 with byte-order mark and `;` separators. Reading SHALL accept UTF-8 with or without BOM and CP1252, `;` or `,` separators, and a decimal comma or point in the two rate columns. A file whose header has the DATEV columns (`datev_account`, `bu_key`) or the Grman connector layout SHALL be rejected with an error that names `init-mapping --template ekr`.
+The tool SHALL read and write a mapping CSV with the columns `apaleo_account;apaleo_type;apaleo_name;apaleo_vat_percent;abacus_account;mwst_code;mwst_percent;kost;comment`, keyed by apaleo account number and type. Written files SHALL be UTF-8 with byte-order mark and `;` separators. Reading SHALL accept UTF-8 with or without BOM and CP1252, `;` or `,` separators, and a decimal comma or point in the two rate columns, and SHALL keep `mwst_code` as text. A file whose header has the BMD columns (`bmd_account`, `steuercode`) or the DATEV columns (`datev_account`, `bu_key`) SHALL be rejected with an error that names the format it found and `init-mapping --template kmu-hotel`. A file in the account-export layout of a paid apaleo-Abacus connector (columns `Apaleo Kontonummer`, `Kontoname`, `Kontotyp`, `Abacus Kontonummer`, `Kostenstelle`; research §3) SHALL be rejected with an error that says it is the account export of a paid connector and names `init-mapping --template kmu-hotel --accounts-from <file>`, which carries its Abacus accounts and Kostenstellen over. Neither that error, nor any other message in `src/`, nor any doc SHALL name the vendor of that connector.
 
 #### Scenario: Excel round trip
-- **WHEN** the committed fixture `test/fixtures/mapping/excel-at-saved.csv` (the written original after an Excel AT save: CP1252, `;`, CRLF, leading zeros stripped, rate `4,9` with a decimal comma, Excel's quoting) is loaded with Sachkontenlänge 4
-- **THEN** it yields the same rows and values as the written original, with the stripped leading zeros of the class-0 account restored and reported as `W-PADDED` warnings, and the rate read as 4.9
+- **WHEN** the committed fixture `test/fixtures/mapping/excel-ch-saved.csv` (the written original after an Excel CH save: CP1252, `;`, CRLF, rate `8,1` with a decimal comma, Excel's quoting) is loaded
+- **THEN** it yields the same rows and values as the written original, with the rate read as 8.1 and the MWST-Code `311` kept as text
 
 #### Scenario: Duplicate key
 - **WHEN** two rows share the same apaleo account and type
 - **THEN** loading fails with an error naming both line numbers
 
+#### Scenario: Old BMD mapping
+- **WHEN** the user points `--mapping` at a mapping CSV with the columns `bmd_account` and `steuercode`
+- **THEN** loading fails, says the file is a BMD mapping, and names `init-mapping --template kmu-hotel`
+
 #### Scenario: Old DATEV mapping
 - **WHEN** the user points `--mapping` at a mapping CSV with the column `datev_account`
-- **THEN** loading fails, says the file is a DATEV mapping, and names `init-mapping --template ekr`
+- **THEN** loading fails, says the file is a DATEV mapping, and names `init-mapping --template kmu-hotel`
+
+#### Scenario: Account export of a paid connector
+- **WHEN** the user points `--mapping` at a CSV with the columns `Apaleo Kontonummer;Kontoname;Kontotyp;Abacus Kontonummer;Kostenstelle`
+- **THEN** loading fails, says the file is the account export of a paid connector, names `init-mapping --template kmu-hotel --accounts-from <file>`, and the message contains no vendor name
 
 ### Requirement: Account resolution order
 For a ledger account the tool SHALL resolve the mapping row in this order: exact number and type; exact number with any type; the parent account chain with the same type, where a parent row with an empty target account SHALL NOT end the search but SHALL be passed over; for VAT-relevant types (Liabilities, CityTaxes, SecondCityTax, GuestLevies, LossOfAccountsReceivable, Vat, VatOnLiabilities) a wildcard row `*` for the type whose `apaleo_vat_percent` equals the line's normalised tax rate; for other types a wildcard row `*` for the type. An exact row (number and type, or number with any type) with an empty target account SHALL still mean "unmapped". When no row with a target account is found, the first empty parent row passed over SHALL be returned so that findings can name it. Wildcard rows without a VAT rate SHALL be rejected for VAT-relevant types, and wildcard rows of type Revenues SHALL be rejected with or without a rate.
@@ -58,168 +66,149 @@ For a ledger account the tool SHALL resolve the mapping row in this order: exact
 - **THEN** loading fails with an error explaining that revenue accounts must be mapped one by one because of VAT
 
 ### Requirement: Unmapped accounts block the export
-The tool SHALL refuse to produce a BMD file when any account booked in the period does not resolve to a row with a BMD account, and SHALL list each such account with number, type, name, number of lines and gross total. Accounts outside the chart that have a parent (per-reservation and folio accounts) SHALL be reported once per parent, type and VAT rate, with the number of such accounts and up to three examples, not once per reservation. The fix SHALL name the row to change: for an exact row with an empty BMD account, that row's line; for accounts reached through an empty parent row, that parent row and its line together with the wildcard row to add (for VAT-relevant types a `*` row for the type and rate, with the EKR template's account for that type and rate as example when it has one, never "fill in the parent row"; for other types the parent row or a `*` row for the type). `mapping check --from --to` SHALL resolve each line with the rate the posting rules use, including the inferred rate of an untaxed deposit release.
+The tool SHALL refuse to produce an Abacus file when any account booked in the period does not resolve to a row with an Abacus account, and SHALL list each such account with number, type, name, number of lines and gross total. Accounts outside the chart that have a parent (per-reservation and folio accounts) SHALL be reported once per parent, type and VAT rate, with the number of such accounts and up to three examples, not once per reservation. The fix SHALL name the row to change: for an exact row with an empty Abacus account, that row's line; for accounts reached through an empty parent row, that parent row and its line together with the wildcard row to add (for VAT-relevant types a `*` row for the type and rate, with the KMU hotel template's account for that type and rate as example when it has one, never "fill in the parent row"; for other types the parent row or a `*` row for the type). `mapping check --from --to` SHALL resolve each line with the rate the posting rules use, including the inferred rate of an untaxed deposit release.
 
 #### Scenario: Untaxed deposit release
-- **WHEN** the period contains a deposit release (debit Liabilities, credit Receivables, no tax entries) with a `PostPrepaymentVat` line of the same day and reference at 10 %, and the mapping has rate wildcards for Liabilities at 10 % and 0 %
-- **THEN** `mapping check --from --to` resolves the release through the 10 % wildcard, never through the 0 % wildcard, reports nothing for it, and exits with code 0 if nothing else fails
+- **WHEN** the period contains a deposit release (debit Liabilities, credit Receivables, no tax entries) with a `PostPrepaymentVat` line of the same day and reference at 3.8 %, and the mapping has rate wildcards for Liabilities at 3.8 % and 0 %
+- **THEN** `mapping check --from --to` resolves the release through the 3.8 % wildcard, never through the 0 % wildcard, reports nothing for it, and exits with code 0 if nothing else fails
 
 #### Scenario: Untaxed deposit release without a rate source
 - **WHEN** the period contains such a deposit release without a matching `PostPrepaymentVat` line, and the chart gives its Liabilities account no VAT rate
 - **THEN** `mapping check --from --to` reports `E-VAT-RATE-UNKNOWN` once for all such lines, does not mention the 0 % row, and exits with code 1
 
 #### Scenario: Untaxed deposit release without deposit rows
-- **WHEN** the rate of such a deposit release is inferred as 20 % and the mapping has no Liabilities row for 20 % that applies to it
-- **THEN** `mapping check --from --to` reports `E-UNMAPPED` for the Liabilities account and suggests a `*` Liabilities row at 20 %
+- **WHEN** the rate of such a deposit release is inferred as 8.1 % and the mapping has no Liabilities row for 8.1 % that applies to it
+- **THEN** `mapping check --from --to` reports `E-UNMAPPED` for the Liabilities account and suggests a `*` Liabilities row at 8.1 %
 
 #### Scenario: Parent row with the wrong VAT rate
-- **WHEN** a mapping has only the parent row `5000;Revenues;Revenues;;4030;1;20` and the period books accommodation (`5011`) and food (`5111`) at 10 %
-- **THEN** `mapping check --from --to` reports `E-VAT-MISMATCH` for `5011` and `5111` (booked at 10 %, the row applies 20 % on `4030`) and exits with code 1
+- **WHEN** a mapping has only the parent row `5000;Revenues;Revenues;;3500;311;8.1` and the period books accommodation (`5011`) and breakfast in the room price (`5111`) at 3.8 %
+- **THEN** `mapping check --from --to` reports `E-VAT-MISMATCH` for `5011` and `5111` (booked at 3.8 %, the row applies 8.1 % on `3500`) and exits with code 1
 
 #### Scenario: New revenue account
 - **WHEN** the period contains lines on revenue account `5010` that has no mapping row
 - **THEN** the check fails with exit code 1 and a finding `E-UNMAPPED` naming `5010`, its type, its name, the line count and the gross total, and no file is written
 
 #### Scenario: Deposits under an empty parent without wildcards
-- **WHEN** the mapping has the empty row `3000;Liabilities` on line 40 and no Liabilities wildcards, and the period books three per-reservation Liabilities accounts at 13 %
-- **THEN** one `E-UNMAPPED` finding names parent `3000`, line 40, three accounts with their examples, and the fix "add a wildcard row `*;Liabilities` at 13 %" with the template's `3202` as example, and it does not ask to fill in line 40
+- **WHEN** the mapping has the empty row `3000;Liabilities` on line 40 and no Liabilities wildcards, and the period books three per-reservation Liabilities accounts at 3.8 %
+- **THEN** one `E-UNMAPPED` finding names parent `3000`, line 40, three accounts with their examples, and the fix "add a wildcard row `*;Liabilities` at 3.8 %" with the template's `2030` as example, and it does not ask to fill in line 40
 
 #### Scenario: Accounts receivable without a row
 - **WHEN** the mapping has neither a `9999` row nor an AccountsReceivable wildcard and the period books `AHTJTGFK-1_AccountsReceivable` and its `/Offset`
-- **THEN** one `E-UNMAPPED` finding names parent `9999` (AccountsReceivable) with both accounts and suggests a `9999` row or `*;AccountsReceivable;;;200000` (Sammeldebitor)
+- **THEN** one `E-UNMAPPED` finding names parent `9999` (AccountsReceivable) with both accounts and suggests a `9999` row or `*;AccountsReceivable;;;1102` (Debitoren apaleo)
 
-### Requirement: EKR hotel template
-The tool SHALL ship a rule-based template based on the Austrian Einheitskontenrahmen (KFS/BW 6) that maps, by apaleo type, VAT percent and account-name pattern: accommodation revenue at 10 % (`4000`), food revenue at 10 % (`4010`), drinks at 20 % (`4020`), other revenue at 20 % (`4030`), revenue at 13 % (`4040`) and 4.9 % (`4050`), all with the output-tax Steuercode of `bmd.dialect` (`1` with `ntcs`, `3` with `bmd55`), revenue at 0 % (`4090`) without Steuercode and with a comment on the fixed-Steuercode check, cash payments to `2700`, every non-cash payment to the clearing account `2890` (never to a bank account), guest receivables to `2390`, every accounts-receivable account (the `CollectiveDebitor_AccountsReceivable` row and a wildcard row `*;AccountsReceivable`) to the Personenkonto `200000`, and deposits by VAT rate through wildcard rows (`3200` at 10 %, `3202` at 13 % and `3201` at 20 % with the output-tax Steuercode of the dialect, `3209` at 0 % without Steuercode). The template SHALL NOT write a row for a container account outside the global ledger (`hasChildren`) when its type has wildcard rules and no rule yields a BMD account for it (Liabilities `3000`, AccountsReceivable `9999`): the wildcard rows cover its per-reservation children. Revenue and Liabilities accounts at the historical rate of 5 % (1 July 2020 to 31 December 2021) SHALL be written with an empty BMD account and a comment explaining that a booking on them stops the export and that exports for that period need the Kanzlei. City tax, second city tax and guest levies, LossOfAccountsReceivable, House and TransitoryItems SHALL be written with an empty BMD account and a comment describing the options. Template rows SHALL be written with 4-digit base numbers and scaled to `bmd.sachkontenlaenge` with trailing zeros, the Personenkonto `200000` SHALL be scaled to `bmd.personenkontenlaenge` by adding or dropping trailing zeros (`20000` at 5, `2000000` at 7) and left empty with a comment when that length equals `bmd.sachkontenlaenge` (both reported as a note), the `E-UNMAPPED` fix hint SHALL name the scaled Personenkonto, template rows SHALL each be marked `Vorschlag (ungeprüft)`, and accounts that no rule matches SHALL stay unmapped.
+### Requirement: KMU hotel template
+The tool SHALL ship a rule-based template `templates/kmu-hotel.rules.csv`, based on the Schweizer Kontenrahmen KMU and the Kontenrahmen für die Hotellerie und Gastronomie, that maps by apaleo type, VAT percent and account-name pattern: revenue at 3.8 % (Beherbergung including breakfast) to `3400` with the code `abacus.mwstCodes.beherbergung`; food revenue at 8.1 % to `3200`, drinks at 8.1 % to `3100` and other revenue at 8.1 % (minibar, parking, wellness, telephone) to `3500`, each with `abacus.mwstCodes.normal`; revenue at 2.6 % to `3260` with `abacus.mwstCodes.reduziert`; revenue at 0 % to `3600` without MWST-Code and with a comment on the account's default MWST-Code; cash payments to `1000`; every non-cash payment to the transfer account `1090` (never to a bank account); guest receivables to `1101`; every accounts-receivable account (the `CollectiveDebitor_AccountsReceivable` row and a wildcard row `*;AccountsReceivable`) to the Sachkonto `1102` with a comment that `1100` is the Sammelkonto of the Abacus Debitorenbuchhaltung; deposits by VAT rate through wildcard rows (`2030` at 3.8 %, `2031` at 8.1 %, `2032` at 2.6 % with the code of the rate, `2039` at 0 % without MWST-Code). Revenue and Liabilities accounts at the rates in force before 2024 (7.7 %, 3.7 %, 2.5 %) SHALL be written with an empty Abacus account and a comment explaining that a booking on them stops the export and that exports for 2023 and earlier need the Treuhänder; Revenue and Liabilities accounts at any other rate (for example 7, 19, 10 or 20 % of a German or Austrian chart) SHALL be written with an empty Abacus account and a comment that the rate is no Swiss MWST rate. CityTaxes, SecondCityTax, GuestLevies, House and TransitoryItems SHALL be written with an empty Abacus account and a comment describing the options. The template SHALL NOT write a row for a container account outside the global ledger (`hasChildren`) when its type has wildcard rules and no rule yields an Abacus account for it (Liabilities `3000`, AccountsReceivable `9999`, LossOfAccountsReceivable `6900`). Every template row SHALL be marked `Vorschlag (ungeprüft)`, every comment SHALL be in Swiss Standard German, and accounts that no rule matches SHALL stay unmapped.
 
 #### Scenario: Template does not guess
 - **WHEN** the chart contains a House account and a TransitoryItems account
-- **THEN** the generated rows for them have an empty BMD account and an explanatory comment
+- **THEN** the generated rows for them have an empty Abacus account and an explanatory comment
 
-#### Scenario: Ortstaxe is not pre-filled
+#### Scenario: Kurtaxe is not pre-filled
 - **WHEN** the chart contains a CityTaxes account
-- **THEN** its generated row has an empty BMD account and a comment naming both options (liability to the Gemeinde without Steuercode, or the Kanzlei's durchlaufender Posten), and `mapping check --from --to` reports `E-UNMAPPED` for it until the user fills it in
+- **THEN** its generated row has an empty Abacus account and a comment naming both options (durchlaufender Posten without MWST-Code, as the ESTV recommends, or taxable at 3.8 % when it is not invoiced separately or not forwarded), and `mapping check --from --to` reports `E-UNMAPPED` for it until the user fills it in
 
 #### Scenario: Food and drinks
-- **WHEN** the chart contains revenue accounts "Frühstück Speisen" at 10 % and "Getränke" at 20 %
-- **THEN** the food account maps to `4010` with Steuercode 1 and rate 10, and the drinks account to `4020` with Steuercode 1 and rate 20
+- **WHEN** the chart contains revenue accounts "Frühstück Restaurant" at 8.1 % and "Getränke" at 8.1 %
+- **THEN** the food account maps to `3200` and the drinks account to `3100`, both with MWST-Code `311` and rate 8.1
+
+#### Scenario: Accommodation with breakfast
+- **WHEN** the chart contains a revenue account "Logis" at 3.8 %
+- **THEN** it maps to `3400` with MWST-Code `313` and rate 3.8
+
+#### Scenario: Codes from the config
+- **WHEN** `abacus.mwstCodes` is `normal: V81`, `reduziert: V26`, `beherbergung: V38` and `init-mapping --template kmu-hotel` runs
+- **THEN** the 8.1 % rows carry `V81`, the 2.6 % rows `V26` and the 3.8 % rows `V38`
 
 #### Scenario: Real apaleo chart
-- **WHEN** `init-mapping --template ekr` runs on the recorded VIE chart of accounts
-- **THEN** the file has no row for `3000` or `9999`, has `*;Liabilities` rows at 10, 13, 20 and 0 % and `*;AccountsReceivable` to `200000`, and leaves every `…_Special:5.00` revenue row and the `*;Liabilities` row at 5 % empty with the comment
+- **WHEN** `init-mapping --template kmu-hotel` runs on the recorded BER chart of accounts
+- **THEN** the file has no row for `3000` or `9999`, has `*;Liabilities` rows at 3.8, 8.1, 2.6 and 0 % and `*;AccountsReceivable` to `1102`, and leaves every revenue row at 16 %, 19 %, 7 % and 5 % empty with a comment that the rate is no Swiss MWST rate
 
-#### Scenario: Template in the BMD 5.5 dialect
-- **WHEN** `init-mapping --template ekr` runs with `bmd.dialect` `bmd55`
-- **THEN** the revenue and deposit rows with tax carry Steuercode 3 (Soll-Umsatzsteuer in BMD 5.5) instead of 1
-
-#### Scenario: Template scales to Sachkontenlänge 5
-- **WHEN** `init-mapping --template ekr` runs with `bmd.sachkontenlaenge` 5
-- **THEN** the template's `4000` is written as `40000`, the Personenkonto `200000` is left as it is, and the command prints a note naming Sachkontenlänge 5
-
-#### Scenario: Template scales to Personenkontenlänge 5
-- **WHEN** `init-mapping --template ekr` runs with `bmd.personenkontenlaenge` 5
-- **THEN** the `CollectiveDebitor_AccountsReceivable` row and the `*;AccountsReceivable` row map to `20000`, their comments name `20000`, and `mapping check` reports no `E-ACCOUNT-LENGTH` for them
-
-### Requirement: Mapping validation for BMD
-`apaleo-bmd mapping check` SHALL validate that BMD accounts are digits only and have exactly `bmd.sachkontenlaenge` digits, or for AccountsReceivable rows exactly `bmd.sachkontenlaenge` or `bmd.personenkontenlaenge` digits (`E-ACCOUNT-LENGTH`); that a Steuercode is an integer from 0 to 99; that a row with a Steuercode has a `bmd_vat_percent`, 0 included (`E-VAT-RATE-MISSING`), and a row with a `bmd_vat_percent` above 0 has a Steuercode (`E-STEUERCODE-MISSING`); that no row of type Revenues, Liabilities, CityTaxes, SecondCityTax, GuestLevies or LossOfAccountsReceivable uses an input-tax code of the configured `bmd.dialect` (`ntcs`: 2 Vorsteuer and 3 Vorsteuer-Berichtigung; `bmd55`: 0) (`E-STEUERCODE-INPUT-TAX`); that no row of type Payments, Receivables or AccountsReceivable has a Steuercode, 0 included (`E-STEUERCODE-NOT-ALLOWED`), because BMD would book the tax on the money or claim account; that a Steuercode outside the dialect's output-tax set (`ntcs`: 1; `bmd55`: 1 and 3) gives the warning `W-STEUERCODE-UNCHECKED`, also at rate 0; that a Revenues row at rate 0 without Steuercode gives the warning `W-UNTAXED-REVENUE` (check that the BMD account has no fixed Steuercode, or enter the Kanzlei's code for non-taxable revenue); that a rate other than 0, 4.9, 10, 13 or 20 gives the warning `W-VAT-RATE-UNUSUAL`; that `kost` is empty or 1 to 9 digits (`E-KOST-FORMAT`) and that a `kost` on a row whose type is not Revenues or LossOfAccountsReceivable gives the warning `W-KOST-IGNORED`; that the row's rate (`bmd_vat_percent`, 0 without Steuercode) equals `apaleo_vat_percent` where both are known, and with `--from --to` equals the rate each booked line of a VAT-relevant type carries (`E-VAT-MISMATCH`, also for rows reached through the parent chain). The command SHALL exit with code 1 on any error. Short numbers SHALL only be left-padded when the padding is unambiguous (Sachkontenlänge 4 and a 1–3 digit number), with a warning.
+### Requirement: Mapping validation for Abacus
+`apaleo-abacus mapping check` SHALL validate that Abacus accounts are 1 to 11 digits (`E-ACCOUNT-FORMAT`); that an MWST-Code is empty or 1 to 3 characters of `A-Z`, `a-z` and `0-9` (`E-MWST-CODE-FORMAT`); that a row with an MWST-Code has an `mwst_percent`, 0 included (`E-VAT-RATE-MISSING`), and a row with an `mwst_percent` above 0 has an MWST-Code (`E-MWST-CODE-MISSING`); that no row of type Payments, Receivables or AccountsReceivable has an MWST-Code (`E-MWST-CODE-NOT-ALLOWED`), because Abacus would book the MWST on the money or claim account; that an MWST-Code that is none of the configured `abacus.mwstCodes` gives the warning `W-MWST-CODE-UNCHECKED` (confirm with the Treuhänder that it is an Umsatzsteuer code of the Mandant), also at rate 0, and that the warning names the Ziffer of the MWST-Abrechnung when the code is one of the Abacus KMU sample codes of research §5 (for example `400` Ziffer 230, `490` Ziffer 900, `491` Ziffer 910) and, for `490`, says that it is meant for Subventionen and Tourismusabgaben of a Kurverein with Vorsteuerkürzung, not for a Kurtaxe the hotel collects (a durchlaufender Posten without MWST-Code or with a Ziffer-910 code); that a configured code used at another rate than its own (`normal` 8.1, `reduziert` 2.6, `beherbergung` 3.8) gives the warning `W-MWST-CODE-RATE`; that a Revenues row at rate 0 without MWST-Code gives the warning `W-UNTAXED-REVENUE` (check that the Abacus account has no default MWST-Code that "MWST berechnen" would apply, or enter the Mandant's code for revenue without MWST); that a rate other than 0, 2.6, 3.8 or 8.1 gives the warning `W-VAT-RATE-UNUSUAL` naming the Swiss rates and, for 7.7, 3.7 and 2.5, that they applied before 2024; that `kost` is empty or 1 to 11 digits (`E-KOST-FORMAT`) and that a `kost` on a row whose type is not Revenues or LossOfAccountsReceivable gives the warning `W-KOST-IGNORED`; and that the row's rate (`mwst_percent`, 0 without MWST-Code) equals `apaleo_vat_percent` where both are known, and with `--from --to` equals the rate each booked line of a VAT-relevant type carries (`E-VAT-MISMATCH`, also for rows reached through the parent chain). The command SHALL exit with code 1 on any error.
 
 #### Scenario: VAT mismatch
-- **WHEN** an apaleo revenue account at 10 % is mapped to `4020` with Steuercode 1 and `bmd_vat_percent` 20
+- **WHEN** an apaleo revenue account at 3.8 % is mapped to `3500` with MWST-Code `311` and `mwst_percent` 8.1
 - **THEN** the check reports `E-VAT-MISMATCH` naming the row and both rates
 
-#### Scenario: German mapping copied
-- **WHEN** a row maps apaleo revenue at 7 % to `4000` with Steuercode 1 and `bmd_vat_percent` 7
-- **THEN** the check warns `W-VAT-RATE-UNUSUAL` naming the row and the Austrian rates
+#### Scenario: Austrian mapping copied
+- **WHEN** a row maps apaleo revenue at 10 % to `3400` with MWST-Code `1` and `mwst_percent` 10
+- **THEN** the check warns `W-VAT-RATE-UNUSUAL` naming the row and the Swiss rates, and `W-MWST-CODE-UNCHECKED` naming code `1`
 
-#### Scenario: Input-tax code on a revenue row
-- **WHEN** `bmd.dialect` is `ntcs` and a row maps apaleo revenue at 10 % to `4000` with Steuercode 2 or 3
-- **THEN** the check reports `E-STEUERCODE-INPUT-TAX` naming the row, the code and its NTCS meaning (Vorsteuer, Vorsteuer-Berichtigung), and exits with code 1
+#### Scenario: Old rate
+- **WHEN** a row has `mwst_percent` 7.7
+- **THEN** `W-VAT-RATE-UNUSUAL` says that 7.7 % was the Normalsatz until 2023-12-31
 
-#### Scenario: Steuercode on a receivables row
-- **WHEN** the row `1200;Receivables` maps to `2390` with Steuercode 1 and `bmd_vat_percent` 10
-- **THEN** the check reports `E-STEUERCODE-NOT-ALLOWED` naming the row, and exits with code 1
+#### Scenario: Swapped codes
+- **WHEN** the configured codes are the defaults and a row maps revenue at 8.1 % with MWST-Code `313`
+- **THEN** the check warns `W-MWST-CODE-RATE` naming the row, code `313` (configured for Beherbergung, 3.8 %) and the rate 8.1
 
-#### Scenario: BMD 5.5 Soll-USt code
-- **WHEN** `bmd.dialect` is `bmd55` and a row maps apaleo revenue at 10 % to `4000` with Steuercode 3
-- **THEN** no Steuercode finding is reported for the row
+#### Scenario: MWST-Code on a receivables row
+- **WHEN** the row `1200;Receivables` maps to `1101` with MWST-Code `313` and `mwst_percent` 3.8
+- **THEN** the check reports `E-MWST-CODE-NOT-ALLOWED` naming the row, and exits with code 1
 
-#### Scenario: Non-taxable code at rate 0
-- **WHEN** a Revenues row at 0 % maps to `4090` with Steuercode 81 and `bmd_vat_percent` 0
-- **THEN** neither `E-STEUERCODE-MISSING` nor `E-VAT-RATE-MISSING` is reported, `W-STEUERCODE-UNCHECKED` names code 81, and the command exits with code 0 if nothing else fails
+#### Scenario: Untaxed revenue with a code at rate 0
+- **WHEN** a Revenues row at 0 % maps to `3600` with MWST-Code `400` and `mwst_percent` 0
+- **THEN** neither `E-MWST-CODE-MISSING` nor `E-VAT-RATE-MISSING` is reported, `W-MWST-CODE-UNCHECKED` names code 400 and Ziffer 230, and the command exits with code 0 if nothing else fails
 
-#### Scenario: Untaxed revenue without Steuercode
-- **WHEN** a Revenues row at 0 % maps to `4090` with an empty Steuercode
-- **THEN** the check warns `W-UNTAXED-REVENUE` naming the row and saying that the BMD account must not carry a fixed Steuercode
+#### Scenario: Kurtaxe with the Ziffer-900 sample code
+- **WHEN** a CityTaxes row maps to `2210` with MWST-Code `490` and `mwst_percent` 0
+- **THEN** `W-MWST-CODE-UNCHECKED` names code `490` and Ziffer 900, says that a collected Kurtaxe is a durchlaufender Posten (no MWST-Code or a Ziffer-910 code such as `491`), and the command exits with code 0 if nothing else fails
+
+#### Scenario: Untaxed revenue without MWST-Code
+- **WHEN** a Revenues row at 0 % maps to `3600` with an empty MWST-Code
+- **THEN** the check warns `W-UNTAXED-REVENUE` naming the row and saying that the Abacus account must not carry a default MWST-Code
 
 #### Scenario: Kostenstelle on a payment row
 - **WHEN** a Payments row has `kost` `10`
 - **THEN** the check warns `W-KOST-IGNORED` naming the row, and a row with `kost` `K10` reports `E-KOST-FORMAT`
 
-#### Scenario: Rate without Steuercode
-- **WHEN** a row has `bmd_vat_percent` 10 and an empty Steuercode
-- **THEN** the check reports `E-STEUERCODE-MISSING`
+#### Scenario: Rate without MWST-Code
+- **WHEN** a row has `mwst_percent` 8.1 and an empty MWST-Code
+- **THEN** the check reports `E-MWST-CODE-MISSING`
 
-#### Scenario: Template-length account at a longer Sachkontenlänge
-- **WHEN** `bmd.sachkontenlaenge` is 5 and a row maps to `2890`
-- **THEN** the check reports `E-ACCOUNT-LENGTH` for the row, explains that the number needs 5 digits (for example `28900`), and does not pad it to `02890`
-
-#### Scenario: Sammeldebitor as Personenkonto
-- **WHEN** an AccountsReceivable row maps to `200000` with `bmd.personenkontenlaenge` 6
-- **THEN** no finding is reported for the row
+#### Scenario: Account with letters
+- **WHEN** a row maps to `34OO` or to a 12-digit number
+- **THEN** the check reports `E-ACCOUNT-FORMAT` for the row and names the rule of 1 to 11 digits
 
 #### Scenario: Valid mapping
 - **WHEN** every row passes all checks
 - **THEN** the command prints a summary of rows by type and exits with code 0
 
-### Requirement: init-mapping command with the EKR template
-`apaleo-bmd init-mapping --property <id> --template ekr [--out <file>] [--update]` SHALL read the property's chart of accounts and write a mapping CSV with one row per leaf account pre-filled from the template, SHALL refuse to overwrite an existing file unless `--update` is given, and with `--update` SHALL keep every existing row unchanged and append rows only for accounts not yet present.
+### Requirement: init-mapping command with the KMU hotel template
+`apaleo-abacus init-mapping --property <id> --template kmu-hotel [--out <file>] [--update] [--accounts-from <file>]` SHALL read the property's chart of accounts and write a mapping CSV with one row per leaf account pre-filled from the template and the configured MWST-Codes, SHALL refuse to overwrite an existing file unless `--update` is given, and with `--update` SHALL keep every existing row unchanged and append rows only for accounts not yet present. With `--accounts-from <file>`, an account export of a paid apaleo-Abacus connector (the layout of "Mapping file format"), the command SHALL take the Abacus account and the Kostenstelle of every apaleo account number and type found in that file into the row of the same account and type, SHALL take the MWST-Code and rate of such a row from the template rule for its type and rate (an empty MWST-Code where no rule gives one, so that `mapping check` reports `E-MWST-CODE-MISSING` for a rate above 0), SHALL mark such a row `Vorschlag (ungeprüft)` with a comment that the account was carried over, and SHALL list the accounts of that file that the chart does not contain. A template name other than `kmu-hotel` SHALL be a usage error that lists the available templates.
 
 #### Scenario: First run
-- **WHEN** the user runs `init-mapping --property BSP --template ekr` and no file exists
+- **WHEN** the user runs `init-mapping --property BSP --template kmu-hotel` and no file exists
 - **THEN** `mapping-BSP.csv` is written with all leaf accounts, template suggestions where a rule matched, and the command prints how many rows are mapped and unmapped
 
 #### Scenario: Update keeps edits
-- **WHEN** the user has edited row `5000` and apaleo has added account `5020`, and runs `init-mapping --property BSP --template ekr --update`
+- **WHEN** the user has edited row `5000` and apaleo has added account `5020`, and runs `init-mapping --property BSP --template kmu-hotel --update`
 - **THEN** row `5000` is unchanged and a row for `5020` is appended, and the command lists the added account
 
 #### Scenario: Existing file without update
 - **WHEN** `mapping-BSP.csv` exists and the user runs `init-mapping` without `--update`
 - **THEN** the command exits with code 1 and nothing is written
 
-#### Scenario: Old flag
-- **WHEN** the user runs `init-mapping --property BSP --skr 03`
-- **THEN** the CLI exits with code 2 naming the unknown flag `--skr`
+#### Scenario: Old template
+- **WHEN** the user runs `init-mapping --property BSP --template ekr`
+- **THEN** the CLI exits with code 2 naming the unknown template `ekr` and the available template `kmu-hotel`
 
-### Requirement: Deposit rows
-Deposit (Liabilities) rows with a rate above 0 SHALL use an output-tax Steuercode of the configured dialect (`ntcs`: 1, which the UVA counts as Anzahlungen in KZ 000/022/029), and `mapping check` SHALL refuse the input-tax codes (`ntcs`: 2 and 3) on them with `E-STEUERCODE-INPUT-TAX`. The EKR template SHALL write the deposit wildcard rows `3200` (10 %), `3202` (13 %) and `3201` (20 %) with the output-tax code and a comment that names both NTCS setups: direct USt on the deposit account, or the Kanzlei's Anzahlungskonto per rate with not-yet-due USt.
+#### Scenario: Switching from a paid connector
+- **WHEN** the user runs `init-mapping --property BSP --template kmu-hotel --accounts-from konten.csv` with a connector export that maps `5011` (Revenues) to `3410` with Kostenstelle `20` and `1200` (Receivables) to `1105`, and lists `7777`, which the chart does not contain
+- **THEN** the row for `5011` has Abacus account `3410`, `kost` `20` and the template's Beherbergung code and rate, the row for `1200` has `1105` without MWST-Code, both are marked `Vorschlag (ungeprüft)` with the carried-over comment, every other row is the template suggestion, and the command lists `7777` as not in the chart
 
-#### Scenario: Deposit row with Steuercode 1
-- **WHEN** `bmd.dialect` is `ntcs` and a Liabilities row at 10 % maps to `3200` with Steuercode 1
-- **THEN** no Steuercode finding is reported for the row
+### Requirement: Template rows for Swiss special cases
+The KMU hotel template SHALL map LossOfAccountsReceivable accounts by VAT rate through wildcard rows (`3805` at 3.8 %, `3806` at 8.1 %, `3807` at 2.6 % with the code of the rate, `3808` at 0 % without MWST-Code), SHALL map revenue accounts of apaleo's groups `RevenueCancellationFees` and `RevenueNoShow` and revenue accounts whose name matches cancellation or no-show payments (Annullation, Annulation, Storno, Cancellation, No-Show, Noshow) at 0 % to `3680` without MWST-Code and leave them unmapped with an explanatory comment at a rate above 0, also where another rate rule would match, and SHALL write the Kurtaxe comment naming the guest-owed Kurtaxe or Gästetaxe (durchlaufender Posten without MWST-Code or with a Ziffer-910 code, never the Ziffer-900 sample code `490` "Subvention Kurtaxen"), the hotel-owed Beherbergungsabgabe (part of the Beherbergung, 3.8 %) and `docs/mapping-guide.md`. Every such row SHALL be marked `Vorschlag (ungeprüft)`.
 
-#### Scenario: Deposit row with a BMD 5.5 code in NTCS
-- **WHEN** `bmd.dialect` is `ntcs` and a Liabilities row at 10 % maps to `3200` with Steuercode 3
-- **THEN** the check reports `E-STEUERCODE-INPUT-TAX` naming the row and saying that code 3 is the Vorsteuer-Berichtigung in NTCS, and exits with code 1
+#### Scenario: Write-off rows
+- **WHEN** a write-off debits a per-reservation LossOfAccountsReceivable account at 3.8 % or 8.1 % whose `parentNumber` is `6900` or `CollectiveDebitor_LossOfAccountsReceivable`
+- **THEN** it resolves through the wildcard rows to `3805` or `3806` with the code of the rate, and the file has no row for `6900` or `CollectiveDebitor_LossOfAccountsReceivable`
 
-#### Scenario: Deposit row comment
-- **WHEN** `init-mapping --template ekr` writes the `*;Liabilities` row at 10 %
-- **THEN** the row maps to `3200` with the dialect's output-tax code and rate 10, and its comment names both setups and `docs/mapping-guide.md`
+#### Scenario: Recorded chart
+- **WHEN** `init-mapping --template kmu-hotel` runs on the recorded BER chart
+- **THEN** `RevenueCancellationFees_Without:0.00` maps to `3680` without MWST-Code and every no-show account with a rate above 0 has an empty Abacus account with the Annullation comment
 
-### Requirement: Template rows for Austrian special cases
-The EKR hotel template SHALL additionally map LossOfAccountsReceivable accounts by VAT rate through wildcard rows (`7800` at 10 %, `7802` at 13 % and `7801` at 20 % with the output-tax Steuercode of the dialect, `7809` at 0 % without Steuercode), so that no row is written for the containers `6900` and `CollectiveDebitor_LossOfAccountsReceivable`, SHALL map revenue accounts of apaleo's groups `RevenueCancellationFees` and `RevenueNoShow` and revenue accounts whose name matches cancellation or no-show fees (Storno, Stornogebühr, Cancellation, No-Show, Noshow) at 0 % to `4091` without Steuercode and leave them unmapped with an explanatory comment at a rate above 0, also where another rate rule would match, and SHALL write the Ortstaxe comment naming the Bundesland table in `docs/mapping-guide.md` and saying that the BMD account must carry no fixed Steuercode. Every such row SHALL be marked `Vorschlag (ungeprüft)`.
-
-#### Scenario: Bad debt rows
-- **WHEN** `bmd.dialect` is `ntcs` and a write-off debits a per-reservation LossOfAccountsReceivable account at 10 % or 20 % whose `parentNumber` is `6900` (assumed by analogy with AR's `9999`; no write-off is recorded) or `CollectiveDebitor_LossOfAccountsReceivable`
-- **THEN** it resolves through the wildcard rows to `7800` or `7801` with Steuercode 1 and the matching rate, and the file has no row for `6900` or `CollectiveDebitor_LossOfAccountsReceivable`
-
-#### Scenario: Recorded Austrian chart
-- **WHEN** `init-mapping --template ekr` runs on the recorded VIE chart
-- **THEN** `RevenueCancellationFees_Without:0.00` maps to `4091` without Steuercode and `RevenueNoShow_Reduced:13.00` has an empty BMD account with the no-show comment
-
-#### Scenario: Taxed cancellation fee is left to the Kanzlei
-- **WHEN** the chart contains a revenue account "No-Show Gebühr" at 10 %
-- **THEN** its row has an empty BMD account and a comment that no-shows can be taxable and cancellation fees usually are not
-
-#### Scenario: Ortstaxe comment
-- **WHEN** the chart contains a CityTaxes account
-- **THEN** its row stays empty and the comment names both booking options, the fixed-Steuercode check and `docs/mapping-guide.md`
+#### Scenario: Taxed no-show is left to the Treuhänder
+- **WHEN** the chart contains a revenue account "No-Show Gebühr" at 3.8 %
+- **THEN** its row has an empty Abacus account and a comment that Annullationen and no-shows count as Schadenersatz without MWST (ESTV MBI 08 Ziff. 8.7) unless the service was already invoiced without a correction document
 

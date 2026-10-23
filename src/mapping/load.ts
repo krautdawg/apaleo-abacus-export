@@ -1,11 +1,12 @@
 import { UserError } from '../core/errors.js';
 import type { Finding } from '../core/findings.js';
-import { paddedFinding, restoreLeadingZeros } from './account-length.js';
 import { decodeCsv, detectSeparator, parseCsv, type CsvRecord } from './csv.js';
 import {
   ANY_TYPE,
+  BMD_COLUMNS,
+  CONNECTOR_EXPORT_COLUMNS,
   DATEV_COLUMNS,
-  GRMAN_COLUMNS,
+  DATEV_CONNECTOR_COLUMNS,
   MAPPING_COLUMNS,
   ROW_FIELDS,
   VAT_RELEVANT_TYPES,
@@ -33,18 +34,17 @@ export class MappingError extends UserError {
 export interface ParseMappingOptions {
   /** Shown in messages. */
   path: string;
-  /** Leading zeros are restored only at Sachkontenlänge 4 (see `restoreLeadingZeros`). */
-  sachkontenlaenge: number;
 }
 
 export interface LoadMappingOptions {
-  sachkontenlaenge: number;
   readFile: (path: string) => Promise<Uint8Array>;
 }
 
-const REQUIRED_COLUMNS: readonly MappingColumn[] = ['apaleo_account', 'apaleo_type', 'bmd_account'];
+const REQUIRED_COLUMNS: readonly MappingColumn[] = ['apaleo_account', 'apaleo_type', 'abacus_account'];
 /** How to make a mapping file, named in every error about a missing or foreign one. */
-export const INIT_MAPPING_HINT = 'apaleo-abacus init-mapping --property <id> --template ekr';
+export const INIT_MAPPING_HINT = 'apaleo-abacus init-mapping --property <id> --template kmu-hotel';
+/** How to make a mapping file from the account export of a paid connector. */
+export const ACCOUNTS_FROM_HINT = `${INIT_MAPPING_HINT} --accounts-from <file>`;
 
 export async function loadMapping(path: string, options: LoadMappingOptions): Promise<Mapping> {
   let bytes: Uint8Array;
@@ -58,14 +58,15 @@ export async function loadMapping(path: string, options: LoadMappingOptions): Pr
         : `Cannot read the mapping file ${path}: ${(error as Error).message}`,
     );
   }
-  return parseMapping(bytes, { path, sachkontenlaenge: options.sachkontenlaenge });
+  return parseMapping(bytes, { path });
 }
 
 /**
  * Reads a mapping CSV (UTF-8 or CP1252, `;` or `,`). Fails with `MappingError` on
- * a bad header (DATEV and Grman mappings included), duplicate keys and wildcard
- * rows the resolution rules do not allow; restored leading zeros are returned as
- * `W-PADDED` findings.
+ * a bad header (BMD and DATEV mappings and the account export of a paid connector
+ * included), duplicate keys and wildcard rows the resolution rules do not allow.
+ * Every value stays the text of the file: account numbers and MWST-Codes are never
+ * padded or parsed as numbers.
  */
 export function parseMapping(bytes: Uint8Array, options: ParseMappingOptions): Mapping {
   const { text } = decodeCsv(bytes);
@@ -73,18 +74,7 @@ export function parseMapping(bytes: Uint8Array, options: ParseMappingOptions): M
   if (!header) throw new MappingError(options.path, ['the file is empty; it needs a header line']);
 
   const { columns, findings } = readHeader(header, options.path);
-  const rows: MappingRow[] = [];
-  for (const record of records) {
-    const row = toRow(record, columns);
-    const restored = restoreLeadingZeros(row.bmdAccount, row.apaleoType, options.sachkontenlaenge);
-    if (restored.padded) {
-      const padded = { ...row, bmdAccount: restored.account };
-      findings.push(paddedFinding(padded, row.bmdAccount));
-      rows.push(padded);
-    } else {
-      rows.push(row);
-    }
-  }
+  const rows: MappingRow[] = records.map((record) => toRow(record, columns));
 
   const problems = structuralProblems(rows);
   if (problems.length > 0) throw new MappingError(options.path, problems);
@@ -101,12 +91,7 @@ function readHeader(header: CsvRecord, path: string): Header {
   const names = header.fields.map((field) => field.trim().toLowerCase());
   const findings: Finding[] = [];
   const foreign = foreignLayout(names);
-  if (foreign) {
-    throw new MappingError(path, [
-      `this is ${foreign}, not a BMD mapping: apaleo-abacus reads the columns ${MAPPING_COLUMNS.join(';')}. ` +
-        `Create a BMD mapping with "${INIT_MAPPING_HINT}" and copy the account numbers over (docs/mapping-guide.md)`,
-    ]);
-  }
+  if (foreign) throw new MappingError(path, [foreign]);
   const known = new Set<string>(MAPPING_COLUMNS);
   const columns = names.map((name) => (known.has(name) ? (name as MappingColumn) : undefined));
   const missing = REQUIRED_COLUMNS.filter((column) => !columns.includes(column));
@@ -124,11 +109,28 @@ function readHeader(header: CsvRecord, path: string): Header {
   return { columns, findings };
 }
 
-/** `a DATEV mapping` or `a Grman connector export` when the header has their columns, else undefined. */
+/** The refusal of a file of another tool, or undefined when the header is none of theirs. */
 function foreignLayout(names: readonly string[]): string | undefined {
-  if (names.some((name) => DATEV_COLUMNS.includes(name))) return 'a DATEV mapping (apaleo-datev-export)';
-  if (names.some((name) => GRMAN_COLUMNS.includes(name))) return 'a Grman DATEV connector export';
-  return undefined;
+  const has = (columns: readonly string[]) => names.some((name) => columns.includes(name));
+  if (CONNECTOR_EXPORT_COLUMNS.every((column) => names.includes(column.toLowerCase()))) {
+    return (
+      'this is the account export of a paid connector, not an apaleo-abacus mapping. ' +
+      `Create a mapping from it with "${ACCOUNTS_FROM_HINT}": it carries the Abacus accounts and Kostenstellen over ` +
+      'and takes the MWST-Codes from the template (docs/mapping-guide.md)'
+    );
+  }
+  const found = has(BMD_COLUMNS)
+    ? 'a BMD mapping (apaleo-bmd-export)'
+    : has(DATEV_COLUMNS)
+      ? 'a DATEV mapping (apaleo-datev-export)'
+      : has(DATEV_CONNECTOR_COLUMNS)
+        ? 'the account export of a paid DATEV connector'
+        : undefined;
+  if (!found) return undefined;
+  return (
+    `this is ${found}, not an Abacus mapping: apaleo-abacus reads the columns ${MAPPING_COLUMNS.join(';')}. ` +
+    `Create an Abacus mapping with "${INIT_MAPPING_HINT}" (docs/mapping-guide.md)`
+  );
 }
 
 function toRow(record: CsvRecord, columns: Header['columns']): MappingRow {
@@ -137,9 +139,9 @@ function toRow(record: CsvRecord, columns: Header['columns']): MappingRow {
     apaleoType: '',
     apaleoName: '',
     apaleoVatPercent: '',
-    bmdAccount: '',
-    steuercode: '',
-    bmdVatPercent: '',
+    abacusAccount: '',
+    mwstCode: '',
+    mwstPercent: '',
     kost: '',
     comment: '',
   };
@@ -191,7 +193,7 @@ function wildcardProblem(row: MappingRow): string | undefined {
   if (rate === undefined || Number.isNaN(rate)) {
     return (
       `VAT-relevant wildcards must name a VAT rate: the wildcard row (*) for ${row.apaleoType} needs ` +
-      'apaleo_vat_percent (one row per rate, for example 10, 13, 20 and 0)'
+      'apaleo_vat_percent (one row per rate, for example 3.8, 8.1, 2.6 and 0)'
     );
   }
   return undefined;
