@@ -54,7 +54,7 @@ Diese Werte legt die Kanzlei in ihrem BMD-Mandanten fest. Frag sie, bevor du den
 
 ### `abacus`
 
-Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du die erste Datei schickst. Der Abschnitt ist noch freiwillig, solange das Tool BMD-Dateien schreibt; sobald der Export die Abacus-Datei schreibt, wird er Pflicht.
+Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du die erste Datei schickst. Der Abschnitt ist noch freiwillig, solange das Tool BMD-Dateien schreibt; sobald der Export die Abacus-Datei schreibt, wird er Pflicht. Was jedes Feld in der Datei bewirkt: [abacus-format.md](abacus-format.md).
 
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|

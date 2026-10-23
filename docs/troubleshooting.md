@@ -113,6 +113,27 @@ Der Writer für den BMD Buchungsimport prüft jedes Feld, bevor er eine Datei sc
 | `N-BMD-CHARSET` | Ein Zeichen außerhalb von Windows-1252 im Buchungstext wurde durch `?` ersetzt, oder aus der externen Belegnummer wurden Zeichen außerhalb von `A-Z a-z 0-9 - / . _` entfernt. | Nichts, außer der ersetzte Text ist wichtig. |
 | `N-BMD-TRUNCATED` | Der Buchungstext wurde auf 40 Zeichen gekürzt oder die externe Belegnummer auf 35. | Nichts, außer der gekürzte Text ist wichtig. Über die Protokolldatei findest du die Buchung im PMS. |
 
+## Abacus-Datei (XML Buchungen)
+
+Der Writer für die AbaConnect-Datei „XML Buchungen“ prüft jedes Feld, bevor er eine Datei schreibt, und meldet alle Fehler auf einmal, mit Buchungsnummer und Feld. Bei einem Fehler schreibt er keine Datei. Einzelheiten: [abacus-format.md](abacus-format.md).
+
+| Code | Ursache | Lösung |
+|---|---|---|
+| `E-ABACUS-ACCOUNT` | Ein Konto der Buchung besteht nicht aus 1 bis 11 Ziffern. Abacus-Konten sind Zahlen. | Korrigiere das Konto in der Kontenzuordnung, ohne Buchstaben, Leerzeichen oder Punkte. |
+| `E-ABACUS-SAME-ACCOUNT` | Konto und Gegenkonto einer Buchung sind gleich. | Prüf die Kontenzuordnung: Zwei apaleo-Konten derselben Buchung zeigen auf dasselbe Abacus-Konto. |
+| `E-ABACUS-AMOUNT` | Ein Betrag ist nicht grösser als 0, nicht auf den Rappen genau oder hat mehr als 11 Stellen vor dem Punkt. | Eröffne ein Issue: Zeilen mit Betrag 0 werden normalerweise vor dem Schreiben übersprungen. |
+| `E-ABACUS-TAX` | Die MWST einer Buchung ist nicht kleiner als ihr Bruttobetrag, nicht auf den Rappen genau, oder nicht 0 bei einem MWST-Code mit Satz 0. | Prüf Satz und MWST-Code der Zeile in der Kontenzuordnung; sonst eröffne ein Issue. |
+| `E-ABACUS-TAX-SIGN` | Die MWST hat das falsche Vorzeichen: negativ, wenn das Gegenkonto im Haben steht, positiv, wenn es im Soll steht. | Eröffne ein Issue mit der Meldung (ohne Namen). |
+| `E-ABACUS-RATE` | Der MWST-Satz ist negativ, grösser als 99,99 oder hat mehr als zwei Nachkommastellen. | Korrigiere den Satz in der Kontenzuordnung, zum Beispiel `8.1`, `3.8` oder `2.6`. |
+| `E-ABACUS-MWST-CODE` | Der MWST-Code hat nicht 1 bis 3 Zeichen aus `A-Z`, `a-z` und `0-9`. | Nimm den Code aus der MWST-Tabelle des Mandanten, zum Beispiel `313`; frag deinen Treuhänder. |
+| `E-ABACUS-KOST` | Die Kostenstelle hat nicht 1 bis 11 Ziffern. | Trag in der Kontenzuordnung eine Kostenstelle aus Ziffern ein, oder lass das Feld leer. |
+| `E-ABACUS-TEXT` | `Text1` einer Buchung ist leer, auch nach dem Bereinigen. Abacus braucht einen Buchungstext. | Eröffne ein Issue: Das Tool setzt den Text selbst. |
+| `E-ABACUS-DATE` | Das Datum einer Buchung ist ungültig oder liegt ausserhalb des Zeitraums der Datei. | Eröffne ein Issue: Der Export liest nur Buchungen des Zeitraums. |
+| `E-ABACUS-PERIOD` | Beginn oder Ende des Zeitraums ist kein gültiges Datum, oder der Zeitraum beginnt nach seinem letzten Tag. Die Meldung hat keine Buchungsnummer. | Prüf `--from` und `--to` (Format `JJJJ-MM-TT`, `--from` nicht nach `--to`). |
+| `E-ABACUS-BELEGNR` | Eine Datei hätte mehr als 999 999 Buchungen. Die Belegnummer hat sechs Stellen für den Zähler. | Exportiere kürzere Zeiträume, zum Beispiel mit `--from` und `--to` je eine Woche. |
+| `E-ABACUS-FILE-NAME` | Die Property-ID lässt sich nicht im Dateinamen verwenden (erlaubt sind nur Buchstaben, Ziffern, `_` und `-`). | Eröffne ein Issue mit der Property-ID (sie kommt aus apaleo). |
+| `N-ABACUS-TRUNCATED` | `Text1` oder `Text2` wurde auf 80 Zeichen gekürzt. | Nichts, ausser der gekürzte Text ist wichtig. Über die Protokolldatei findest du die Buchung in apaleo. |
+
 ## Einrichtung aus Deutschland übernommen
 
 Dieses Tool baut auf apaleo-datev-export auf, das DATEV-Dateien für Deutschland schreibt. Diese Prüfungen fangen eine Einrichtung ab, die von dort oder aus einer DATEV-Kanzlei kopiert wurde, damit keine deutschen Konten, Schlüssel oder Sätze in BMD landen.

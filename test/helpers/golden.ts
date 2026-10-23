@@ -64,3 +64,23 @@ export function describeDifference(expected: Uint8Array, actual: Uint8Array, fie
   if (report.length === 0) report.push('the bytes differ but decode to the same text (check characters outside CP1252)');
   return report.join('\n');
 }
+
+/**
+ * A readable description of how two UTF-8 text files differ, line by line
+ * (for the Abacus XML files, whose lines are elements, not `;` fields), or
+ * undefined when the bytes are identical.
+ */
+export function describeUtf8Difference(expected: Uint8Array, actual: Uint8Array): string | undefined {
+  if (expected.length === actual.length && expected.every((byte, i) => byte === actual[i])) return undefined;
+  const split = (bytes: Uint8Array) => new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes).split(/(?<=\n)/);
+  const expectedLines = split(expected);
+  const actualLines = split(actual);
+  const report: string[] = [];
+  const count = Math.max(expectedLines.length, actualLines.length);
+  for (let i = 0; i < count && report.length < MAX_REPORTED * 3; i++) {
+    const [e, a] = [expectedLines[i] ?? '(missing line)', actualLines[i] ?? '(missing line)'];
+    if (e !== a) report.push(`line ${i + 1}:`, `  - expected: ${visible(e)}`, `  + actual:   ${visible(a)}`);
+  }
+  if (report.length === 0) report.push('the bytes differ but decode to the same text (check for invalid UTF-8)');
+  return report.join('\n');
+}
