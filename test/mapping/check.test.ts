@@ -445,3 +445,39 @@ describe('checkUsedMwstCodes', () => {
     expect(used(rows, [logis, prepayment], { mwstCodes: { normal: 'V81', reduziert: 'V26', beherbergung: 'V38' } })).toEqual([]);
   });
 });
+
+describe('Swiss special-case warnings', () => {
+  const kurtaxe = (values: Partial<MappingRowValues> = {}) => mappingRow({ apaleoAccount: '3501', apaleoType: 'CityTaxes', apaleoVatPercent: '0', abacusAccount: '2210', ...values });
+
+  it('Kurtaxe mapped with MWST: a CityTaxes row on 3400 with 313 at 3.8 % warns W-KURTAXE-TAXED naming the row, its line and Ziff. 7.11', () => {
+    const findings = check([kurtaxe({ apaleoVatPercent: '3.8', abacusAccount: '3400', mwstCode: '313', mwstPercent: '3.8' })]);
+    expect(codes(findings)).toEqual(['W-KURTAXE-TAXED']);
+    expect(findings[0]?.message).toContain('line 2: apaleo account 3501 (CityTaxes) is booked with the MWST-Code 313 at 3.8 %');
+    expect(findings[0]?.message).toContain('durchlaufender Posten');
+    expect(findings[0]?.message).toContain('ESTV MBI 08 Ziff. 7.11');
+  });
+
+  it.each(['SecondCityTax', 'GuestLevies'])('also warns W-KURTAXE-TAXED for a taxed %s row', (apaleoType) => {
+    expect(codes(check([kurtaxe({ apaleoType, apaleoVatPercent: '3.8', abacusAccount: '3400', mwstCode: '313', mwstPercent: '3.8' })]))).toEqual(['W-KURTAXE-TAXED']);
+  });
+
+  it('Kurtaxe as durchlaufender Posten: no W-KURTAXE-TAXED without MWST-Code, nor with a Ziffer-910 code at rate 0', () => {
+    expect(check([kurtaxe()])).toEqual([]);
+    expect(codes(check([kurtaxe({ mwstCode: '491', mwstPercent: '0' })]))).toEqual(['W-MWST-CODE-UNCHECKED']);
+  });
+
+  it('No-show mapped with MWST: RevenueNoShow_Special:3.80 on 3400 with 313 at 3.8 % warns W-ANNULLATION-TAXED naming the row and Ziff. 8.7', () => {
+    const findings = check([revenue({ apaleoAccount: 'RevenueNoShow_Special:3.80' })]);
+    expect(codes(findings)).toEqual(['W-ANNULLATION-TAXED']);
+    expect(findings[0]?.message).toContain('line 2: apaleo account RevenueNoShow_Special:3.80 (Revenues) is booked with the MWST-Code 313 at 3.8 %');
+    expect(findings[0]?.message).toContain('Schadenersatz');
+    expect(findings[0]?.message).toContain('ESTV MBI 08 Ziff. 8.7');
+  });
+
+  it('warns W-ANNULLATION-TAXED for apaleo cancellation fees and for a revenue row named after cancellations, never at 0 %', () => {
+    expect(codes(check([revenue({ apaleoAccount: 'RevenueCancellationFees_Special:3.80' })]))).toEqual(['W-ANNULLATION-TAXED']);
+    expect(codes(check([revenue({ apaleoAccount: '5090', apaleoName: 'Annullationskosten' })]))).toEqual(['W-ANNULLATION-TAXED']);
+    expect(codes(check([revenue({ apaleoAccount: 'RevenueNoShow_Without:0.00', apaleoVatPercent: '0', abacusAccount: '3680', mwstCode: '', mwstPercent: '0' })]))).toEqual(['W-UNTAXED-REVENUE']);
+    expect(check([revenue()])).toEqual([]);
+  });
+});

@@ -191,6 +191,7 @@ function checkRow(row: MappingRow, codes: MwstCodes): Finding[] {
         (old ? `${rate} % was ${old} until 2023-12-31: exports for 2023 and earlier need your Treuhänder` : 'Was this row copied from a German or Austrian mapping?'),
     );
   }
+  findings.push(...swissSpecialCases(row, where));
   if (row.abacusAccount === '') return findings;
 
   if (!ACCOUNT.test(row.abacusAccount)) {
@@ -222,6 +223,49 @@ function checkRow(row: MappingRow, codes: MwstCodes): Finding[] {
     );
   }
   return findings;
+}
+
+/** apaleo's levy types: Kurtaxe, second city tax and Gästetaxe or Beherbergungsabgabe. */
+const LEVY_TYPES: ReadonlySet<string> = new Set(['CityTaxes', 'SecondCityTax', 'GuestLevies']);
+
+/** apaleo's groups of cancellation and no-show revenue, and the names the KMU template recognises as such. */
+const ANNULLATION = /^(?:RevenueCancellationFees|RevenueNoShow)(?:[_:]|$)|annullation|annulation|storno|cancel|no-?show/iu;
+
+/**
+ * The Swiss special cases a row can get silently wrong (a05 design decisions 1 and 4),
+ * as warnings that never block: a levy row with MWST (`W-KURTAXE-TAXED`) and a
+ * cancellation or no-show row with MWST (`W-ANNULLATION-TAXED`).
+ */
+function swissSpecialCases(row: MappingRow, where: string): Finding[] {
+  const rate = mwstCodeOf(row) === undefined ? undefined : rowRate(row);
+  if (rate === undefined || rate <= 0) return [];
+  const what = `apaleo account ${row.apaleoAccount} (${row.apaleoType}) is booked with the MWST-Code ${row.mwstCode} at ${rate} %`;
+  if (LEVY_TYPES.has(row.apaleoType)) {
+    return [
+      {
+        code: 'W-KURTAXE-TAXED',
+        message:
+          `${where}: ${what}. A Kurtaxe or Gästetaxe that the guest owes, that is invoiced separately and forwarded to the Gemeinde is a ` +
+          'durchlaufender Posten without MWST (no MWST-Code, or a Ziffer-910 code); only a Beherbergungsabgabe the hotel owes itself, a Kurtaxe ' +
+          'that is not invoiced separately, or the part the hotel keeps, is taxable at 3.8 % (ESTV MBI 08 Ziff. 7.11). Confirm the row with your Treuhänder',
+        field: 'mwst_code',
+        value: row.mwstCode,
+      },
+    ];
+  }
+  if (row.apaleoType === 'Revenues' && (ANNULLATION.test(row.apaleoAccount) || ANNULLATION.test(row.apaleoName))) {
+    return [
+      {
+        code: 'W-ANNULLATION-TAXED',
+        message:
+          `${where}: ${what}. Payments for Annullationen and no-shows are Schadenersatz without MWST, unless the service was already ` +
+          'invoiced and not corrected with a correction document (ESTV MBI 08 Ziff. 8.7). Confirm the row with your Treuhänder, or correct the VAT in apaleo',
+        field: 'mwst_code',
+        value: row.mwstCode,
+      },
+    ];
+  }
+  return [];
 }
 
 export interface CoverageOptions {
