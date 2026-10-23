@@ -2,124 +2,161 @@
 
 `buildBookings(lines, mapping, chart, options)` in `src/posting` macht aus den Zeilen von `export-gross-daily` in apaleo die Einzelbuchungen einer Abacus-Datei (AbaConnect „XML Buchungen“). Die Funktion ist rein: Dieselben Zeilen und dieselbe Kontenzuordnung ergeben immer dasselbe Ergebnis. Jede apaleo-Zeile landet an genau einer von drei Stellen: in einer Buchung, in der Liste der übersprungenen Zeilen (mit Grund und Betrag) oder in einem Befund mit `E-`, der den Export blockiert.
 
-Keine Gewähr, keine Steuerberatung: Die steuerlichen Entscheidungen stecken in der Kontenzuordnung, und die muss deine Steuerberatung freigeben. Die Regeln unten stellen nur sicher, dass BMD die USt bucht, die apaleo berechnet hat.
-
-## Abacus: die Seite mit MWST-Code kommt in SingleInformation
-
-Jede Abacus-Buchung hat ein Konto in `CollectiveInformation` und eines in `SingleInformation`; nur `SingleInformation` trägt die MWST (`TaxData`). Deshalb gilt:
-
-- Das Konto, dessen Zeile einen MWST-Code hat (Erlös, Anzahlung, Debitorenverlust), steht in `SingleInformation`, das andere in `CollectiveInformation`.
-- `DebitCredit` ist die Seite des Kontos in `CollectiveInformation`: `D`, wenn die apaleo-Zeile es belastet, `C`, wenn sie es entlastet; ein negativer Bruttobetrag tauscht die Seiten.
-- Der Betrag ist der Bruttobetrag ohne Vorzeichen. Die MWST ist die genaue Steuer von apaleo, auf den Rappen gerundet, negativ, wenn das MWST-Konto im Haben steht, positiv, wenn es im Soll steht. Auf 5 Rappen wird nie gerundet.
-- Ohne MWST-Seite kommt ein Erlös- oder Debitorenverlustkonto in `SingleInformation`, damit eine Kostenstelle auf einer Belastung ohne MWST wie auf ihrer Gutschrift steht; sonst steht das belastete Konto in `CollectiveInformation` mit `D`.
-- Ein MWST-Code auf einer Zahlung, einer Gästeforderung oder einem Debitor stoppt die Zeile (`E-MWST-CODE-NOT-ALLOWED`), zwei Seiten mit MWST-Code ebenso (`E-TWO-VAT-SIDES`).
-
-Die Prüfung der MWST pro Zeile vergleicht die Steuer von apaleo mit der MWST, die im Bruttobetrag steckt (`round(Brutto × Satz / (100 + Satz))`); ein Rappen Unterschied ist `W-VAT-ROUNDING`, mehr ist `E-VAT-AMOUNT`. Die Abschnitte unten beschreiben die Regeln noch mit den Begriffen und Beispielen der früheren BMD-Fassung (österreichische Sätze); die Schweizer Fassung mit Kurtaxe, Anzahlungen und Annullationen folgt.
+Keine Gewähr, keine Steuerberatung: Die steuerlichen Entscheidungen stecken in der Kontenzuordnung, und die muss dein Treuhänder freigeben. Die Regeln unten stellen nur sicher, dass Abacus die MWST bucht, die apaleo berechnet hat. Das Tool entscheidet keine Steuerfrage und ändert die MWST von apaleo nie.
 
 ## Eine Buchung pro Zeile
 
-In dieser Version wird nichts verdichtet: Jede apaleo-Zeile wird eine Buchung mit dem Geschäftstag als Beleg- und Buchungsdatum und der `sourceEntryNumber` aus apaleo, damit sich jede Buchung zurückverfolgen lässt. Ein Hotel mit 40 Zimmern erzeugt ein paar tausend Buchungen im Monat; BMD importiert das ohne Probleme, und die USt-Prüfung bleibt pro Zeile genau.
+In dieser Version wird nichts verdichtet: Jede apaleo-Zeile wird eine Einzelbuchung mit dem Geschäftstag als Buchungsdatum und der `sourceEntryNumber` aus apaleo, damit sich jede Buchung zurückverfolgen lässt. Ein Hotel mit 40 Zimmern erzeugt ein paar tausend Buchungen im Monat; Abacus importiert das, und die Prüfung der MWST bleibt pro Zeile genau.
 
-## Richtung: die Seite mit Steuercode kommt ins Konto
+## Die Seite mit MWST-Code kommt in SingleInformation
 
-BMD rechnet und bucht die Steuer nur auf dem führenden Konto (`konto`), und auf einem Sachkonto erwartet es dort den Nettobetrag. Beide Seiten der Zeile werden über die Kontenzuordnung aufgelöst (siehe [mapping-guide.md](mapping-guide.md)); die Seite, deren Zeile einen Steuercode hat, ist die USt-Seite.
+Jede Abacus-Buchung hat ein Konto in `CollectiveInformation` und eines in `SingleInformation`; nur `SingleInformation` trägt die MWST (`TaxData`). Beide Seiten der apaleo-Zeile werden über die Kontenzuordnung aufgelöst (siehe [mapping-guide.md](mapping-guide.md)); die Seite, deren Zeile einen MWST-Code hat, ist die MWST-Seite. Deshalb gilt:
 
-| Fall | `konto` | `gkonto` | `betrag` | `steuer` |
+| Fall | `CollectiveInformation` | `SingleInformation` | `DebitCredit` | MWST in `TaxData` |
 |---|---|---|---|---|
-| USt-Seite im Haben (Leistung, erhaltene Anzahlung) | USt-Seite | andere Seite | Brutto minus Steuer, negativ | Steuer, negativ |
-| USt-Seite im Soll (Nachlass auf Erlöse, Auflösung einer Anzahlung) | USt-Seite | andere Seite | Brutto minus Steuer, positiv | Steuer, positiv |
-| keine USt-Seite, eine Seite ist Erlös oder Forderungsverlust (Erlöse ohne Steuercode) | Erlös- oder Forderungsverlustkonto | andere Seite | Brutto, negativ im Haben, positiv im Soll | leer |
-| keine USt-Seite sonst (Zahlungen, Umbuchungen zwischen Folios, Ortstaxe ohne Steuercode) | belastetes Konto | entlastetes Konto | Brutto, positiv | leer |
-| beide Seiten mit Steuercode (Umbuchung zwischen zwei Erlöskonten) | Fehler `E-TWO-VAT-SIDES`, keine Buchung | | | |
+| MWST-Seite im Haben (Leistung, erhaltene Anzahlung) | andere Seite | MWST-Seite | `D` | negativ |
+| MWST-Seite im Soll (Erlösminderung, Auflösung oder Rückzahlung einer Anzahlung, Debitorenverlust) | andere Seite | MWST-Seite | `C` | positiv |
+| keine MWST-Seite, eine Seite ist Erlös oder Debitorenverlust (Erlöse ohne MWST-Code, Annullationen) | andere Seite | Erlös- oder Verlustkonto | nach Seite | keine |
+| keine MWST-Seite sonst (Zahlungen, Kurtaxe ohne MWST-Code, Debitoren) | belastetes Konto | entlastetes Konto | `D` | keine |
+| beide Seiten mit MWST-Code (Umbuchung zwischen zwei Erlöskonten) | Fehler `E-TWO-VAT-SIDES`, keine Buchung | | | |
 
-Ein Erlös ohne Steuercode führt mit dem Erlöskonto, damit die Kostenstelle (`kost`) auf der Leistung und auf ihrem Nachlass steht. Zahlungen, Gastforderungen und Debitoren haben nie einen Steuercode (`E-STEUERCODE-NOT-ALLOWED`), sonst stünde die Umsatzsteuer im Soll. Ein negativer Bruttobetrag (eine negative Leistung, eine Erstattung) tauscht die Seiten. apaleo bucht die Auflösung einer Anzahlung als negative Belastung im Haben der Anzahlung; das Tool bucht sie deshalb mit positivem Betrag und positiver Steuer auf dem Anzahlungskonto. Mit `verbuchkz` `A` erzeugt BMD die Gegenbuchung auf `gkonto` (Betrag plus Steuer, also genau der Bruttobetrag aus apaleo) und die Steuerbuchung selbst.
+- `DebitCredit` ist die Seite des Kontos in `CollectiveInformation`: `D`, wenn die apaleo-Zeile es belastet, `C`, wenn sie es entlastet. Ein negativer Bruttobetrag (eine negative Belastung, eine Rückzahlung) tauscht die Seiten.
+- Der Betrag ist der Bruttobetrag ohne Vorzeichen. Die MWST ist die genaue Steuer von apaleo, kaufmännisch auf den Rappen gerundet (bei ,5 weg von null), negativ, wenn das Konto der `SingleInformation` im Haben steht, positiv, wenn es im Soll steht. Auf 5 Rappen wird nie gerundet: Das ist eine Praxis der Kasse.
+- MWST-Code und Satz kommen aus der Zeile der MWST-Seite. Eine Zeile mit MWST-Code und 0 % (zum Beispiel ein Code für Ziffer 910) ist erlaubt und bucht die MWST 0.00.
+- Ein Erlös ohne MWST-Code steht in `SingleInformation`, damit die Kostenstelle (`kost`) auf der Leistung und auf ihrer Erlösminderung steht.
+- Ein MWST-Code auf einer Zahlung, einer Gästeforderung oder einem Debitor stoppt die Zeile (`E-MWST-CODE-NOT-ALLOWED`): Sonst bucht Abacus die MWST auf das Geld- oder Forderungskonto.
 
-Die Steuer ist die Steuer der apaleo-Zeile, kaufmännisch auf den Cent gerundet (bei ,5 weg von null); der Betrag ist Brutto minus diese Steuer, nie der für sich gerundete Nettobetrag von apaleo. Steuercode und Prozent kommen aus der Zeile der USt-Seite. Eine Zeile mit Steuercode und 0 % (zum Beispiel ein Code für nicht steuerbare Umsätze) ist erlaubt und bucht die Steuer 0.
+`abacus.abrechnungsart` ändert in der Datei nur den `UseCode` und das Steuerkonto der `CollectiveInformation`, nie, welche Zeilen gebucht werden, ihre Konten, Beträge oder ihre MWST (siehe [Vereinnahmte Entgelte](#vereinnahmte-entgelte)).
 
-## USt-Prüfung pro Zeile
+## Prüfung der MWST pro Zeile
 
-Zuerst werden die `taxes[]` der Zeile bereinigt: Einträge mit Satz 0 und Betrag 0 (zum Beispiel `Without` bei der Ortstaxe) fallen weg. Dass Netto plus Steuer den Bruttobetrag ergibt, prüft schon das Lesen der apaleo-Daten auf den halben Cent genau. Dann prüft das Tool:
+Zuerst werden die `taxes[]` der Zeile bereinigt: Einträge mit Satz 0 und Betrag 0 (zum Beispiel `Without` bei der Kurtaxe) fallen weg. Dass Netto plus Steuer den Bruttobetrag ergibt, prüft schon das Lesen der apaleo-Daten auf den halben Rappen genau. Dann prüft das Tool:
 
 | Code | Bedeutung |
 |---|---|
-| `W-VAT-ROUNDING` | BMDs eigene Kontrolle, `round(|betrag| × Satz / 100)`, weicht um einen Cent von der Steuer ab (am Live-Tag VIE: 46,80 brutto zu 10 %, Steuer 4,25, Kontrolle 4,26). Gebucht mit der Steuer von apaleo; die Differenz geht in die Rundungssumme der Übersicht. |
-| `E-VAT-AMOUNT` | Die Abweichung ist größer als ein Cent. |
-| `E-VAT-RATE` | Der Satz von apaleo weicht von `bmd_vat_percent` der USt-Seite ab. |
-| `E-VAT-MISSING` | apaleo hat USt berechnet, aber keine der beiden Seiten hat einen Steuercode. |
-| `E-VAT-UNEXPECTED` | apaleo hat keine USt berechnet, aber die USt-Seite bucht einen Satz über 0 %. |
-| `E-VAT-MIXED` | Eine Zeile hat mehr als einen USt-Satz. |
-| `E-VAT-SIGN` | USt und Bruttobetrag haben verschiedene Vorzeichen. |
-| `E-VAT-RATE-MISSING` | Die Zeile der Kontenzuordnung hat einen Steuercode, aber keinen gültigen USt-Satz. |
-| `E-UNMAPPED` | Ein Konto hat keine Zeile mit BMD-Konto; einmal pro Konto, wie bei `mapping check --from --to`. |
+| `W-VAT-ROUNDING` | Die Kontrolle von Abacus, die MWST, die im Bruttobetrag steckt (`round(Brutto × Satz / (100 + Satz))`), weicht um einen Rappen von der Steuer ab (zum Beispiel 46.80 brutto zu 8,1 %, Steuer 3.50, Kontrolle 3.51). Gebucht mit der Steuer von apaleo; die Differenz geht in die Rundungssumme der Übersicht. |
+| `E-VAT-AMOUNT` | Die Abweichung ist grösser als ein Rappen. |
+| `E-VAT-RATE` | Der Satz von apaleo weicht von `mwst_percent` der MWST-Seite ab. |
+| `E-VAT-MISSING` | apaleo hat MWST berechnet, aber keine der beiden Seiten hat einen MWST-Code. |
+| `E-VAT-UNEXPECTED` | apaleo hat keine MWST berechnet, aber die MWST-Seite bucht einen Satz über 0 %. |
+| `E-VAT-MIXED` | Eine Zeile hat mehr als einen MWST-Satz. |
+| `E-VAT-SIGN` | MWST und Bruttobetrag haben verschiedene Vorzeichen. |
+| `E-VAT-RATE-MISSING` | Die Zeile der Kontenzuordnung hat einen MWST-Code, aber keinen gültigen Satz. |
+| `E-UNMAPPED` | Ein Konto hat keine Zeile mit Abacus-Konto; einmal pro Konto, wie bei `mapping check --from --to`. |
 
 Die Meldungen nennen die Buchungsnummer aus apaleo, beide Konten mit Nummer und Typ (nie mit Namen, weil Gastfolios Gästenamen tragen) und die Zeile der Kontenzuordnung, die du ändern musst.
 
-## Anzahlungen
+## Schweizer Sonderfälle
 
-Anzahlungen werden auf das zugeordnete Anzahlungskonto gebucht, in der EKR-Vorlage 3200 (10 %), 3202 (13 %) und 3201 (20 %) mit Steuercode 1, Überzahlungen zu 0 % auf 3209 ohne Steuercode. In echten apaleo-Daten kommt jede Anzahlung, ihre Auflösung (eine negative Belastung derselben Anzahlung) und ihre Erstattung (eine negative Anzahlung) mit `taxes[]` oder mit 0 %, und es gibt keine `PostPrepaymentVat`-Zeilen. Die Übersicht zählt erhaltene, aufgelöste und erstattete Anzahlungen nach Seite und Vorzeichen.
+Die Fälle, in denen das Schweizer MWST-Recht von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispiele stammen aus dem Schweizer Testmonat des Tools (erfundenes Hotel Beispiel Engelberg, August 2026, CHF, `test/fixtures/apaleo/ch-month/`), gebucht mit der KMU-Vorlage. Jede Zeile der Tabellen ist eine Buchung der Datei `test/golden/abacus/ch-month.xml`.
 
-Für ältere Daten und andere Quellen gilt: Die Auflösung (Soll auf dem Konto `Liabilities` des Gastes, Haben auf seinem Konto `Receivables`) muss den Satz der Anzahlung tragen. Schickt apaleo sie ohne `taxes[]`, wird der Satz ermittelt, nie mit 0 % angenommen:
+**Steuersätze.** Jede Buchung trägt den Satz, den apaleo hat: Beherbergung mit Frühstück 3,8 % (MWSTG Art. 25 Abs. 4), Speisen, Getränke und Minibar 8,1 %, Take-away 2,6 %. Die Liste steht im [Leitfaden zur Kontenzuordnung](mapping-guide.md#mwst-code-und-mwst-satz).
 
-1. aus der oder den `PostPrepaymentVat`-Zeilen desselben Geschäftstags und derselben Referenz (ihr Steuersatz, oder der bekannte Satz, dessen USt auf der Auflösung ihrem Betrag entspricht). Die Steuer ist dann der Betrag dieser Zeile (bei mehreren Auflösungen die aus dem Bruttobetrag berechnete Steuer jeder Auflösung), und die berechnete Steuer muss bis auf einen Cent der USt auf diesen Zeilen entsprechen;
-2. sonst aus dem USt-Satz des Kontos `Liabilities` oder seines Elternkontos im Kontenplan von apaleo, mit der Steuer `round(|brutto| × Satz / (100 + Satz))` und der Warnung `W-VAT-INFERRED` (immer, auch wenn dieser Satz 0 % ist und die Auflösung auf das Anzahlungskonto ohne Steuercode geht);
-3. sonst stoppt der Export mit `E-VAT-RATE-UNKNOWN`, statt die Auflösung ohne USt zu buchen.
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Logis mit Frühstück | `1101` | `3400` | `D` | 155.70 | −5.70 | `313` | Erlös Beherbergung 3,8 % |
+| Abendessen | `1101` | `3200` | `D` | 54.05 | −4.05 | `311` | Erlös Speisen und Getränke 8,1 % |
+| Minibar | `1101` | `3500` | `D` | 10.81 | −0.81 | `311` | Erlös Übrige Erlöse 8,1 % |
+| Take-away | `1101` | `3260` | `D` | 15.39 | −0.39 | `312` | Erlös Speisen und Getränke 2,6 % |
 
-Eine erhaltene oder erstattete Anzahlung ohne `taxes[]` nimmt den Satz einer `PostPrepaymentVat`-Zeile desselben Geschäftstags und derselben Referenz, die USt in ihrer Richtung bucht (Eingang) oder zurückbucht (Erstattung), mit derselben Prüfung des Betrags. Ohne eine solche Zeile bleibt es bei 0 % (ohne Rückgriff auf den Kontenplan). `mapping check --from --to` nutzt dieselbe Ermittlung.
+**Kurtaxe, Gästetaxe, Beherbergungsabgabe.** Die Zeilen der Kurtaxe (CityTaxes, SecondCityTax, GuestLevies) laufen durch ihre Zeile der Kontenzuordnung wie jede andere Zeile, unter derselben Prüfung der MWST. Eine Kurtaxe, die der Gast schuldet, auf einer Verbindlichkeit ohne MWST-Code ist ein durchlaufender Posten ohne `TaxData`; mit einem Code für Ziffer 910 und Satz 0 trägt sie die MWST 0.00. Eine Abgabe, die apaleo besteuert (eine Beherbergungsabgabe, die das Hotel selbst schuldet, oder eine Kurtaxe, die nicht separat verrechnet wird), geht mit dem MWST-Code der Beherbergung auf ihr Konto; hat ihre Zeile keinen MWST-Code, stoppt der Export mit `E-VAT-MISSING`. Die Übersicht zeigt die Abgaben pro Abacus-Konto, mit oder ohne MWST.
 
-## Österreichische Sonderfälle
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Kurtaxe des Gastes, durchlaufender Posten | `1101` | `2210` | `D` | 4.20 | keine | | Kurtaxe |
 
-Die Fälle, in denen österreichisches Recht oder die Praxis in BMD von einem einfachen Verkauf abweicht. Die Buchungsregeln bleiben dieselben; was sich unterscheidet, steht in der Kontenzuordnung ([mapping-guide.md](mapping-guide.md)). Die Beispielzeilen stammen aus dem früheren österreichischen Testmonat der BMD-Fassung (Hotel Beispiel Tirol, August 2026, unter dem Symbol `AR`) (Spalten `satzart;konto;gkonto;belegnr;belegdatum;buchdatum;buchsymbol;buchcode;prozent;steuercode;betrag;steuer;text;kost;extbelegnr;gegenbuchkz;verbuchkz`).
+**Anzahlung, erhalten, aufgelöst und zurückbezahlt.** Die erhaltene Anzahlung trägt die MWST bei Erhalt, bei vereinbarten wie bei vereinnahmten Entgelten (MWSTG Art. 40 Abs. 1 Bst. c und Abs. 2), mit dem MWST-Code ihres Satzes. apaleo bucht die Auflösung als negative Belastung auf derselben Anzahlung und die Rückzahlung als negative Anzahlung; beide buchen die MWST zurück, mit `C` und positiver MWST auf dem Anzahlungskonto. Eine Liabilities-Seite zählt als Zugang, wenn sie mit einem positiven Betrag entlastet oder mit einem negativen belastet wird, sonst als Abgang; ein Abgang gegen eine Zahlung ist eine Rückzahlung. Eine Überzahlung, die apaleo mit 0 % parkt, geht ohne MWST auf `2039`.
 
-**Anzahlung, erhalten, aufgelöst und erstattet.** Die erhaltene Anzahlung trägt die USt bei Erhalt (Mindest-Istbesteuerung) mit dem normalen Umsatzsteuer-Code; Auflösung und Erstattung buchen sie zurück, mit positivem Betrag und positiver Steuer auf dem Anzahlungskonto:
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Anzahlung per Twint | `1090` | `2030` | `D` | 311.40 | −11.40 | `313` | Anzahlung 3,8 % |
+| Auflösung beim Check-out | `1101` | `2030` | `C` | 207.60 | 7.60 | `313` | Auflösung Anzahlung 3,8 % |
+| Rückzahlung per Twint | `1090` | `2030` | `C` | 103.80 | 3.80 | `313` | Rückzahlung Anzahlung 3,8 % |
 
-```text
-0;3200;2890;080100001;03.08.2026;03.08.2026;AR;2;10;1;-300,00;-30,00;Anzahlung 10 %;;DEP-TIR-A;E;A
-0;3200;2390;080100010;12.08.2026;12.08.2026;AR;1;10;1;200,00;20,00;Auflösung Anzahlung 10 %;;TIR-ALPHA-1-V0;E;A
-0;3200;2890;080100011;12.08.2026;12.08.2026;AR;1;10;1;100,00;10,00;Erstattung Anzahlung 10 %;;REF-TIR-A;E;A
+**Rechnung an eine Firma.** Der Check-out auf die Debitoren bucht vom Gästefolio auf die Debitoren apaleo, mit der Rechnungsnummer in `Text2`:
+
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | `Text2` | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Halbpension 186.84 und Getränke 21.62 auf Rechnung | `1102` | `1101` | `D` | 208.46 | keine | ENG-2026-0815 | Forderung an Debitor |
+
+Die Halbpension selbst ist eine Zeile auf dem Beherbergungskonto zu 3,8 %, weil der Beherbergungsanteil mindestens 70 % ausmacht; wie ein Paket aufgeteilt wird, entscheidet das Hotel in apaleo (siehe [mapping-guide.md](mapping-guide.md#halbpension-und-vollpension)).
+
+**Debitorenverlust mit MWST-Korrektur.** apaleo belastet den Debitorenverlust und entlastet die Gästeforderung, mit der MWST der Forderung. Mit dem MWST-Code des Satzes steht das Verlustkonto in `SingleInformation` im Soll (`C`), und die MWST ist positiv: Sie mindert die Umsatzsteuer als Entgeltsminderung (MWSTG Art. 41). Ohne `taxes[]` geht der Verlust auf das Verlustkonto ohne MWST-Code (`3808`), ohne `TaxData`. Die Übersicht zeigt die abgeschriebenen Forderungen pro Satz.
+
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Nicht bezahlte Nacht abgeschrieben | `1101` | `3805` | `C` | 103.80 | 3.80 | `313` | Debitorenverlust 3,8 % |
+
+**Annullationen und No-Shows.** Sie laufen wie jeder Erlös durch ihre Zeile und die Prüfung der MWST, mit dem Satz, den apaleo berechnet hat. Ohne MWST sind sie Schadenersatz (ESTV MBI 08 Ziff. 8.7) und gehen ohne `TaxData` auf `3680`. Hat apaleo eine Annullation besteuert und die Zeile keinen MWST-Code, stoppt der Export mit `E-VAT-MISSING`; lässt die Vorlage die Zeile leer (eine Annullation mit MWST), mit `E-UNMAPPED`.
+
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | MWST-Code | `Text1` |
+|---|---|---|---|---|---|---|---|
+| Annullation ohne MWST | `1101` | `3680` | `D` | 80.00 | keine | | Erlös Annullation 0 % |
+
+**Zahlungen.** Eine Zahlung bucht vom Transferkonto oder der Kasse auf die Gästeforderung, ohne MWST. Die zweite Zeile, die apaleo mit jeder Zahlung schreibt (`<Folio>_Receivables` an `<Folio>_Receivables/Offset`), liegt auf demselben Abacus-Konto und wird übersprungen.
+
+| Fall | Collective | Single | `DebitCredit` | Betrag | MWST | `Text1` |
+|---|---|---|---|---|---|---|
+| Barzahlung beim Check-out | `1000` | `1101` | `D` | 224.76 | keine | Zahlung Bar |
+| Kartenzahlung | `1090` | `1101` | `D` | 8.40 | keine | Zahlung Mastercard |
+
+So sieht die Anzahlung per Twint in der Datei aus (gekürzt):
+
+```xml
+<CollectiveInformation mode='SAVE'>
+  <DebitCredit>D</DebitCredit>
+  <KeyCurrency>CHF</KeyCurrency>
+  <KeyAmount>311.40</KeyAmount>
+  <Account>1090</Account>
+  <TaxAccount>2200</TaxAccount>
+  <Text1>Anzahlung 3,8 %</Text1>
+</CollectiveInformation>
+<SingleInformation mode='SAVE'>
+  <KeyAmount>311.40</KeyAmount>
+  <Account>2030</Account>
+  <TaxData mode='SAVE'>
+    <TaxIncluded>I</TaxIncluded>
+    <UseCode>0</UseCode>
+    <KeyAmount>-11.40</KeyAmount>
+    <TaxRate>3.8</TaxRate>
+    <TaxCode>313</TaxCode>
+  </TaxData>
+</SingleInformation>
 ```
 
-**Forderungsverlust mit USt-Berichtigung.** apaleo belastet den Forderungsverlust und entlastet die Gastforderung, mit der USt. Mit dem Umsatzsteuer-Code steht das Forderungsverlust-Konto vorn, Betrag und Steuer sind positiv: Die Soll-Buchung auf das USt-Konto mindert die Umsatzsteuer. Ohne `taxes[]` (Zeile `7809` ohne Steuercode) führt das Forderungsverlust-Konto mit dem Bruttobetrag, ohne Steuerfelder. Die Übersicht zeigt die abgeschriebenen Forderungen pro Satz.
+## Vereinnahmte Entgelte
 
-```text
-0;7800;2390;080100022;28.08.2026;28.08.2026;AR;1;10;1;50,00;5,00;Forderungsverlust 10 %;;TIR-FOXTROT-1-V0;E;A
-```
+Mit `abacus.abrechnungsart: vereinnahmt` sind die Buchungen dieselben; nur der `UseCode` wird `1`, und das Steuerkonto der `CollectiveInformation` wird das Hilfskonto (`abacus.mwstHilfskonto`, Standard `2202`). Abacus bucht die MWST dieser Buchungen dann auf das Hilfskonto und überträgt sie erst auf das Steuerkonto, wenn eine Zahlung erfasst wird, normalerweise in der Debitorenbuchhaltung, die dieses Tool nicht bedient. Die Datei bucht die MWST am Tag der Leistung, nach vereinnahmten Entgelten entsteht sie aber mit der Zahlung (MWSTG Art. 40 Abs. 2); das betrifft Rechnungen, die am Periodenende offen sind. `doctor` und jeder Export, auch der Probelauf, warnen deshalb einmal pro Lauf mit `W-ABRECHNUNGSART-VEREINNAHMT`. Der Exit-Code bleibt 0. Wie dein Treuhänder das Hilfskonto am Periodenende korrigiert, steht in [mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte).
 
-**Stornogebühr und No-Show.** Sie laufen wie jeder Erlös durch ihre Zeile und die USt-Prüfung; das Tool ändert die USt von apaleo nie. Ohne USt führt das Erlöskonto `4091` mit dem Bruttobetrag im Haben. Hat apaleo eine Gebühr besteuert und die Zeile keinen Steuercode, stoppt der Export mit `E-VAT-MISSING`; lässt die Vorlage die Zeile leer (eine Gebühr mit USt), mit `E-UNMAPPED`.
+## Anzahlungen ohne MWST-Betrag
 
-```text
-0;4091;2390;080100013;14.08.2026;14.08.2026;AR;2;;;-45,00;;Erlös Stornogebühr 0 %;;TIR-CHARLIE-1-V1;E;A
-```
+In echten apaleo-Daten kommt jede Anzahlung, ihre Auflösung und ihre Rückzahlung mit `taxes[]` oder mit 0 %, und es gibt keine `PostPrepaymentVat`-Zeilen. Für ältere Daten und andere Quellen gilt: Die Auflösung (Soll auf dem Konto `Liabilities` des Gastes, Haben auf seinem Konto `Receivables`) muss den Satz der Anzahlung tragen. Schickt apaleo sie ohne `taxes[]`, wird der Satz ermittelt, nie mit 0 % angenommen:
 
-**Ortstaxe, Aufenthaltsabgabe, Nächtigungsabgabe.** Die Abgabe des Gastes geht ohne Steuercode auf die Verbindlichkeit oder den durchlaufenden Posten der Kanzlei; die Gastforderung ist das belastete Konto:
+1. aus der oder den `PostPrepaymentVat`-Zeilen desselben Geschäftstags und derselben Referenz (ihr Steuersatz, oder der bekannte Satz, dessen MWST auf der Auflösung ihrem Betrag entspricht). Die Steuer ist dann der Betrag dieser Zeile (bei mehreren Auflösungen die aus dem Bruttobetrag berechnete Steuer jeder Auflösung), und die berechnete Steuer muss bis auf einen Rappen der MWST auf diesen Zeilen entsprechen;
+2. sonst aus dem MWST-Satz des Kontos `Liabilities` oder seines Elternkontos im Kontenplan von apaleo, mit der Steuer `round(|Brutto| × Satz / (100 + Satz))` und der Warnung `W-VAT-INFERRED` (immer, auch wenn dieser Satz 0 % ist);
+3. sonst stoppt der Export mit `E-VAT-RATE-UNKNOWN`, statt die Auflösung ohne MWST zu buchen.
 
-```text
-0;2390;3580;080100004;10.08.2026;10.08.2026;AR;1;;;3,00;;Ortstaxe;;TIR-BRAVO-1-V0;E;A
-```
-
-**Steuersätze.** Jede Buchung trägt den Satz, den apaleo hat: Beherbergung und Speisen 10 %, Schwimmbad und Therme 13 %, Getränke, Massagen und Parken 20 %. Die Liste mit den Paragrafen steht im [Leitfaden zur Kontenzuordnung](mapping-guide.md#steuersätze-in-österreich).
-
-```text
-0;4000;2390;080100002;10.08.2026;10.08.2026;AR;2;10;1;-89,09;-8,91;Erlös Logis 10 %;;TIR-BRAVO-1-V0;E;A
-0;4020;2390;080100005;10.08.2026;10.08.2026;AR;2;20;1;-6,58;-1,32;Erlös Speisen und Getränke 20 %;;BAR-TIR-1;E;A
-```
+Eine erhaltene oder zurückbezahlte Anzahlung ohne `taxes[]` nimmt den Satz einer `PostPrepaymentVat`-Zeile desselben Geschäftstags und derselben Referenz, die MWST in ihrer Richtung bucht (Eingang) oder zurückbucht (Rückzahlung), mit derselben Prüfung des Betrags. Ohne eine solche Zeile bleibt es bei 0 % (ohne Rückgriff auf den Kontenplan). `mapping check --from --to` nutzt dieselbe Ermittlung.
 
 ## Übersprungene Zeilen
 
 | Grund | Zeilen |
 |---|---|
-| `VAT_ACCOUNT_LINE` | Jede Zeile, die ein apaleo-Konto `Vat` oder `VatOnLiabilities` berührt, auch `PostPrepaymentVat`. BMD bucht die Steuer aus dem Feld `steuer` der Erlös- oder Anzahlungsbuchung; würden die USt-Zeilen von apaleo zusätzlich gebucht, stünde die Steuer doppelt in der UVA. Diese Konten brauchen keine Zeile in der Kontenzuordnung. |
+| `VAT_ACCOUNT_LINE` | Jede Zeile, die ein apaleo-Konto `Vat` oder `VatOnLiabilities` berührt, auch `PostPrepaymentVat`. Abacus bucht die MWST aus den `TaxData` der Erlös- oder Anzahlungsbuchung; würden die MWST-Zeilen von apaleo zusätzlich gebucht, stünde die MWST doppelt in der MWST-Abrechnung. Diese Konten brauchen keine Zeile in der Kontenzuordnung. |
 | `ZERO_AMOUNT` | Bruttobetrag 0. |
-| `SAME_ACCOUNT` | Beide Seiten sind demselben BMD-Konto zugeordnet, zum Beispiel eine Umbuchung zwischen zwei Gastfolios auf 2390, oder die zweite Zeile einer Zahlung (`<Folio>_Receivables` an `<Folio>_Receivables/Offset`). |
+| `SAME_ACCOUNT` | Beide Seiten sind demselben Abacus-Konto zugeordnet, zum Beispiel eine Umbuchung zwischen zwei Gastfolios auf `1101`, oder die zweite Zeile einer Zahlung (`<Folio>_Receivables` an `<Folio>_Receivables/Offset`). |
 
 Übersprungene Zeilen behalten ihre Anzahl und ihre Bruttosumme ohne Vorzeichen in der Übersicht, es verschwindet also nichts.
 
 ## Felder
 
 - **Text1**: eine Bezeichnung in Schweizer Hochdeutsch ohne Gästenamen, gekürzt auf 80 Zeichen: `Erlös Beherbergung 3,8 %` oder `Erlösminderung …` nach Seite und Vorzeichen, `Anzahlung 3,8 %`, `Umbuchung Anzahlung`, `Auflösung Anzahlung 8,1 %`, `Rückzahlung Anzahlung`, `Zahlung Visa` oder `Rückzahlung …` (englische Namen der Zahlungsarten übersetzt oder weggelassen), `Forderung an Debitor`, `Debitorenverlust 3,8 %`, `Kurtaxe`. Konten vom Typ Receivables, AccountsReceivable und Liabilities ausserhalb des globalen Buchungsjournals nutzen den Namen ihres globalen Elternkontos oder eine feste Bezeichnung (`Gästeforderung`, `Debitor`, `Anzahlung Gast`), nie ihren eigenen Namen, denn der kann der eines Gastes sein.
-- **Text2**: die Belegnummer aus apaleo (Rechnung, Referenz des Zahlungsdienstleisters, …), wenn `posting.text2` auf `receipt` steht (Standard) und es eine gibt, sonst die Reservationsreferenz. Nie ein Gastname.
+- **Text2**: die Belegnummer aus apaleo (Rechnung, Referenz des Zahlungsanbieters, …), wenn `posting.text2` auf `receipt` steht (Standard) und es eine gibt, sonst die Reservationsreferenz. Nie ein Gastname.
 - **DocumentNumber**: die Belegnummer, die das Tool bildet (Monat und Tag des ersten Tags der Datei und ein Zähler).
 - **Kostenstelle** (`BookingLevel1`): nur aus der Zeile des Kontos in `SingleInformation`, und nur, wenn das eine Erlös- oder Debitorenverlustzeile ist. Auf Zahlungen, Debitoren, Anzahlungen, Kurtaxe und Transferkonten bleibt sie leer, denn Abacus nimmt eine Kostenstelle nur auf Erfolgskonten an.
 
 ## Übersicht
 
-Alles in Cent: Soll, Haben und Saldo pro BMD-Konto nach dem Bewegungsmodell (`konto` mit dem Betrag, `gkonto` mit Betrag plus Steuer); Erlöse, Anzahlungen und abgeschriebene Forderungen (Forderungsverluste mit der USt-Berichtigung) pro USt-Satz mit Netto, Steuer und Brutto, wie sie an BMD gehen, daneben die genaue USt von apaleo auf denselben Zeilen; Ortstaxe und Gästeabgaben; Zahlungen pro Konto; erhaltene, aufgelöste und erstattete Anzahlungen; die Bewegung auf dem Sammeldebitor; übersprungene Zeilen pro Grund; die Rundungssumme; Befunde pro Code.
+Alles in Rappen: Soll, Haben und Saldo pro Abacus-Konto nach dem Bewegungsmodell (das Konto der `CollectiveInformation` mit dem Bruttobetrag, das Konto der `SingleInformation` mit dem Bruttobetrag minus der MWST); Erlöse, Anzahlungen und abgeschriebene Forderungen (Debitorenverluste mit der MWST-Korrektur) pro MWST-Code und Satz mit Netto, MWST und Brutto, wie sie an Abacus gehen, daneben die genaue MWST von apaleo auf denselben Zeilen; Kurtaxe und andere Abgaben, gesamt und pro Abacus-Konto mit oder ohne MWST; Zahlungen pro Konto; erhaltene, aufgelöste und zurückbezahlte Anzahlungen; die Bewegung auf den Debitoren; übersprungene Zeilen pro Grund; die Rundungssumme; Befunde pro Code.
+
+Im Schweizer Testmonat sind das zum Beispiel: Beherbergung `313` netto 630.00, MWST 23.94, brutto 653.94; Normalsatz `311` netto 80.00, MWST 6.48; reduzierter Satz `312` netto 15.00, MWST 0.39; Annullation ohne MWST-Code 80.00; Kurtaxe 12.60 auf `2210` ohne MWST; Anzahlungen erhalten 311.40, aufgelöst 311.40, davon zurückbezahlt 103.80, MWST der Anzahlungen 0.00; Debitorenverlust `313` 103.80 mit der MWST-Korrektur 3.80; Kasse `1000` 240.15, Transferkonto `1090` 296.00, Debitoren `1102` 208.46. Die Salden aller Konten ergeben zusammen die MWST, die Abacus bucht: 23.94 + 6.48 + 0.39 − 3.80 = 27.01.

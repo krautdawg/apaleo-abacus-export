@@ -449,7 +449,7 @@ export function checkGermanPracticeTerms(file: string, markdown: string): string
  * doc for Switzerland adds it here; a listed file that does not exist yet is
  * skipped.
  */
-export const SWISS_FILES: readonly string[] = ['docs/abacus-format.md', 'docs/abacus-import.md'];
+export const SWISS_FILES: readonly string[] = ['docs/abacus-format.md', 'docs/abacus-import.md', 'docs/mapping-guide.md', 'docs/posting-rules.md'];
 
 /** The listed Swiss files that exist. */
 export function existingSwissFiles(files: readonly string[] = SWISS_FILES, root: string = ROOT): string[] {

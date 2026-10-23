@@ -272,8 +272,7 @@ describe('docs folder', () => {
     expect(section(guide, '## Checkliste zur Freigabe durch den Treuhänder').match(/^- \[ \]/gm)?.length).toBeGreaterThanOrEqual(5);
   });
 
-  // Skipped until a05 task 3.2 rewrites docs/mapping-guide.md for the KMU template; that task turns this test on again.
-  it.skip('a05: explains the Swiss MWST rates and lists every account of the KMU template in the mapping guide', () => {
+  it('a05: explains the Swiss MWST rates and lists every account of the KMU template in the mapping guide', () => {
     const guide = readRepoFile('docs/mapping-guide.md');
     for (const rate of ['3,8 %', '8,1 %', '2,6 %', 'Art. 25 Abs. 4']) expect(guide, rate).toContain(rate);
     expect(guide).not.toContain('## Steuersätze in Österreich');

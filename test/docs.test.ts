@@ -366,6 +366,8 @@ describe('the Swiss file check', () => {
 
   it('lists the Abacus docs from the start and skips a listed file that does not exist yet', () => {
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/abacus-format.md', 'docs/abacus-import.md']));
+    // a05 rewrote the mapping guide and the posting rules for Switzerland.
+    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/mapping-guide.md', 'docs/posting-rules.md']));
     expect(existingSwissFiles(['docs/abacus-format.md', 'README.md', 'docs/does-not-exist.md'])).toEqual(
       expect.not.arrayContaining(['docs/does-not-exist.md']),
     );
@@ -380,7 +382,7 @@ describe('the Swiss file check', () => {
       expect.stringMatching(/^docs\/abacus-format\.md: .*"Kanzlei"/),
       expect.stringMatching(/^docs\/abacus-format\.md: .*"Buchungssymbol"/),
     ]);
-    expect(checkSwissFile('docs/mapping-guide.md', text)).toEqual([]);
+    expect(checkSwissFile('docs/export.md', text)).toEqual([]);
   });
 
   it('names every Austrian BMD term and the token BMD, matched as whole words', () => {
