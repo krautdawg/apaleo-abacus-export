@@ -162,17 +162,17 @@ The repository SHALL contain recorded real apaleo responses in `test/fixtures/ap
 - **THEN** it finds no key or value matching token, secret, bearer, password or e-mail patterns, and every account name is an apaleo default name or of the form `… for Reservation|Folio <id>`
 
 ### Requirement: Currency of the target
-The export SHALL ask the configured `TargetWriter` for the currency it books in and SHALL refuse with `E-CURRENCY`, per property-month and before writing, a property whose currency differs from it (without reading the ledger) and a month with any ledger line in another currency, naming both currencies and saying that the tool does not convert. The BMD target SHALL answer `EUR`.
+The export SHALL ask the configured `TargetWriter` for the currency it books in and SHALL refuse with `E-CURRENCY`, per property-month and before writing, a property whose currency differs from it (without reading the ledger) and a month with any ledger line in another currency, naming both currencies and saying that the tool does not convert. The Abacus target SHALL answer with `abacus.leitwaehrung`.
 
-#### Scenario: Swiss property with the BMD target
-- **WHEN** the property's currency is CHF and the target is BMD
-- **THEN** `E-CURRENCY` names CHF and EUR, the ledger is not read and no file is written for that property
+#### Scenario: EUR property in a CHF Mandant
+- **WHEN** the property's currency is EUR and `abacus.leitwaehrung` is `CHF`
+- **THEN** `E-CURRENCY` names EUR and CHF, says that the Abacus file is booked in the Mandant's Leitwährung, the ledger is not read and no file is written for that property
 
-#### Scenario: Target that books in CHF
-- **WHEN** a test runs the export with a fake `TargetWriter` that books in CHF, for a property whose currency is CHF and whose ledger lines are all in CHF
-- **THEN** no `E-CURRENCY` is raised and the fake file is written
+#### Scenario: Swiss property
+- **WHEN** the property's currency is CHF, `abacus.leitwaehrung` is `CHF` and all ledger lines are in CHF
+- **THEN** no `E-CURRENCY` is raised and the Abacus file is written with `Currency` and `KeyCurrency` `CHF`
 
 #### Scenario: Line in another currency
-- **WHEN** the fake target books in CHF and one ledger line of the month is in EUR
+- **WHEN** `abacus.leitwaehrung` is `CHF` and one ledger line of the month is in EUR
 - **THEN** `E-CURRENCY` names the number of such lines and both currencies, and no file is written for that property-month
 
