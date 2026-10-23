@@ -68,6 +68,45 @@ export function checkMapping(mapping: Mapping, options: CheckMappingOptions = {}
   return findings;
 }
 
+/** The `checkMapping` warnings about a row's MWST-Code that the export repeats for the rows it uses. */
+export const USED_ROW_MWST_WARNINGS: ReadonlySet<string> = new Set(['W-MWST-CODE-RATE', 'W-MWST-CODE-UNCHECKED']);
+
+/**
+ * `W-MWST-CODE-RATE` and `W-MWST-CODE-UNCHECKED` for the mapping rows the lines of a
+ * period actually resolve to, one finding per warning that names every row it
+ * concerns (`lines 3, 6: ...`). The posting guard compares rates only,
+ * so a swapped configured code (311 at 3.8 %) or a Vorsteuer code (111) would reach
+ * the file silently; the export and schedule runs never call `mapping check`, so
+ * they report these warnings in the dry run and the protocol themselves.
+ */
+export function checkUsedMwstCodes(mapping: Mapping, lines: readonly LedgerLine[], chart: ChartIndex | undefined, options: CoverageOptions): Finding[] {
+  const used = new Map<number, MappingRow>();
+  for (const line of lines) {
+    if (VAT_ACCOUNT_TYPES.has(line.debit.type) || VAT_ACCOUNT_TYPES.has(line.credit.type)) continue;
+    const rate = options.rateOf(line);
+    for (const account of [line.debit, line.credit]) {
+      const row = resolve(mapping, account, { rate, ...(chart ? { chart } : {}) });
+      if (row && row.abacusAccount !== '' && mwstCodeOf(row) !== undefined) used.set(row.line, row);
+    }
+  }
+  const codes = options.mwstCodes ?? DEFAULT_MWST_CODES;
+  const merged = new Map<string, { finding: Finding; lines: number[] }>();
+  for (const row of [...used.values()].sort((a, b) => a.line - b.line)) {
+    for (const finding of checkRow(row, codes)) {
+      if (!USED_ROW_MWST_WARNINGS.has(finding.code)) continue;
+      const body = finding.message.slice(`line ${row.line}: `.length);
+      const key = `${finding.code}\u0000${body}`;
+      const entry = merged.get(key) ?? { finding: { ...finding, message: body }, lines: [] };
+      entry.lines.push(row.line);
+      merged.set(key, entry);
+    }
+  }
+  return [...merged.values()].map(({ finding, lines }) => ({
+    ...finding,
+    message: `${lines.length === 1 ? 'line' : 'lines'} ${lines.join(', ')} of the mapping file: ${finding.message}`,
+  }));
+}
+
 /** The configured name of a code (`normal`, `reduziert`, `beherbergung`), or undefined for any other code. */
 function configuredName(code: string, codes: MwstCodes): keyof MwstCodes | undefined {
   return (Object.keys(codes) as (keyof MwstCodes)[]).find((name) => codes[name] === code);

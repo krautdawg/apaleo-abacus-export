@@ -6,7 +6,7 @@ import { runCli } from '../../src/cli/run.js';
 import type { LocalDate } from '../../src/core/date.js';
 import { BSP, FIXTURE_ENV, apaleoFixtureHandler } from '../helpers/apaleo.js';
 import { createTestContext, type TestContext } from '../helpers/context.js';
-import { BEISPIEL_MAPPING_TEXT, addSecondProperty, exportConfig, exportSetup, type ExportSetup } from '../helpers/export.js';
+import { BEISPIEL_MAPPING_TEXT, addSecondProperty, exportConfig, exportSetup, stripPlaceholderCodes, type ExportSetup } from '../helpers/export.js';
 
 /**
  * `schedule --once` end to end through `runCli`. The Hotel Beispiel fixtures
@@ -18,7 +18,8 @@ const ONCE = ['schedule', '--once'];
 /** A catch-up window that reaches back to September's due date (3 October) but not to August's (3 September). */
 const ONE_MONTH = ['schedule:', '  catchUpDays: 30'];
 
-const lines = (ctx: TestContext) => ctx.out().trimEnd().split('\n');
+/** The output lines, without the W-MWST-CODE-UNCHECKED warnings for the fixture's placeholder codes V10 and V20. */
+const lines = (ctx: TestContext) => stripPlaceholderCodes(ctx.out()).trimEnd().split('\n');
 const setClock = (ctx: TestContext, at: string) => void (ctx.now = () => new Date(at));
 
 /** A copy of the fixture's first logis charge on another business day. */
@@ -101,7 +102,7 @@ describe('monthly cadence', () => {
     const before = setup.ctx.out().length;
 
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before).trimEnd().split('\n')).toEqual([
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before)).trimEnd().split('\n')).toEqual([
       expect.stringMatching(/^2026-10-05T07:00:00\+02:00 BSP 2026-09 written /),
       expect.stringMatching(/^2026-10-05T07:00:00\+02:00 BSP2 2026-09 already exported exports\/BSP2\/2026-09\/ABACUS_/),
     ]);
@@ -250,7 +251,7 @@ describe('periods that are not final yet', () => {
     setClock(setup.ctx, '2026-10-02T04:05:00Z');
     before = setup.ctx.out().length;
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before)).toBe(`2026-10-02T06:05:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before))).toBe(`2026-10-02T06:05:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
     expect(ledgerCalls(setup)).toEqual(['getLedger BSP 2026-09-01 2026-10-01']);
     const manifest = readFileSync(join(setup.ctx.cwd, 'exports', BSP, '2026-09', 'manifest.json'), 'utf8');
     expect(manifest).toContain('20260901-20260930');
@@ -292,7 +293,7 @@ describe('periods that are not final yet', () => {
     setClock(setup.ctx, '2026-10-02T21:30:00Z');
     const before = setup.ctx.out().length;
     expect(await runCli(ONCE, setup.ctx)).toBe(0);
-    expect(setup.ctx.out().slice(before)).toBe(`2026-10-03T06:30:00+09:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
+    expect(stripPlaceholderCodes(setup.ctx.out().slice(before))).toBe(`2026-10-03T06:30:00+09:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE}\n`);
   });
 
   it("exports a day held back in the property's zone on the next daily run with the smallest catch-up window", async () => {
@@ -394,6 +395,18 @@ describe('warnings and notes on lines that did not fail', () => {
       `2026-10-03T07:30:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE} W-UNKNOWN-COLUMN`,
       '  W-UNKNOWN-COLUMN: the column "notiz" is not used and is ignored',
     ]);
+  });
+
+  it('warns about a swapped MWST-Code of a used mapping row, which only mapping check reported before', async () => {
+    const swapped = BEISPIEL_MAPPING_TEXT.replace('(10%);10;3400;V10;10;', '(10%);10;3400;311;10;');
+    const setup = exportSetup({ config: exportConfig(...ONE_MONTH), files: { 'mapping-BSP.csv': swapped }, now: new Date('2026-10-03T05:30:00Z') });
+    expect(await runCli(ONCE, setup.ctx)).toBe(0);
+    const out = setup.ctx.out().trimEnd().split('\n');
+    expect(out[0]).toBe(`2026-10-03T07:30:00+02:00 BSP 2026-09 written exports/BSP/2026-09/${SEPTEMBER_FILE} W-MWST-CODE-RATE W-MWST-CODE-UNCHECKED`);
+    expect(out).toContain(
+      '  W-MWST-CODE-RATE (mwst_code): line 3 of the mapping file: the MWST-Code 311 is configured for the Normalsatz at 8.1 % (abacus.mwstCodes.normal), ' +
+        'but the row books it at 10 %. Check that the codes are not swapped',
+    );
   });
 
   it('appends the codes to a no-bookings line but leaves out N-NO-BOOKINGS, which the result already says', async () => {

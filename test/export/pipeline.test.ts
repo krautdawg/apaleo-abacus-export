@@ -7,7 +7,7 @@ import { buildBookings } from '../../src/posting/index.js';
 import { ApaleoPermissionError } from '../../src/sources/apaleo/index.js';
 import { block, transaction, value } from '../helpers/abacus.js';
 import { BSP } from '../helpers/apaleo.js';
-import { BEISPIEL_MAPPING_TEXT, addSecondProperty, exportConfig, exportSetup, type ExportSetup } from '../helpers/export.js';
+import { BEISPIEL_MAPPING_TEXT, addSecondProperty, exportConfig, exportSetup, withoutPlaceholderCodes, type ExportSetup } from '../helpers/export.js';
 
 const SEPTEMBER = { from: '2026-09-01', to: '2026-09-30' } as const;
 
@@ -76,7 +76,7 @@ describe('the period-part runner', () => {
     const setup = (text: string) => exportSetup({ config: text, files: { 'mapping-BS2.csv': readMapping() }, data: (data) => addSecondProperty(data, 'BS2') });
     const shared = setup(config());
     const both = await run(shared, { propertyIds: [BSP, 'BS2'] });
-    expect(both.map((o) => [o.propertyId, o.status, o.findings.map((f) => f.code)])).toEqual([
+    expect(both.map((o) => [o.propertyId, o.status, withoutPlaceholderCodes(o.findings).map((f) => f.code)])).toEqual([
       [BSP, 'written', ['W-MANDANT-SHARED']],
       ['BS2', 'written', ['W-MANDANT-SHARED']],
     ]);
@@ -84,7 +84,7 @@ describe('the period-part runner', () => {
       'the properties BSP, BS2 all book into the Abacus Mandant 1234, Geschäftsbereich 0',
     );
     const own = await run(setup(config('    geschaeftsbereich: 2')), { propertyIds: [BSP, 'BS2'] });
-    expect(own.map((o) => o.findings.map((f) => f.code))).toEqual([[], []]);
+    expect(own.map((o) => withoutPlaceholderCodes(o.findings).map((f) => f.code))).toEqual([[], []]);
   });
 
   it('stops a part on an E- finding of the coverage check or the posting rules, before writing', async () => {
@@ -185,6 +185,26 @@ describe('the period-part runner', () => {
     expect(outcome?.summary).toContain('Totals per Abacus account');
     expect(readdirSync(setup.ctx.cwd).sort()).toEqual(['apaleo-abacus.config.yaml', 'mapping-BSP.csv']);
   });
+
+  it('warns about the MWST-Codes of the mapping rows the month uses in the dry run and the protocol, without mapping check', async () => {
+    const [dry] = await run(exportSetup(), { dryRun: true });
+    expect(dry?.status).toBe('checked');
+    expect(dry?.findings.map((f) => [f.code, f.value])).toEqual([
+      ['W-MWST-CODE-UNCHECKED', 'V10'],
+      ['W-MWST-CODE-UNCHECKED', 'V20'],
+    ]);
+    // Line 4 (RevenueAccommodation_Normal:20.00, V20) is not booked in September, so it is not named.
+    expect(dry?.findings.map((f) => f.message.replace(/ of the mapping file:.*/, ''))).toEqual(['lines 3, 6, 15', 'line 7']);
+    expect(dry?.summary).toContain('W-MWST-CODE-UNCHECKED');
+
+    // Swapped code: 311 is the configured Normalsatz code (8.1 %); the posting guard compares rates only and passes it.
+    const swapped = exportSetup({ files: { 'mapping-BSP.csv': readMapping().replace('(10%);10;3400;V10;10;', '(10%);10;3400;311;10;') } });
+    const [outcome] = await run(swapped);
+    expect(outcome?.status).toBe('written');
+    expect(withoutPlaceholderCodes(outcome?.findings ?? []).map((f) => [f.code, f.value])).toEqual([['W-MWST-CODE-RATE', '311']]);
+    const protocol = readFileSync(join(exportsOf(swapped), BSP, '2026-09', 'ABACUS_Buchungen_20260901-20260930_BSP.protokoll.txt'), 'utf8');
+    expect(protocol).toContain('line 3 of the mapping file: the MWST-Code 311 is configured for the Normalsatz at 8.1 % (abacus.mwstCodes.normal), but the row books it at 10 %');
+  });
 });
 
 describe('plausibility checks in the pipeline', () => {
@@ -202,8 +222,9 @@ describe('plausibility checks in the pipeline', () => {
     };
     const [outcome] = await run(setup, {}, sideBug);
     expect(outcome?.status).toBe('failed');
-    expect(outcome?.findings[0]?.code).toBe('E-ACCOUNT-BALANCE');
-    expect(outcome?.findings[0]?.message).toMatch(/^on 2026-09-14 account \d+ moves -?\d+\.\d\d in the bookings, but the apaleo lines mapped to it move .* \(Soll positive, Haben negative\)/);
+    const [first] = withoutPlaceholderCodes(outcome?.findings ?? []);
+    expect(first?.code).toBe('E-ACCOUNT-BALANCE');
+    expect(first?.message).toMatch(/^on 2026-09-14 account \d+ moves -?\d+\.\d\d in the bookings, but the apaleo lines mapped to it move .* \(Soll positive, Haben negative\)/);
     expect(existsSync(exportsOf(setup))).toBe(false);
   });
 
@@ -236,8 +257,9 @@ describe('plausibility checks in the pipeline', () => {
     const [outcome] = await run(setup);
     expect(setup.fake.calls.filter((call) => call.startsWith('getAccountTotals'))).toHaveLength(30);
     expect(outcome?.status).toBe('written');
-    expect(outcome?.findings.map((f) => [f.code, f.value])).toEqual([['W-AGGREGATE-DIFF', 'RevenueAccommodation_VeryReduced:10.00']]);
-    expect(outcome?.findings[0]?.message).toContain("on 2026-09-15 apaleo's daily aggregate for account RevenueAccommodation_VeryReduced:10.00 (Revenues) has the balance -1.00");
+    const findings = withoutPlaceholderCodes(outcome?.findings ?? []);
+    expect(findings.map((f) => [f.code, f.value])).toEqual([['W-AGGREGATE-DIFF', 'RevenueAccommodation_VeryReduced:10.00']]);
+    expect(findings[0]?.message).toContain("on 2026-09-15 apaleo's daily aggregate for account RevenueAccommodation_VeryReduced:10.00 (Revenues) has the balance -1.00");
   });
 
   it('with checks.aggregates, blocks the part with a hint when apaleo refuses the aggregates', async () => {
@@ -247,8 +269,9 @@ describe('plausibility checks in the pipeline', () => {
     };
     const [outcome] = await run(setup);
     expect(outcome?.status).toBe('failed');
-    expect(outcome?.findings[0]?.code).toBe('E-AGGREGATE-CHECK');
-    expect(outcome?.findings[0]?.message).toContain('core.subledger_aggregate.create, or set checks.aggregates: false');
+    const [first] = withoutPlaceholderCodes(outcome?.findings ?? []);
+    expect(first?.code).toBe('E-AGGREGATE-CHECK');
+    expect(first?.message).toContain('core.subledger_aggregate.create, or set checks.aggregates: false');
   });
 });
 

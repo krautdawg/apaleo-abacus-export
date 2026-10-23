@@ -8,7 +8,7 @@ import { FindingsError, UserError } from '../core/errors.js';
 import { isErrorFinding, type Finding } from '../core/findings.js';
 import type { LedgerLine, SourceAdapter, SourceProperty } from '../core/source.js';
 import { abacusTarget } from '../abacus/target.js';
-import { checkCoverage, loadMapping, type Mapping } from '../mapping/index.js';
+import { checkCoverage, checkUsedMwstCodes, loadMapping, type Mapping } from '../mapping/index.js';
 import { buildBookings, releaseRateOf, taxByRate, type PostedBooking, type PostingOptions, type PostingResult } from '../posting/index.js';
 import { checkAggregates, plausibilityFindings } from './checks.js';
 import { monthFolder, planOutput, repairCompanions, sha256, writeOutput, type OutputPlan, type WrittenFile } from './output.js';
@@ -207,10 +207,13 @@ async function exportPart(part: PeriodPart, inputs: PropertyInputs, request: Exp
     const { abacus, posting } = deps.loaded.config;
     const options: PostingOptions = { ...posting, mwstCodes: abacus.mwstCodes };
 
-    const coverage = checkCoverage(mapping, lines, chart, { rateOf: releaseRateOf(lines, chart), mwstCodes: abacus.mwstCodes });
+    const coverageOptions = { rateOf: releaseRateOf(lines, chart), mwstCodes: abacus.mwstCodes };
+    const coverage = checkCoverage(mapping, lines, chart, coverageOptions);
+    // A swapped or unknown MWST-Code passes the posting guard (it compares rates only), and scheduled runs never call mapping check.
+    const usedCodes = checkUsedMwstCodes(mapping, lines, chart, coverageOptions);
     result = (deps.post ?? buildBookings)(lines, mapping, chart, options);
     // The posting rules repeat the coverage check's E-UNMAPPED findings.
-    findings.push(...coverage, ...result.findings.filter((finding) => finding.code !== 'E-UNMAPPED'));
+    findings.push(...coverage, ...usedCodes, ...result.findings.filter((finding) => finding.code !== 'E-UNMAPPED'));
     // The plausibility checks assume a clean posting run; with errors the part fails anyway.
     if (!hasError(findings)) findings.push(...plausibilityFindings(lines, result, { mapping, chart, movements: (booking) => target.movements(booking) }));
     if (deps.loaded.config.checks.aggregates) findings.push(...(await aggregateFindings(deps.source, inputs.id, part, lines, chart)));

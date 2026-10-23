@@ -9,7 +9,7 @@ import { abacusTarget, createAbacusTarget, settingsFromConfig } from '../../src/
 import type { PostedBooking } from '../../src/posting/index.js';
 import { BSP, FIXTURE_FILES, createApaleoContext, createFixtureSource } from '../helpers/apaleo.js';
 import { VIE_MAPPING } from '../helpers/live-mapping.js';
-import { BEISPIEL_MAPPING_TEXT, exportSetup, latePosting, type ExportSetup } from '../helpers/export.js';
+import { BEISPIEL_MAPPING_TEXT, exportSetup, latePosting, withoutPlaceholderCodes, type ExportSetup } from '../helpers/export.js';
 
 /**
  * The output folder logic must work for any target, not only Abacus: a fake
@@ -130,9 +130,10 @@ describe.each(CONTRACT_CASES)('the export through a TargetWriter: %s', (_label, 
     const outcome = await run(setup);
     expect(outcome.status).toBe('failed');
     expect(errorCodes(outcome)).toEqual(['E-PERIOD-OVERLAP']);
-    expect(outcome.findings[0]?.message).toContain(`${name('20260901', '20260915')} already covers some of the days`);
-    expect(outcome.findings[0]?.message.endsWith(` ${target.advice.overlap}`)).toBe(true);
-    expect(outcome.findings[0]?.message).not.toMatch(/DATEV|datev\./);
+    const [overlap] = withoutPlaceholderCodes(outcome.findings);
+    expect(overlap?.message).toContain(`${name('20260901', '20260915')} already covers some of the days`);
+    expect(overlap?.message.endsWith(` ${target.advice.overlap}`)).toBe(true);
+    expect(overlap?.message).not.toMatch(/DATEV|datev\./);
     expect(existsSync(join(folderOf(setup), FILE))).toBe(false);
   });
 
@@ -143,9 +144,10 @@ describe.each(CONTRACT_CASES)('the export through a TargetWriter: %s', (_label, 
     const refused = await run(setup);
     expect(refused.status).toBe('failed');
     expect(errorCodes(refused)).toEqual(['E-FILE-EXISTS']);
-    expect(refused.findings[0]?.message).toContain(`${target.advice.reimport} Then run again with --overwrite`);
-    expect(refused.findings[0]?.message).toMatch(new RegExp(`the old file is kept as <name>\\.replaced-<timestamp>\\${extension}\\.$`));
-    expect(refused.findings[0]?.message).not.toMatch(/DATEV|datev\.|Festschreibung/);
+    const [exists] = withoutPlaceholderCodes(refused.findings);
+    expect(exists?.message).toContain(`${target.advice.reimport} Then run again with --overwrite`);
+    expect(exists?.message).toMatch(new RegExp(`the old file is kept as <name>\\.replaced-<timestamp>\\${extension}\\.$`));
+    expect(exists?.message).not.toMatch(/DATEV|datev\.|Festschreibung/);
 
     const replaced = await run(setup, { overwrite: true });
     expect(replaced.status).toBe('replaced');
@@ -284,7 +286,8 @@ describe('the checks and the summary do not depend on the target (recorded VIE d
     expect(fake.summary).toContain('FAKE import:\n  29 lines\n');
     expect(standard.summary).toContain('  Bookings: 29 Einzelbuchungen (one Transaction each)');
     expect(fake.findings).toEqual(standard.findings);
-    expect(fake.findings.map((f) => f.code)).toEqual([]);
+    expect(withoutPlaceholderCodes(fake.findings).map((f) => f.code)).toEqual([]);
+    expect(fake.findings.map((f) => f.value).sort()).toEqual(['V10', 'V13', 'V20']);
     expect(fake.summary).toContain('Deposits: received 491.00, released 295.00, of it refunded 10.00');
   });
 });

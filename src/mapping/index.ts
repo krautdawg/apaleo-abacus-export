@@ -1,4 +1,4 @@
-export { SWISS_VAT_RATES, checkCoverage, checkMapping, type CheckMappingOptions, type CoverageOptions } from './check.js';
+export { SWISS_VAT_RATES, USED_ROW_MWST_WARNINGS, checkCoverage, checkMapping, checkUsedMwstCodes, type CheckMappingOptions, type CoverageOptions } from './check.js';
 export { CARRIED_OVER_COMMENT, carryOverAccounts, connectorKey, parseConnectorExport, type CarriedOver, type ConnectorAccount } from './connector-export.js';
 export { appendRows, mappingHeaderComment, newRows, renderMappingFile } from './file.js';
 export { KMU_SAMPLE_CODES, type SampleCode } from './kmu-sample-codes.js';

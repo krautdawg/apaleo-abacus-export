@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChartIndex } from '../../src/core/chart.js';
 import type { LedgerLine } from '../../src/core/source.js';
-import { checkCoverage, checkMapping, rowRate, type CheckMappingOptions, type CoverageOptions, type Mapping, type MappingRowValues } from '../../src/mapping/index.js';
+import { checkCoverage, checkMapping, checkUsedMwstCodes, rowRate, type CheckMappingOptions, type CoverageOptions, type Mapping, type MappingRowValues } from '../../src/mapping/index.js';
 import { releaseRateOf } from '../../src/posting/index.js';
 import { BSP, loadBeispielData } from '../helpers/apaleo.js';
 import { FakeSource } from '../helpers/fake-source.js';
@@ -397,5 +397,51 @@ describe('checkCoverage', () => {
     const line = ledgerLine({ credit: { number: ACC38, name: 'Accommodation', type: 'Revenues' }, grossCents: 20_760, netCents: 20_000, taxes: t38(760) });
     expect(coverage(mapping, [line])).toEqual([]);
     expect(codes(checkMapping(mapping))).toEqual(['E-VAT-MISMATCH']);
+  });
+});
+
+describe('checkUsedMwstCodes', () => {
+  const RECEIVABLES = mappingRow({ apaleoAccount: '*', apaleoType: 'Receivables', abacusAccount: '1101' });
+  const credit = { number: ACC38, name: 'Logis', type: 'Revenues' };
+  const logis = ledgerLine({ credit, grossCents: 20_760, netCents: 20_000, taxes: [tax('Special', 3.8, 760)] });
+  const used = (rows: MappingRowValues[], ledger: LedgerLine[] = [logis], options: Partial<CoverageOptions> = {}) =>
+    checkUsedMwstCodes(mappingOf(rows), ledger, undefined, { rateOf: releaseRateOf(ledger, undefined), ...options });
+
+  it('Swapped codes: 311 on the 3.8 % accommodation row that a line uses warns W-MWST-CODE-RATE, although the posting guard passes it', () => {
+    const findings = used([RECEIVABLES, revenue({ mwstCode: '311' })]);
+    expect(findings.map((f) => [f.code, f.value])).toEqual([['W-MWST-CODE-RATE', '311']]);
+    expect(findings[0]?.message).toBe(
+      'line 3 of the mapping file: the MWST-Code 311 is configured for the Normalsatz at 8.1 % (abacus.mwstCodes.normal), but the row books it at 3.8 %. Check that the codes are not swapped',
+    );
+  });
+
+  it('Vorsteuer code: 111 on a used row warns W-MWST-CODE-UNCHECKED with the Ziffer of the KMU sample', () => {
+    const [finding] = used([RECEIVABLES, revenue({ mwstCode: '111' })]);
+    expect(finding?.code).toBe('W-MWST-CODE-UNCHECKED');
+    expect(finding?.message).toContain('it is a Vorsteuer code, but apaleo lines are sales');
+  });
+
+  it('reports only the rows the lines resolve to, and nothing for the configured codes at their own rate', () => {
+    const unused = mappingRow({ apaleoAccount: 'RevenueOther_Normal:8.10', apaleoType: 'Revenues', apaleoVatPercent: '8.1', abacusAccount: '3200', mwstCode: '313', mwstPercent: '8.1' });
+    expect(used([RECEIVABLES, revenue(), unused])).toEqual([]);
+    expect(codes(checkMapping(mappingOf([RECEIVABLES, revenue(), unused])))).toEqual(['W-MWST-CODE-RATE']);
+  });
+
+  it('gives one finding per warning that names every row it concerns, and checks against abacus.mwstCodes', () => {
+    const deposits = mappingRow({ apaleoAccount: '*', apaleoType: 'Liabilities', apaleoVatPercent: '3.8', abacusAccount: '2030', mwstCode: 'V38', mwstPercent: '3.8' });
+    const prepayment = ledgerLine({
+      debit: { number: '1090', name: 'Visa', type: 'Payments' },
+      credit: { number: 'BSP-X-1_Liabilities', name: 'Liabilities', type: 'Liabilities' },
+      command: 'PostPrepayment',
+      grossCents: 20_760,
+      netCents: 20_000,
+      taxes: [tax('Special', 3.8, 760)],
+    });
+    const visa = mappingRow({ apaleoAccount: '1090', apaleoType: 'Payments', abacusAccount: '1090' });
+    const rows = [RECEIVABLES, revenue({ mwstCode: 'V38' }), deposits, visa];
+    const findings = used(rows, [logis, prepayment]);
+    expect(findings.map((f) => [f.code, f.value])).toEqual([['W-MWST-CODE-UNCHECKED', 'V38']]);
+    expect(findings[0]?.message).toMatch(/^lines 3, 4 of the mapping file: the tool does not know the MWST-Code V38 /);
+    expect(used(rows, [logis, prepayment], { mwstCodes: { normal: 'V81', reduziert: 'V26', beherbergung: 'V38' } })).toEqual([]);
   });
 });

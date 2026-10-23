@@ -37,7 +37,11 @@ async function exportDemoData(): Promise<{ file: Buffer; protocol: Buffer }> {
   const period = { from: '2026-09-01', to: '2026-09-30' } as const;
   const [outcome] = await runExport({ period, propertyIds: [DEMO_PROPERTY], dryRun: false, overwrite: false }, { loaded, source: createSource(loaded, ctx), ctx });
   expect(outcome?.status).toBe('written');
-  expect(outcome?.findings).toEqual([]);
+  // Until a06 brings Swiss demo data, the demo mapping books 10 and 20 % with the placeholder codes V10 and V20.
+  expect(outcome?.findings.map((f) => [f.code, f.value])).toEqual([
+    ['W-MWST-CODE-UNCHECKED', 'V10'],
+    ['W-MWST-CODE-UNCHECKED', 'V20'],
+  ]);
   const folder = join(ctx.cwd, 'demo-output', DEMO_PROPERTY, '2026-09');
   return { file: readFileSync(join(folder, FILE)), protocol: readFileSync(join(folder, PROTOCOL)) };
 }

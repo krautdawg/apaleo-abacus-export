@@ -42,7 +42,9 @@ describe('apaleo-abacus export --demo', () => {
       'Deposits: received 395.00, released 395.00, of it refunded 10.00',
       'Accounts receivable (Debitoren, Soll positive): 115.00',
       'both sides on the same Abacus account      5            325.70',
-      'Findings:\n  none',
+      // Until a06 brings Swiss demo data, the demo mapping books 10 and 20 % with the placeholder codes V10 and V20.
+      'Findings:\n  W-MWST-CODE-UNCHECKED (mwst_code): lines 3, 6, 15, 33 of the mapping file: the tool does not know the MWST-Code V10 ',
+      '  W-MWST-CODE-UNCHECKED (mwst_code): line 7 of the mapping file: the tool does not know the MWST-Code V20 ',
     ]) {
       expect(out).toContain(text);
     }

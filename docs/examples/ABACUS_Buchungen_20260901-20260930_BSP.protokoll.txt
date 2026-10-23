@@ -60,7 +60,8 @@ Skipped lines:
   both sides on the same Abacus account      5            325.70
 
 Findings:
-  none
+  W-MWST-CODE-UNCHECKED (mwst_code): lines 3, 6, 15, 33 of the mapping file: the tool does not know the MWST-Code V10 (it checks only the configured abacus.mwstCodes 311, 312 and 313). Confirm with your Treuhänder that it is an Umsatzsteuer code of the Mandant's MWST-Tabelle
+  W-MWST-CODE-UNCHECKED (mwst_code): line 7 of the mapping file: the tool does not know the MWST-Code V20 (it checks only the configured abacus.mwstCodes 311, 312 and 313). Confirm with your Treuhänder that it is an Umsatzsteuer code of the Mandant's MWST-Tabelle
 
 File: ABACUS_Buchungen_20260901-20260930_BSP.xml
 SHA-256: a11aabbecca418537c0595c7a8d3a3c8ee4bf727729c7bfc4bb524b432ce9397

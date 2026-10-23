@@ -36,6 +36,17 @@ For each property and month the export SHALL run the mapping coverage check, the
 - **WHEN** property BSP has an unmapped booked account and property BSP2 is fully mapped
 - **THEN** no file is written for BSP, the file for BSP2 is written, `E-UNMAPPED` is printed for BSP, and the exit code is 1
 
+### Requirement: MWST-Code warnings for the rows a month uses
+For each property and month, the export and `schedule --once` SHALL report the `mapping check` warnings `W-MWST-CODE-RATE` and `W-MWST-CODE-UNCHECKED` for the mapping rows the month's ledger lines resolve to, one finding per warning naming every mapping line it concerns, in the dry run, the CLI output and the protocol, because the posting guard compares rates only and scheduled runs never call `mapping check`. These warnings SHALL NOT block the file, and rows the month does not use SHALL NOT be reported.
+
+#### Scenario: Swapped MWST-Code on a used row
+- **WHEN** the 3.8 % accommodation row maps to `3400` with MWST-Code `311` (configured as the Normalsatz, 8.1 %) at 3.8 and a month books accommodation at 3.8 %
+- **THEN** the file is written, and the output and the protocol carry `W-MWST-CODE-RATE` naming the mapping line, the code `311` and both rates
+
+#### Scenario: Unused row with an unknown code
+- **WHEN** a row with an MWST-Code that is not in `abacus.mwstCodes` is not reached by any line of the month
+- **THEN** the export names no `W-MWST-CODE-UNCHECKED` for that row (`mapping check` still does)
+
 ### Requirement: Plausibility checks
 The export SHALL verify that the absolute gross of all ledger lines equals the sum over booked and skipped lines; that per business day the signed movement of each mapped target account in the bookings, as the target's movement model gives it (Abacus: the Collective account by the gross amount and the Single account by the gross amount minus the tax, each signed by its side from `DebitCredit`; the tax leg on the MWST account is not part of this check), equals the signed apaleo movement of the booked lines mapped to it (the gross amount on the side without MWST, the gross amount minus apaleo's rounded tax on the VAT side); and that per rate the tax amounts in the bookings equal the sum of apaleo's per-line tax rounded to Rappen of the booked lines of that rate, apart from tax amounts of deposit releases computed from a chart rate (`W-VAT-INFERRED`); violations SHALL be errors. The `E-VAT-TOTAL` message SHALL also name apaleo's precise VAT total of the rate and the line-rounding difference; the difference between the tax per booking and apaleo's precise total SHALL never be an error by itself. When `checks.aggregates` is true (default false), it SHALL call apaleo's daily aggregates once per business day and compare each listed account's balance (debit minus credit) with the signed sum of that day's ledger lines: a side on a global chart account counts for that account, any other side for its main account; Revenues and Liabilities sides count with their precise net amount, all other types with their gross amount; each tax of a line with a Revenues side counts for the chart's `Vat` account of that VAT type and rate, and of a line with a Liabilities side for the `VatOnLiabilities` account, signed like that side; both balances are rounded to cents only for the comparison. A difference SHALL be reported as a warning. The aggregate comparison SHALL depend only on the ledger lines and the chart, never on the bookings of a target.
 

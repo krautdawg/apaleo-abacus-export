@@ -159,7 +159,7 @@ describe('Abacus booking validation', () => {
     const many = Array.from({ length: 1_000_000 }, () => payment());
     expect(validateBookings(many, abacusOptions()).map((f) => f.code)).toEqual(['E-ABACUS-BELEGNR']);
     expect(validateBookings(many.slice(1), abacusOptions())).toEqual([]);
-  });
+  }, 30_000); // a million bookings: well over the 5 s default when the whole suite runs in parallel
 
   it('a booking without MWST needs no tax fields', () => {
     expect(codes([withoutTax(accommodation())])).toEqual([]);
