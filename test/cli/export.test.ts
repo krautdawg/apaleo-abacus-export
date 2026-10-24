@@ -77,7 +77,7 @@ describe('apaleo-abacus export', () => {
     expect(protocol).toContain('Import into Abacus FIBU (compare with the Mandant before importing, see docs/abacus-format.md):');
     expect(protocol).toContain(`  File: ${FILE}`);
     expect(protocol).toContain(`SHA-256: ${sha256(file)}`);
-    expect(protocol).toContain('Tool: apaleo-abacus 0.0.0');
+    expect(protocol).toContain('Tool: apaleo-abacus 0.1.0');
   });
 
   it('Protocol names the Mandant: the import block and the manifest entry name Mandant 1234 and Geschäftsbereich 2', async () => {

@@ -8,6 +8,8 @@ Die Geschichte von apaleo-abacus-export beginnt hier. Das Projekt ist eine Kopie
 
 ## [Unveröffentlicht]
 
+## [0.1.0] - 2026-10-24
+
 ### Hinzugefügt
 
 - **Abacus XML Buchungen** (a02, a03): `export` schreibt pro Hotel und Monat `ABACUS_Buchungen_<von>-<bis>_<Hotel>.xml` für die Abacus Finanzbuchhaltung (AbaConnect «XML Buchungen», Application FIBU, eine Einzelbuchung pro Buchung). Die Seite mit MWST-Code steht in `SingleInformation` mit dem Bruttobetrag und der MWST aus apaleo in `TaxData`, `DebitCredit` ist die Seite der `CollectiveInformation`, die Kostenstelle steht nur auf Erlös- und Debitorenverlustbuchungen, `Text2` kommt aus `posting.text2`. Der Writer prüft jedes Feld vor dem Schreiben (`E-ABACUS-*`) und escapt und rückt das XML selbst ein, ohne XML-Bibliothek. Der neue Abschnitt `abacus` der Konfiguration nennt Mandant, Leitwährung, Abrechnungsart, Version der Schnittstelle, Steuer- und Hilfskonto, MWST-Codes und Geschäftsbereich.
@@ -29,3 +31,6 @@ Die Geschichte von apaleo-abacus-export beginnt hier. Das Projekt ist eine Kopie
 
 - **BMD Buchungsimport** (a03, a04): der BMD-Writer (`src/bmd/`), die Befunde `E-BMD-*` und `N-BMD-*`, `docs/bmd-format.md` und `docs/bmd-import.md`.
 - **EKR-Vorlage** (a03, a04): `init-mapping --template ekr`, `templates/ekr-hotel.rules.csv`, die Sach- und Personenkontenlänge, die Buchungssymbole und die österreichischen Steuercodes.
+
+[Unveröffentlicht]: https://github.com/krautdawg/apaleo-abacus-export/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/krautdawg/apaleo-abacus-export/releases/tag/v0.1.0

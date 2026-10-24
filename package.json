@@ -1,6 +1,6 @@
 {
   "name": "apaleo-abacus-export",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Free open-source export from the apaleo hotel PMS to Abacus Finanzbuchhaltung (AbaConnect XML Buchungen) for Swiss hotels.",
   "private": true,
   "license": "MIT",

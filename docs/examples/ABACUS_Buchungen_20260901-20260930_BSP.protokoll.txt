@@ -73,5 +73,5 @@ Findings:
 File: ABACUS_Buchungen_20260901-20260930_BSP.xml
 SHA-256: 20992d81a76cf8a272facf2303062b6592bc045cc74275a3c4e78fcbfd68c587
 Mapping SHA-256: 9180aa66b7ba81e05263ec6ccc75fc2022c372ddc2a051db5b51c1a1bfde25fb
-Tool: apaleo-abacus 0.0.0
+Tool: apaleo-abacus 0.1.0
 Created: 2026-10-05T08:00:00.000Z
