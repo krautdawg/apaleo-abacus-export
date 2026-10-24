@@ -148,9 +148,9 @@ Im apaleo Store gibt es einen kostenpflichtigen Abacus-Connector. Die Tabelle ve
 | Einrichtung | Oberfläche des Anbieters | Konfigurationsdatei und Kontenzuordnung (CSV) |
 | Zustellung der Dateien | per E-Mail oder in einen Cloud-Speicher | lokaler Ordner; du gibst die Datei deinem Treuhänder |
 | Direktimport in Abacus | je nach Variante | nein, dein Treuhänder importiert die Datei |
-| Debitoren-Schnittstelle | je nach Variante | keine in Version 1, ein Sachkonto für Firmenrechnungen |
+| Debitoren-Schnittstelle | eigene Schnittstelle (DEBI-XML) | keine in Version 1, ein Sachkonto für Firmenrechnungen |
 | Support | Support des Anbieters | Community, ohne Garantie |
-| Vorlagen für die Zuordnung | unterschiedlich | Vorschläge nach dem KMU-Kontenrahmen, geprüft von deinem Treuhänder |
+| Vorlagen für die Zuordnung | Zuordnung pro Hotel in der Oberfläche des Anbieters | Vorschläge nach dem KMU-Kontenrahmen, geprüft von deinem Treuhänder |
 
 Selbst betreiben heisst: Du behältst die Daten und zahlst nichts, aber du spielst Updates ein, behältst die geplanten Läufe im Blick, gibst die Dateien selbst an deinen Treuhänder weiter und löst Probleme selbst oder mit einem technischen Helfer. Kann das niemand übernehmen, ist ein bezahlter Connector vielleicht die bessere Wahl.
 
