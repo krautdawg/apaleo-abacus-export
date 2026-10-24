@@ -5,14 +5,15 @@ import { parse } from 'yaml';
 import { COMMANDS } from '../src/cli/commands/index.js';
 import { ENV_OVERRIDES, SECRET_KEYS } from '../src/core/config.js';
 import { APALEO_PERMISSIONS } from '../src/sources/apaleo/index.js';
-import { ROOT, checkCompatibilityClaims, commandPhrases, configPaths, readRepoFile, recordedTestImports } from './helpers/docs.js';
+import { ROOT, checkCompatibilityClaims, checkPracticeTerms, commandPhrases, configPaths, readRepoFile, recordedTestImports } from './helpers/docs.js';
 
 const README = readRepoFile('README.md');
 const ENGLISH_README = readRepoFile('README.en.md');
 const MAINTAINERS = readRepoFile('docs/maintainers.md');
-const GERMAN_TAGLINE = 'Kostenloser apaleo BMD Export: Buchungsimport für BMD NTCS aus apaleo, Open Source';
-const PRICE = '18-51 EUR pro Monat (je nach Anbieter und Anzahl der Betriebe), laut apaleo Store, Oktober 2026';
-const PENDING_IMPORT = 'Die Datei folgt der dokumentierten AbaConnect-Schnittstelle „XML Buchungen“; ein erster Testimport mit einem Treuhänder steht noch aus.';
+const GERMAN_TAGLINE = 'Kostenloser apaleo Abacus Export: XML-Buchungsimport für die Abacus Finanzbuchhaltung aus apaleo, Open Source';
+const PRICE = '24-48 EUR pro Monat (je nach Variante und Anzahl der Betriebe), laut apaleo Store, Oktober 2026';
+const PENDING_IMPORT = 'Die Datei folgt der dokumentierten AbaConnect-Schnittstelle «XML Buchungen»; ein erster Testimport mit einem Treuhänder steht noch aus.';
+const ORIGIN_PROJECTS = ['](https://github.com/krautdawg/apaleo-bmd-export)', '](https://github.com/krautdawg/apaleo-datev-export)'];
 /** The install block of the German quick start (s09 design decision 3), which CI runs. */
 const INSTALL_BLOCK = [
   'git clone https://github.com/krautdawg/apaleo-abacus-export.git',
@@ -47,13 +48,13 @@ describe('README first screen', () => {
   it('opens with the H1, the link to the English README, the tagline, badges, the intro and the disclaimer notice before any install detail', () => {
     const [title = '', ...rest] = README.split('\n');
     expect(title).toMatch(/^# /);
-    for (const term of ['apaleo BMD Export', 'kostenlos', 'Open Source']) expect(title).toContain(term);
+    for (const term of ['apaleo Abacus Export', 'kostenlos', 'Open Source']) expect(title).toContain(term);
     expect(rest.find((line) => line.trim() !== '')).toContain('](README.en.md)');
     expect(firstScreen).toContain(GERMAN_TAGLINE);
     for (const badge of ['actions/workflows/ci.yml/badge.svg', 'licence-MIT', 'node.js-24']) expect(firstScreen).toContain(badge);
-    expect(firstScreen).toMatch(/apaleo-abacus-export ist .*Hotels in Österreich.*Kanzlei/);
+    expect(firstScreen).toMatch(/apaleo-abacus-export ist .*Hotels in der Schweiz.*Treuhänder/);
     expect(firstScreen).toContain('Keine Gewähr, keine Steuerberatung');
-    expect(firstScreen).toContain('Lass deine Kontenzuordnung von deiner Steuerberatung prüfen');
+    expect(firstScreen).toContain('Lass deine Kontenzuordnung von deinem Treuhänder prüfen');
     expect(firstScreen).toContain('](DISCLAIMER.md)');
     expect(firstScreen).not.toContain('git clone');
     expect(headings(README, '##')[0]).toBe('Was es macht');
@@ -61,9 +62,11 @@ describe('README first screen', () => {
   });
 
   it('uses the search terms people use in the title, tagline and intro', () => {
-    for (const term of ['apaleo', 'BMD', 'BMD NTCS', 'BMD-Export', 'Buchungsimport', 'Einheitskontenrahmen', 'EKR', 'Steuerberater', 'Buchhaltung', 'Hotel', 'Österreich', 'Open Source', 'kostenlos']) {
-      expect(firstScreen.toLowerCase(), term).toContain(term.toLowerCase());
+    const firstLines = firstScreen.split('**Stand:**')[0] ?? '';
+    for (const term of ['apaleo', 'Abacus', 'Abacus Finanzbuchhaltung', 'Abacus-Export', 'AbaConnect', 'XML Buchungen', 'MWST', 'KMU-Kontenrahmen', 'Treuhänder', 'Buchhaltung', 'Hotel', 'Schweiz', 'Open Source', 'kostenlos']) {
+      expect(firstLines.toLowerCase(), term).toContain(term.toLowerCase());
     }
+    expect(firstLines).not.toMatch(/\bBMD\b|DATEV|Österreich|Kanzlei/);
   });
 
   it('Pending test import: says on the first screen that the file follows the documented layout and the first test import is pending', () => {
@@ -139,14 +142,17 @@ describe('README scope and comparison', () => {
   it('says what the tool does not do', () => {
     const limits = section(README, '## Was es nicht macht');
     for (const phrase of [
-      'Keine Übertragung an BMD und kein BMD Com',
-      'Keine Personenkonten-Stammdaten',
+      'Keine Übertragung in Abacus und kein AbaConnect-Webservice',
+      'Keine Debitorenbuchhaltung (DEBI) und keine Kundenstammdaten',
+      'Keine PDF-Belege',
       'Gebühren der Zahlungsdienstleister',
       'Rückbuchungen (Chargebacks)',
       'Provisionen der Buchungsportale',
+      'Keine Saldosteuersatz- und keine Pauschalsteuersatzmethode',
+      'ohne Umrechnung',
       'Weboberfläche',
       'gehosteter Dienst',
-      'keine anderen Zielformate wie DATEV oder RZL',
+      'keine anderen Zielformate wie DATEV oder BMD',
     ]) {
       expect(limits).toContain(phrase);
     }
@@ -156,28 +162,59 @@ describe('README scope and comparison', () => {
     const table = section(README, '## Vergleich mit kostenpflichtigen Connectoren');
     const rows = [...table.matchAll(/^\| ([^|]+?) \|/gm)].map((m) => m[1]?.trim());
     expect(rows).toEqual(
-      expect.arrayContaining(['Preis', 'Betrieb', 'Einrichtung', 'Zustellung der Dateien', 'Personenkonten-Datei', 'Gebühren aus Abrechnungsdateien', 'Support', 'Vorlagen für die Zuordnung']),
+      expect.arrayContaining(['Preis', 'Betrieb', 'Einrichtung', 'Zustellung der Dateien', 'Direktimport in Abacus', 'Debitoren-Schnittstelle', 'Support', 'Vorlagen für die Zuordnung']),
     );
     expect(table).toContain(PRICE);
-    expect(table).toContain('Selbst betreiben heißt');
-    for (const vendor of ['grman', 'hotecholution', 'omniboost', 'bmd connector', 'datev connector']) {
+    expect(table).toContain('Selbst betreiben heisst');
+    for (const vendor of ['grman', 'hotecholution', 'omniboost', 'xconnect', 'abacus connector by', 'bmd connector', 'datev connector']) {
       expect(README.toLowerCase(), vendor).not.toContain(vendor);
       expect(ENGLISH_README.toLowerCase(), vendor).not.toContain(vendor);
     }
   });
 
-  it('names the origin project in one sentence and links it for DATEV users', () => {
-    const origin = README.split('\n').filter((line) => line.includes('apaleo-datev-export'));
+  it('names the origin projects in one sentence and links both for BMD and DATEV users', () => {
+    const origin = README.split('\n').filter((line) => /^apaleo-abacus-export baut auf .* auf/.test(line));
     expect(origin).toHaveLength(1);
-    expect(origin[0]).toContain('](https://github.com/krautdawg/apaleo-datev-export)');
-    expect(origin[0]).toMatch(/wer .*mit DATEV bucht/);
+    for (const link of ORIGIN_PROJECTS) expect(origin[0]).toContain(link);
+    expect(origin[0]).toMatch(/wer .*mit BMD .*mit DATEV bucht/);
   });
+});
 
-  it('answers the FAQ questions', () => {
-    const faq = section(README, '## Häufige Fragen');
-    for (const topic of ['Was kostet es', 'Wohin gehen meine Daten', 'direkt an Abacus', 'Testimport', 'rückgängig', 'Mehrere Hotels', 'wechseln', 'BMD 5.5', 'DATEV']) {
+describe('README FAQ', () => {
+  const faq = section(README, '## Häufige Fragen');
+  const answer = (question: string) => faq.split('\n').find((line) => line.startsWith(`**${question}**`)) ?? '';
+
+  it('FAQ topics tested: answers every topic, naming no vendor', () => {
+    for (const topic of [
+      'Was kostet es',
+      'Wohin gehen meine Daten',
+      'Welche Abacus-Lizenz braucht mein Treuhänder?',
+      'direkt an Abacus',
+      'Testimport',
+      'rückgängig',
+      'Mehrere Hotels',
+      'wechseln',
+      'Saldosteuersatz',
+      'Gibt es das auch für BMD oder DATEV?',
+    ]) {
       expect(faq, topic).toContain(topic);
     }
+    expect(answer('Wohin gehen meine Daten?')).toContain('Nichts ist gehostet');
+    expect(answer('Ich nutze heute einen bezahlten Connector. Kann ich wechseln?')).toContain('](docs/mapping-guide.md#umstieg-von-einem-anderen-connector)');
+    expect(answer('Rechnet mein Hotel mit dem Saldosteuersatz ab?')).toContain('Version 1');
+  });
+
+  it('Treuhänder asks about the licence: one line naming the FIBU with Buchungsschnittstellen (F11/F5534), no partnership, no web service, pending confirmation, linking docs/abacus-import.md', () => {
+    const licence = answer('Welche Abacus-Lizenz braucht mein Treuhänder?');
+    for (const phrase of ['Abacus Finanzbuchhaltung mit Buchungsschnittstellen (F11/F5534)', 'keine Partnerschaft', 'keinen Webservice', 'erste Testimport', '](docs/abacus-import.md)']) {
+      expect(licence, phrase).toContain(phrase);
+    }
+  });
+
+  it('FAQ answer on BMD and DATEV: links both origin projects in one line, which the docs test accepts', () => {
+    const line = answer('Gibt es das auch für BMD oder DATEV?');
+    for (const link of ORIGIN_PROJECTS) expect(line).toContain(link);
+    expect(checkPracticeTerms('README.md', `## Häufige Fragen\n\n${line}\n`)).toEqual([]);
   });
 });
 
@@ -185,7 +222,11 @@ describe('README.en.md', () => {
   it('is a short English README that links the German one, the disclaimer and the licence', () => {
     expect(ENGLISH_README.split('\n').length).toBeLessThanOrEqual(80);
     expect(ENGLISH_README.startsWith('# apaleo-abacus-export\n')).toBe(true);
-    for (const phrase of ['BMD Buchungsimport', 'BMD NTCS', 'a first test import with a Kanzlei is still pending']) expect(ENGLISH_README).toContain(phrase);
+    for (const phrase of ['Abacus Finanzbuchhaltung', 'AbaConnect "XML Buchungen"', 'Swiss hotels', 'a first test import with a Treuhänder is still pending', 'only Swiss MWST rules apply']) {
+      expect(ENGLISH_README).toContain(phrase);
+    }
+    expect(ENGLISH_README).not.toMatch(/\bKanzlei\b|Steuerberater|Austria|BMD NTCS/);
+    expect(ENGLISH_README).toMatch(/docs are|documentation is written in Swiss Standard German/);
     for (const link of ['](README.md)', '](DISCLAIMER.md)', '](LICENSE)']) expect(ENGLISH_README).toContain(link);
     expect(ENGLISH_README).toContain('There is no npm package or container image release yet. You install from source.');
     expect(ENGLISH_README).toMatch(/issues and pull requests in English are welcome/i);
@@ -244,7 +285,7 @@ describe('docs folder', () => {
   it('describes apaleo as tested live: precise amounts, the first live test and the aggregate rule', () => {
     const source = readRepoFile('docs/apaleo-source.md');
     expect(source).toContain('bis zu acht Nachkommastellen');
-    expect(source).toContain('Nur der Bruttobetrag (`grossAmount`) muss ganze Cent sein');
+    expect(source).toContain('Nur der Bruttobetrag (`grossAmount`) muss ganze Rappen sein');
     expect(source).not.toMatch(/ein Betrag, der mehr als 0,0001 von einem ganzen Cent abweicht, stoppt den Export/);
     for (const answer of ['`parentNumber`', '**negativem** Betrag', '`PostPrepaymentVat`', '**Saldo**', '/Offset']) expect(source).toContain(answer);
     const troubleshooting = readRepoFile('docs/troubleshooting.md');
@@ -297,10 +338,10 @@ describe('docs folder', () => {
     const guide = readRepoFile('docs/abacus-import.md');
     for (const phrase of [
       '**F11 Buchen**',
-      '**F5534 „Import/Export Buchungen AbaConnect“**',
-      'Importart **„XML Buchungen“**',
+      '**F5534 «Import/Export Buchungen AbaConnect»**',
+      'Importart **«XML Buchungen»**',
       '**Buchungsschnittstellen**',
-      '**„MWST berechnen“**',
+      '**«MWST berechnen»**',
       'Standard-MWST-Code nehmen, der dem Konto im Kontenplan (F21) hinterlegt ist, statt des MWST-Codes aus der Datei',
       '## Mandant und Geschäftsbereich',
       '`properties[].geschaeftsbereich`',
@@ -373,10 +414,11 @@ describe('docs folder', () => {
   });
 
   it('Going public later: docs/maintainers.md has the "Vor der Veröffentlichung" checklist, starting with the test import', () => {
-    expect(MAINTAINERS).toContain('**niemand außerhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**');
+    expect(MAINTAINERS).toContain('**niemand ausserhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**');
     const checklist = section(MAINTAINERS, '## Vor der Veröffentlichung');
     const steps = checklist.split('\n').filter((line) => /^\d+\. \[ \] /.test(line));
     expect(steps[0]).toMatch(/Testimport in Abacus FIBU.*abacus-import\.md.*\[Testimporte\]\(#testimporte\)/);
+    expect(steps[1]).toMatch(/Schweizer apaleo-Sandbox.*`test\/fixtures\/apaleo\/live\/`/);
     for (const step of ['--visibility public', 'Vorschaubild (Social Preview)', 'Discussions', 'v0.1.0']) expect(checklist).toContain(step);
     expect(checklist).not.toContain('[x]');
   });
@@ -387,20 +429,22 @@ describe('docs folder', () => {
 
   it('plans later only items inside this product, no other target formats and no BMD-only items', () => {
     const backlog = section(MAINTAINERS, '## Später geplant');
-    for (const item of ['Summendatei', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
+    for (const item of ['Saldosteuersatz', 'Debitoren-Schnittstelle', 'Wöchentlicher Rhythmus', 'Sammelbuchung pro Tag', 'Gebühren aus Abrechnungsdateien', 'E-Mail-Versand', 'Dauerprozess mit eigenem Zeitplan', 'Überwachung und Alarme', 'Dependabot', 'Veröffentlichung auf npm oder in einer Registry']) {
       expect(backlog).toContain(item);
     }
     expect(backlog).not.toMatch(/DATEV|RZL|lexoffice|Mews|Smoobu|Zielformat/);
     expect(backlog).not.toMatch(/\bBMD\b|Personenkonten-Datei|BMD Com/);
   });
 
-  it('Metadata applied: lists the Swiss Abacus description and interim topics, no BMD metadata, until a08 sets the final ones', () => {
-    const topics = ['apaleo', 'abacus', 'abaconnect', 'hotel', 'buchhaltung', 'treuhand', 'schweiz', 'switzerland'];
+  it('Metadata applied: records the gh repo edit command with the Swiss description and every topic, removes BMD and DATEV topics and leaves the visibility alone', () => {
+    const topics = ['apaleo', 'abacus', 'abacus-export', 'abaconnect', 'abacus-fibu', 'mwst', 'kmu-kontenrahmen', 'hotel', 'hospitality', 'accounting', 'buchhaltung', 'treuhand', 'switzerland', 'schweiz'];
     const privateSection = section(MAINTAINERS, '## Das Repository ist vorerst privat');
     expect(privateSection).toContain(`--add-topic ${topics.join(',')}`);
-    expect(privateSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*für Hotels in der Schweiz/);
-    expect(privateSection).not.toMatch(/--description "[^"]*\bBMD\b|--add-topic [^\n]*\b(bmd|ekr|austria|oesterreich)\b/);
+    expect(privateSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*Abacus Finanzbuchhaltung .*für Hotels in der Schweiz/);
+    expect(privateSection).toMatch(/--remove-topic [^\n]*\bbmd\b[^\n]*\bdatev\b/);
+    expect(privateSection).not.toMatch(/--description "[^"]*\b(BMD|DATEV)\b|--add-topic [^\n]*\b(bmd|datev|ekr|austria|oesterreich)\b/);
     expect(privateSection).not.toContain('--visibility');
+    expect(privateSection).toContain('gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility');
   });
 });
 

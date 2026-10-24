@@ -1,6 +1,6 @@
 # Buchungsregeln: von apaleo-Zeilen zu Abacus-Buchungen
 
-`buildBookings(lines, mapping, chart, options)` in `src/posting` macht aus den Zeilen von `export-gross-daily` in apaleo die Einzelbuchungen einer Abacus-Datei (AbaConnect „XML Buchungen“). Die Funktion ist rein: Dieselben Zeilen und dieselbe Kontenzuordnung ergeben immer dasselbe Ergebnis. Jede apaleo-Zeile landet an genau einer von drei Stellen: in einer Buchung, in der Liste der übersprungenen Zeilen (mit Grund und Betrag) oder in einem Befund mit `E-`, der den Export blockiert.
+`buildBookings(lines, mapping, chart, options)` in `src/posting` macht aus den Zeilen von `export-gross-daily` in apaleo die Einzelbuchungen einer Abacus-Datei (AbaConnect «XML Buchungen»). Die Funktion ist rein: Dieselben Zeilen und dieselbe Kontenzuordnung ergeben immer dasselbe Ergebnis. Jede apaleo-Zeile landet an genau einer von drei Stellen: in einer Buchung, in der Liste der übersprungenen Zeilen (mit Grund und Betrag) oder in einem Befund mit `E-`, der den Export blockiert.
 
 Keine Gewähr, keine Steuerberatung: Die steuerlichen Entscheidungen stecken in der Kontenzuordnung, und die muss dein Treuhänder freigeben. Die Regeln unten stellen nur sicher, dass Abacus die MWST bucht, die apaleo berechnet hat. Das Tool entscheidet keine Steuerfrage und ändert die MWST von apaleo nie.
 

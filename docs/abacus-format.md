@@ -6,13 +6,13 @@ Keine Gewähr, keine Steuerberatung, lass deine Kontenzuordnung von deinem Treuh
 
 ## Welche Schnittstelle
 
-Das Tool schreibt die AbaConnect-Schnittstelle „XML Buchungen“ der Applikation FIBU mit dem Mapping `AbaDefault`. Das ist die eigene, dokumentierte Dateischnittstelle von Abacus für Buchungen der Finanzbuchhaltung (Versionen 2007.00 bis 2024.00). Dein Treuhänder importiert die Datei ohne Partnerschaft und ohne API-Zugang:
+Das Tool schreibt die AbaConnect-Schnittstelle «XML Buchungen» der Applikation FIBU mit dem Mapping `AbaDefault`. Das ist die eigene, dokumentierte Dateischnittstelle von Abacus für Buchungen der Finanzbuchhaltung (Versionen 2007.00 bis 2024.00). Dein Treuhänder importiert die Datei ohne Partnerschaft und ohne API-Zugang:
 
-- in **F11 Buchen**: Datei in das Buchungsfenster ziehen, die Importmaske öffnet sich, „Start“;
-- in **F5534 „Import/Export Buchungen AbaConnect“** (Hilfsprogramme, Buchungsschnittstellen): auf „Import“ wechseln, Importart „XML Buchungen“, Datei wählen;
-- oder in **F625 AbaConnect** mit „Import XML“ und der Schnittstelle „XML Buchungen“.
+- in **F11 Buchen**: Datei in das Buchungsfenster ziehen, die Importmaske öffnet sich, «Start»;
+- in **F5534 «Import/Export Buchungen AbaConnect»** (Hilfsprogramme, Buchungsschnittstellen): auf «Import» wechseln, Importart «XML Buchungen», Datei wählen;
+- oder in **F625 AbaConnect** mit «Import XML» und der Schnittstelle «XML Buchungen».
 
-Die ältere Schnittstelle „ASCII Buchungen“ endet mit Version 2014.00, die AbaConnect-Webservices brauchen Netzwerkzugang zum Mandanten und eine eigene Lizenz. Beides nutzt das Tool nicht.
+Die ältere Schnittstelle «ASCII Buchungen» endet mit Version 2014.00, die AbaConnect-Webservices brauchen Netzwerkzugang zum Mandanten und eine eigene Lizenz. Beides nutzt das Tool nicht.
 
 ## Container
 
@@ -41,7 +41,7 @@ Jede Datei hat genau einen `Task` mit einem Block `Parameter`:
 
 - `TaskCount` ist immer `1`.
 - `Version` ist die Version der Schnittstelle aus `abacus.version` (Standard `2015.00`; auch `2020.00`, `2022.00` und `2024.00`). Alle Felder, die das Tool schreibt, gibt es seit 2012.00 unverändert. Version 2015.00 markiert mehr Felder als Pflicht, deshalb schreibt das Tool sie immer.
-- `Mandant` ist die Mandantennummer aus `abacus.mandant` (oder `properties[].mandant`). Mit der Importeinstellung „nur Buchungen mit gleicher Mandantennummer“ lehnt Abacus die Datei in einem falschen Mandanten ab.
+- `Mandant` ist die Mandantennummer aus `abacus.mandant` (oder `properties[].mandant`). Mit der Importeinstellung «nur Buchungen mit gleicher Mandantennummer» lehnt Abacus die Datei in einem falschen Mandanten ab.
 - Pro Buchung gibt es eine `Transaction` mit fortlaufender `id` ab 1 und darin ein `Entry`. Ein Monat ohne Buchungen ergibt eine Datei ohne `Transaction`.
 - Jeder Block (`Entry`, `CollectiveInformation`, `SingleInformation`, `AmountData`, `TaxData`) trägt `mode='SAVE'`, wie es die Dokumentation verlangt.
 
@@ -139,19 +139,19 @@ Das Tool bucht Bruttobeträge. `TaxData` sagt Abacus, welcher Anteil davon MWST 
 
 **Vorzeichen.** Die MWST ist negativ, wenn das Gegenkonto der `SingleInformation` im Haben steht (`DebitCredit` `D`, geschuldete Umsatzsteuer), und positiv, wenn es im Soll steht (`C`, zum Beispiel ein Nachlass oder ein Debitorenverlust). Bei Satz 0 ist sie `0.00`. Diese Regel ist eine Annahme bis zum ersten Testimport; sie steht in einer einzigen Funktion `taxSign()` in `src/abacus/format.ts`, und die Prüfung `E-ABACUS-TAX-SIGN` ruft dieselbe Funktion auf.
 
-**TaxAccount.** Die Tabelle der Abacus-Dokumentation (2020, „MWST berechnen“) nennt für eine inklusiv gebuchte Umsatzsteuer: in der `CollectiveInformation` das Steuerkonto des MWST-Codes (vereinbart) oder sein Hilfskonto (vereinnahmt), in der `SingleInformation` das Ertragskonto selbst. Die Standardwerte `2200` und `2202` sind die Konten der MWST-Codes 311, 312 und 313 im KMU-Mustermandanten von Abacus. erpnextswiss schreibt stattdessen das Steuerkonto in die `SingleInformation`; die Konstante `SINGLE_TAX_ACCOUNT` (`account` oder `taxAccount`) stellt das um. Ohne MWST ist `TaxAccount` in beiden Blöcken `0`.
+**TaxAccount.** Die Tabelle der Abacus-Dokumentation (2020, «MWST berechnen») nennt für eine inklusiv gebuchte Umsatzsteuer: in der `CollectiveInformation` das Steuerkonto des MWST-Codes (vereinbart) oder sein Hilfskonto (vereinnahmt), in der `SingleInformation` das Ertragskonto selbst. Die Standardwerte `2200` und `2202` sind die Konten der MWST-Codes 311, 312 und 313 im KMU-Mustermandanten von Abacus. erpnextswiss schreibt stattdessen das Steuerkonto in die `SingleInformation`; die Konstante `SINGLE_TAX_ACCOUNT` (`account` oder `taxAccount`) stellt das um. Ohne MWST ist `TaxAccount` in beiden Blöcken `0`.
 
-**TaxAccount bei Satz 0.** Die Codes mit Satz 0 (400, 490, 491) haben im KMU-Mustermandanten kein Steuerkonto, die Dokumentation von 2020 nennt aber das „Steuerkonto des MWST-Codes“. Das Tool schreibt in der `CollectiveInformation` auch bei diesen Codes `abacus.mwstKonto` (oder `abacus.mwstHilfskonto`); möglich ist, dass Abacus dort `0` erwartet, vor allem ohne „MWST berechnen“, wenn es die MWST-Daten der Datei prüft. Die Konstante `TAX_ACCOUNT_AT_RATE_ZERO` (`taxAccount` oder `zero`) stellt das mit einer Zeile um; der erste Testimport entscheidet (offene Frage 8).
+**TaxAccount bei Satz 0.** Die Codes mit Satz 0 (400, 490, 491) haben im KMU-Mustermandanten kein Steuerkonto, die Dokumentation von 2020 nennt aber das «Steuerkonto des MWST-Codes». Das Tool schreibt in der `CollectiveInformation` auch bei diesen Codes `abacus.mwstKonto` (oder `abacus.mwstHilfskonto`); möglich ist, dass Abacus dort `0` erwartet, vor allem ohne «MWST berechnen», wenn es die MWST-Daten der Datei prüft. Die Konstante `TAX_ACCOUNT_AT_RATE_ZERO` (`taxAccount` oder `zero`) stellt das mit einer Zeile um; der erste Testimport entscheidet (offene Frage 8).
 
-Die MWST rechnet das Tool nicht selbst nach Abacus-Art: Es schreibt die MWST, die apaleo pro Zeile auf den Rappen gerundet hat, damit der Import nicht von der Rundung im Mandanten abhängt. Es prüft aber, dass sie zum Satz passt: Weicht sie um mehr als einen Rappen von `Brutto × Satz / (100 + Satz)` ab, schreibt der Writer keine Datei (`E-ABACUS-TAX-RATE`). Ohne „MWST berechnen“ übernimmt Abacus die MWST nämlich so, wie sie in der Datei steht.
+Die MWST rechnet das Tool nicht selbst nach Abacus-Art: Es schreibt die MWST, die apaleo pro Zeile auf den Rappen gerundet hat, damit der Import nicht von der Rundung im Mandanten abhängt. Es prüft aber, dass sie zum Satz passt: Weicht sie um mehr als einen Rappen von `Brutto × Satz / (100 + Satz)` ab, schreibt der Writer keine Datei (`E-ABACUS-TAX-RATE`). Ohne «MWST berechnen» übernimmt Abacus die MWST nämlich so, wie sie in der Datei steht.
 
 ## MWST berechnen und der MWST-Code eines Kontos in F21
 
-Ohne besondere Einstellung prüft Abacus beim Import jede Buchung auf korrekte MWST und lehnt fehlerhafte ab. Mit der Importoption „MWST berechnen“ (Register Gestaltung in F5534 oder F625) berechnet Abacus fehlende oder fehlerhafte MWST selbst. Abacus empfiehlt diese Option, und das Protokoll des Tools empfiehlt sie auch.
+Ohne besondere Einstellung prüft Abacus beim Import jede Buchung auf korrekte MWST und lehnt fehlerhafte ab. Mit der Importoption «MWST berechnen» (Register Gestaltung in F5534 oder F625) berechnet Abacus fehlende oder fehlerhafte MWST selbst. Abacus empfiehlt diese Option, und das Protokoll des Tools empfiehlt sie auch.
 
-Achtung: Mit „MWST berechnen“ nimmt Abacus laut Dokumentation den MWST-Code, der dem Konto im Kontenplan (Programm 21) hinterlegt ist, und nicht unbedingt den Code aus der Datei. Jedes Konto, das in der Datei MWST trägt (Erlöse, Anzahlungen, Debitorenverluste, eine Kurtaxe mit Code), muss deshalb in F21 MWST-pflichtig sein und denselben MWST-Code tragen wie seine Zeile in der Kontenzuordnung. Ein Konto ohne MWST darf keinen Code tragen. Sonst stimmt die MWST-Abrechnung nicht, ohne dass der Import einen Fehler meldet.
+Achtung: Mit «MWST berechnen» nimmt Abacus laut Dokumentation den MWST-Code, der dem Konto im Kontenplan (Programm 21) hinterlegt ist, und nicht unbedingt den Code aus der Datei. Jedes Konto, das in der Datei MWST trägt (Erlöse, Anzahlungen, Debitorenverluste, eine Kurtaxe mit Code), muss deshalb in F21 MWST-pflichtig sein und denselben MWST-Code tragen wie seine Zeile in der Kontenzuordnung. Ein Konto ohne MWST darf keinen Code tragen. Sonst stimmt die MWST-Abrechnung nicht, ohne dass der Import einen Fehler meldet.
 
-Damit dein Treuhänder das vergleichen kann, listet der Block „Import into Abacus FIBU“ im Protokoll jedes Paar „Konto -> MWST-Code“ der Datei, jeden MWST-Code mit seinen Sätzen und seiner MWST-Summe, die verwendeten `TaxAccount` und die Werte der Konstanten oben. Mit „MWST berechnen“ kann Abacus eine einzelne Buchung um einen Rappen anders runden; vergleich die Summen pro Code mit dem MWST-Journal.
+Damit dein Treuhänder das vergleichen kann, listet der Block «Import into Abacus FIBU» im Protokoll jedes Paar «Konto -> MWST-Code» der Datei, jeden MWST-Code mit seinen Sätzen und seiner MWST-Summe, die verwendeten `TaxAccount` und die Werte der Konstanten oben. Mit «MWST berechnen» kann Abacus eine einzelne Buchung um einen Rappen anders runden; vergleich die Summen pro Code mit dem MWST-Journal.
 
 ## Zahlen und Datum
 
@@ -188,9 +188,9 @@ Jede Antwort ist eine Einstellung an einer Stelle: eine Konstante in `src/abacus
 
 1. Welches Programm und welche Lizenz nutzt der Treuhänder (F11, F5534, F625), und braucht der Mandant mehr als die Buchungsschnittstellen der FIBU?
 2. Importiert das aktuelle Abacus die Schnittstellenversion `2015.00` ohne Warnung, oder muss `abacus.version` `2024.00` sein?
-3. `TaxType` `0` (Dokumentation) oder `1` (die Konstante von erpnextswiss)? Nimmt Abacus mit „MWST berechnen“ den Typ ohnehin aus dem MWST-Code?
-4. Vorzeichen der MWST in `TaxData`: negativ im Haben und positiv im Soll (unsere Annahme), immer negativ wie bei erpnextswiss, oder rechnet Abacus es mit „MWST berechnen“ neu? Eine Änderung betrifft nur `taxSign()`.
-5. Akzeptiert Abacus ohne „MWST berechnen“ die MWST aus apaleo, wenn sie um einen Rappen von `Brutto × Satz / (100 + Satz)` abweicht? Stimmt mit der Option das MWST-Journal pro Code mit dem Protokoll überein?
+3. `TaxType` `0` (Dokumentation) oder `1` (die Konstante von erpnextswiss)? Nimmt Abacus mit «MWST berechnen» den Typ ohnehin aus dem MWST-Code?
+4. Vorzeichen der MWST in `TaxData`: negativ im Haben und positiv im Soll (unsere Annahme), immer negativ wie bei erpnextswiss, oder rechnet Abacus es mit «MWST berechnen» neu? Eine Änderung betrifft nur `taxSign()`.
+5. Akzeptiert Abacus ohne «MWST berechnen» die MWST aus apaleo, wenn sie um einen Rappen von `Brutto × Satz / (100 + Satz)` abweicht? Stimmt mit der Option das MWST-Journal pro Code mit dem Protokoll überein?
 6. Welche MWST-Typen und Kontonummern hat ein Schweizer Hotel in apaleo? (Aufzeichnung eines CHF-Tags mit `live-smoke`, sobald es eine Testumgebung gibt.)
 7. Nimmt Abacus die Belegnummern aus Monat, Tag und 6-stelligem Zähler an, und warnt es bei Doppelten über mehrere Dateien? Prüft es Doppelte pro Geschäftsjahr? Nur dann bleiben die Nummern eindeutig, wenn zwei Dateien am selben Tag verschiedener Jahre beginnen (2026-10-01 und 2027-10-01 beginnen beide mit `1001000001`).
 8. `TaxAccount` in der `CollectiveInformation`: Steuerkonto `2200` und Hilfskonto `2202` wie dokumentiert, oder `0`? Und bei Codes mit Satz 0 (400, 490, 491), die im KMU-Mustermandanten kein Steuerkonto haben: `2200` beziehungsweise `2202` (unser Standard `TAX_ACCOUNT_AT_RATE_ZERO = 'taxAccount'`) oder `0` (`'zero'`)?
@@ -198,8 +198,8 @@ Jede Antwort ist eine Einstellung an einer Stelle: eine Konstante in `src/abacus
 10. Anzahlungen: Will der Treuhänder sie auf 2030 und folgende mit dem normalen MWST-Code, oder mit einem eigenen Code für Vorauszahlungen?
 11. `TaxData/AmountData/Amount`, wenn `Currency` gleich `KeyCurrency` ist: `0.00` mit der MWST nur in `KeyAmount` (unser Standard `TAX_AMOUNT_IN_KEY_CURRENCY = 'zero'`) oder der MWST-Betrag (`'tax'`)?
 12. `TaxAccount` in der `SingleInformation`: das Ertragskonto selbst (unser Standard `SINGLE_TAX_ACCOUNT = 'account'`) oder das Steuerkonto des Codes (`'taxAccount'`, wie bei erpnextswiss)? Und akzeptiert Abacus eine `CollectiveInformation` ohne `TaxAccount`?
-13. Behält Abacus mit „MWST berechnen“ den `TaxCode` der Datei, oder ersetzt es ihn durch den MWST-Code des Kontos in F21? Passt das MWST-Journal zu den Paaren „Konto -> MWST-Code“ im Protokoll?
-14. Nimmt Abacus ohne „MWST berechnen“ `TaxIncluded` `I` bei Codes mit Satz 0 an, deren Muster-Flag `Inclusive` `0` (491, 490) oder `1` (400) ist, oder muss `TAX_INCLUDED_AT_RATE_ZERO` `E` sein?
+13. Behält Abacus mit «MWST berechnen» den `TaxCode` der Datei, oder ersetzt es ihn durch den MWST-Code des Kontos in F21? Passt das MWST-Journal zu den Paaren «Konto -> MWST-Code» im Protokoll?
+14. Nimmt Abacus ohne «MWST berechnen» `TaxIncluded` `I` bei Codes mit Satz 0 an, deren Muster-Flag `Inclusive` `0` (491, 490) oder `1` (400) ist, oder muss `TAX_INCLUDED_AT_RATE_ZERO` `E` sein?
 15. Vereinnahmte Entgelte: Wie behandelt Abacus reine FIBU-Buchungen mit `UseCode` `1` auf dem Hilfskonto `2202`, wenn in der Debitorenbuchhaltung keine Zahlung erfasst wird, und welche Korrektur macht der Treuhänder am Periodenende?
 16. Journalsumme: Zeigt das Journal des Imports im Soll und im Haben je die Summe der Bruttobeträge der Einzelbuchungen (Zeile `Journal total` im Protokoll, `journalTotalCents` im Manifest), oder zählt Abacus die MWST-Buchungen mit, die es selbst dazu bucht? Eine Antwort ändert nur den Text dieser Zeile und der Dokumentation, nicht die Datei.
 
@@ -207,12 +207,12 @@ Jede Antwort ist eine Einstellung an einer Stelle: eine Konstante in `src/abacus
 
 Geprüft am 2026-10-21; die Recherche dazu steht in [a-target.md](../openspec/research/a-target.md). Wo downloads.abacus.ch offline war, haben wir die Kopie im Internet Archive gelesen.
 
-- Abacus, AbaConnect-Dokumentation „Schnittstelle FIBU - XML Buchungen“, Versionen 2024.00 (DE/EN), 2022.00 und 2015.00 (EN), und „FIBU - ASCII Buchungen“ 2014.00: https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2024.00_AbaDefault_DE.html (Archiv vom 2024-07-19: https://web.archive.org/web/20240719061901/https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2024.00_AbaDefault_DE.html), https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2015.00_AbaDefault_EN.html, https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__ASCII%20Buchungen_2014.00_AbaDefault_EN.html
-- Abacus Research AG, „XML-AbaConnect Fibu Buchungsschnittstelle (Version 2020)“, V1.0, 02.07.2020 (MWST berechnen, TaxType, Tabellen zu TaxAccount, Sammelbuchung): https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/Buchungsschnittstellendokumentation.pdf (Archiv vom 2023-03-20)
+- Abacus, AbaConnect-Dokumentation «Schnittstelle FIBU - XML Buchungen», Versionen 2024.00 (DE/EN), 2022.00 und 2015.00 (EN), und «FIBU - ASCII Buchungen» 2014.00: https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2024.00_AbaDefault_DE.html (Archiv vom 2024-07-19: https://web.archive.org/web/20240719061901/https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2024.00_AbaDefault_DE.html), https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__XML%20Buchungen_2015.00_AbaDefault_EN.html, https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/FIBU__ASCII%20Buchungen_2014.00_AbaDefault_EN.html
+- Abacus Research AG, «XML-AbaConnect Fibu Buchungsschnittstelle (Version 2020)», V1.0, 02.07.2020 (MWST berechnen, TaxType, Tabellen zu TaxAccount, Sammelbuchung): https://downloads.abacus.ch/fileadmin/ablage/abaconnect/htmlfiles/fibu/Buchungsschnittstellendokumentation.pdf (Archiv vom 2023-03-20)
 - Abacus, MWST-Codes des KMU-Mustermandanten, AbaConnect `DF/MwstCodes`: https://downloads.abacus.ch/fileadmin/ablage/dokumente/06_weitere_applikationsdokumente/finanzen/schweizer_kontenrahmen_kmu_mwstcodes.xml (Archiv vom 2023-06-02)
 - Abacus, AbaWeb Profilübersicht 2019 (Buchungsschnittstellen in den FIBU-Profilen 2 und 3): https://media.abacus.ch/abasky/terms/pl2019_abaweb_profiluebersicht_de.pdf
-- bexio Hilfe, „Buchungen - Belege in Abacus importieren“ (F11, F5534, F625, MWST berechnen): https://help.bexio.com/s/article/000002512?language=de
-- contofox, „Der Importablauf in Abacus“: https://contofox.com/kb/der-importablauf-in-abacus/
+- bexio Hilfe, «Buchungen - Belege in Abacus importieren» (F11, F5534, F625, MWST berechnen): https://help.bexio.com/s/article/000002512?language=de
+- contofox, «Der Importablauf in Abacus»: https://contofox.com/kb/der-importablauf-in-abacus/
 - MWSTG SR 641.20, Art. 24, 25, 39 und 40: https://www.fedlex.admin.ch/eli/cc/2009/615/de
 - ESTV, MWST-Branchen-Info 08 Hotel- und Gastgewerbe: https://www.gate.estv.admin.ch/mwst-webpublikationen/public/pages/sectorInfos/cipherDisplay.xhtml?publicationId=1014334&componentId=1015974&lang=de
 - Zum Vergleich gelesen, nicht kopiert: libracore/erpnextswiss (AGPL-3.0), https://github.com/libracore/erpnextswiss, und phamos-eu/Swiss-Accounting-Integration (GPL-3.0), https://github.com/phamos-eu/Swiss-Accounting-Integration

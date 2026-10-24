@@ -7,13 +7,12 @@ import {
   checkConfigKeys,
   checkFindingCodes,
   checkGerman,
-  checkGermanPracticeTerms,
   checkInformalAddress,
   checkLinks,
-  checkSwissFile,
+  checkPracticeTerms,
+  checkSwissSpelling,
   configPaths,
   documentationFiles,
-  existingSwissFiles,
   findingCodes,
   functionWords,
   headingSlugs,
@@ -23,7 +22,6 @@ import {
   shellLines,
   sourceFiles,
   splitLanguageFiles,
-  SWISS_FILES,
 } from './helpers/docs.js';
 
 /**
@@ -31,10 +29,13 @@ import {
  * an sh/bash fence, every backticked config key and every finding code in the
  * documentation must exist in the code. Since s09 (design decision 7) every
  * relative link and anchor must resolve, and the docs are German, with "du".
- * Since b08 (design decisions 1 and 4) they use Austrian BMD terms, name DATEV
- * only where they must, and claim no tested BMD import before one is recorded.
+ * Since a08 (design decisions 1, 5 and 6) every German file is Swiss Standard
+ * German: no "ß", rates written `8,1 %`, no terms of German DATEV or Austrian
+ * BMD practice, BMD and DATEV named only where they must be, and no tested
+ * Abacus import claimed before one is recorded.
  */
 const FILES = documentationFiles();
+const GERMAN_FILES = FILES.filter((file) => file !== 'README.en.md');
 const TROUBLESHOOTING = 'docs/troubleshooting.md';
 const ENGLISH_README = 'README.en.md';
 const DISCLAIMER_TRANSLATION = '## English (non-binding translation)';
@@ -90,13 +91,17 @@ describe('README and docs match the code', () => {
     expect(checkInformalAddress(file, germanPart(file))).toEqual([]);
   });
 
-  it.each(FILES.filter((file) => file !== ENGLISH_README))('%s: uses Austrian BMD terms and names DATEV only where allowed', (file) => {
-    expect(checkGermanPracticeTerms(file, germanPart(file))).toEqual([]);
+  it.each(GERMAN_FILES)('%s: Swiss spelling: no "ß", rates written like 8,1 %%', (file) => {
+    expect(checkSwissSpelling(file, germanPart(file))).toEqual([]);
   });
 
-  it('writes every existing Swiss file (SWISS_FILES) in Swiss Standard German, without Austrian BMD terms', () => {
-    for (const file of SWISS_FILES) expect(FILES.includes(file) || !existingSwissFiles([file]).length, file).toBe(true);
-    for (const file of existingSwissFiles()) expect(checkSwissFile(file, readRepoFile(file)), file).toEqual([]);
+  it.each(GERMAN_FILES)('%s: no German DATEV or Austrian BMD terms, BMD and DATEV only where allowed', (file) => {
+    expect(checkPracticeTerms(file, germanPart(file))).toEqual([]);
+  });
+
+  it('checks every German file, not a list of Swiss files', () => {
+    expect(GERMAN_FILES).toEqual(expect.arrayContaining(['README.md', 'CODE_OF_CONDUCT.md', 'CHANGELOG.md', 'DISCLAIMER.md', 'docs/setup-apaleo.md', 'docs/export.md', 'docs/architecture.md']));
+    expect(GERMAN_FILES).toHaveLength(FILES.length - 1);
   });
 
   it.each(FILES)('%s: claims no tested Abacus import while docs/maintainers.md records none', (file) => {
@@ -191,7 +196,8 @@ describe('the docs checks', () => {
     expect(checkConfigKeys('docs/x.md', '`properties[].geschaeftsbereich` and `properties[].kanzlei`')).toEqual([
       'docs/x.md: `properties[].kanzlei` is not a config key',
     ]);
-    expect(checkConfigKeys('docs/configuration.md', 'Trag `bmd.beraternummer` ein.')).toEqual(['docs/configuration.md: `bmd.beraternummer` is not a config key']);
+    expect(checkConfigKeys('docs/configuration.md', 'Trag `abacus.beraternummer` ein.')).toEqual(['docs/configuration.md: `abacus.beraternummer` is not a config key']);
+    expect(checkConfigKeys('docs/configuration.md', 'Der alte Abschnitt `bmd.buchsymbol` ist kein Schlüssel mehr.')).toEqual([]);
     expect(checkConfigKeys('docs/x.md', 'Setz `abacus.leitwaehrung` auf CHF.')).toEqual([]);
     expect(checkConfigKeys('docs/x.md', 'Setz `abacus.beraternummer` ein.')).toEqual(['docs/x.md: `abacus.beraternummer` is not a config key']);
     for (const key of ['abacus.mandant', 'abacus.mwstCodes.beherbergung', 'properties[].geschaeftsbereich']) expect(paths.has(key), key).toBe(true);
@@ -251,14 +257,14 @@ describe('the link and anchor check', () => {
 });
 
 describe('the language checks', () => {
-  const german = 'Das Tool liest das Buchungsjournal und schreibt eine Datei für die Kanzlei. Du prüfst die Datei mit der Kanzlei, und sie ist nicht fertig, bis die Kanzlei sie freigibt. Ein Export wird nie zweimal geschrieben, das ist die Regel für jeden Monat auf deinem Rechner.';
+  const german = 'Das Tool liest das Buchungsjournal und schreibt eine Datei für die Buchhaltung. Du prüfst die Datei mit der Buchhaltung, und sie ist nicht fertig, bis die Buchhaltung sie freigibt. Ein Export wird nie zweimal geschrieben, das ist die Regel für jeden Monat auf deinem Rechner.';
 
   it('accepts German prose and ignores code', () => {
     expect(checkGerman('docs/x.md', `${german}\n\n\`\`\`sh\nthe and with is are for not you your this that\n\`\`\`\n`)).toEqual([]);
   });
 
   it('names a file whose prose is English', () => {
-    const english = 'This is the export. You run it with your config, and the file is written for the Kanzlei. That is not all: the protocol is there too.';
+    const english = 'This is the export. You run it with your config, and the file is written for the Treuhänder. That is not all: the protocol is there too.';
     expect(checkGerman('docs/troubleshooting.md', `${german}\n\n${english}\n${english}\n${english}`)).toEqual([
       expect.stringMatching(/^docs\/troubleshooting\.md: the prose is not German/),
     ]);
@@ -277,7 +283,7 @@ describe('the language checks', () => {
   });
 
   it('finds an English paragraph inside a German section', () => {
-    const english = 'The service runs the export, and the file is written for you. That is not all: this is the protocol for your Kanzlei.';
+    const english = 'The service runs the export, and the file is written for you. That is not all: this is the protocol for your Treuhänder.';
     const markdown = `## Ablauf\n\n${german}\n\n${german}\n\n${german}\n\n${english}\n`;
     expect(checkGerman('docs/x.md', markdown)).toEqual([expect.stringMatching(/^docs\/x\.md: section "Ablauf" has an English paragraph: "The service runs/)]);
     expect(checkGerman('docs/x.md', `## Ablauf\n\n${german}\n\nDu startest den Container mit \`docker compose up\`, and fertig.\n`)).toEqual([]);
@@ -287,120 +293,127 @@ describe('the language checks', () => {
     expect(checkInformalAddress('docs/x.md', 'Prüfen Sie die Datei.')).toEqual([
       'docs/x.md: "Prüfen Sie die Datei.": "Sie" is the polite address; write "du"',
     ]);
-    expect(checkInformalAddress('docs/x.md', 'Fragen Sie Ihre Kanzlei.')).toHaveLength(2);
+    expect(checkInformalAddress('docs/x.md', 'Fragen Sie Ihren Treuhänder.')).toHaveLength(2);
     expect(checkInformalAddress('docs/x.md', 'Wenn das passt, senden Sie die Datei.')).toHaveLength(1);
     expect(checkInformalAddress('docs/x.md', 'Danke, Ihr Team')).toHaveLength(1);
-    expect(checkInformalAddress('docs/x.md', 'Die Kanzlei bucht. Sie prüft die Datei.\n- Sie bekommt das Protokoll.\n**Sie** entscheidet.')).toEqual([]);
+    expect(checkInformalAddress('docs/x.md', 'Das prüft Ihr Treuhänder.')).toHaveLength(1);
+    expect(checkInformalAddress('docs/x.md', 'Die Buchhaltung bucht. Sie prüft die Datei.\n- Sie bekommt das Protokoll.\n**Sie** entscheidet.')).toEqual([]);
   });
 });
 
-describe('the Austrian terms check', () => {
-  const problemsOf = (file: string, text: string) => checkGermanPracticeTerms(file, text);
+describe('the practice terms check', () => {
+  const problemsOf = (file: string, text: string) => checkPracticeTerms(file, text);
+
+  it('Austrian paragraph copied: names the file and the terms Kanzlei and Buchungssymbol', () => {
+    expect(problemsOf('docs/mapping-guide.md', 'Die Kanzlei legt das Buchungssymbol an.')).toEqual([
+      'docs/mapping-guide.md: "Die Kanzlei legt das Buchungssymbol an.": "Kanzlei" is a term of Austrian BMD practice; use the Swiss Abacus term',
+      'docs/mapping-guide.md: "Die Kanzlei legt das Buchungssymbol an.": "Buchungssymbol" is a term of Austrian BMD practice; use the Swiss Abacus term',
+    ]);
+    for (const term of ['Steuercode', 'Einheitskontenrahmen', 'EKR', 'UVA', 'Ortstaxe', 'Nächtigungsabgabe', 'Personenkonto']) {
+      expect(problemsOf('docs/x.md', `Hier steht ${term} im Text.`), term).toEqual([expect.stringContaining(`"${term}"`)]);
+    }
+    expect(problemsOf('docs/x.md', 'Die Hauskanzlei, das BMDX-Feld, 2,0 % und 110 % sind keine Treffer. `BMD` und `Kanzlei` im Code auch nicht.')).toEqual([]);
+  });
 
   it('Copied DATEV paragraph: names the file and the term', () => {
     expect(problemsOf('docs/mapping-guide.md', '## Spalten\n\nTrag den BU-Schlüssel ein.\n')).toEqual([
-      'docs/mapping-guide.md: "Trag den BU-Schlüssel ein.": "BU-Schlüssel" is a term of German DATEV practice; use the Austrian BMD term',
+      'docs/mapping-guide.md: "Trag den BU-Schlüssel ein.": "BU-Schlüssel" is a term of German DATEV practice; use the Swiss Abacus term',
     ]);
     for (const term of ['Buchungsstapel', 'SKR03', 'SKR04', 'Automatikkonto', 'Beraternummer', 'EXTF', 'Belegfeld', 'Festschreibung', 'UStVA', 'ELSTER']) {
       expect(problemsOf('docs/x.md', `Hier steht ${term} im Text.`), term).toEqual([expect.stringContaining(`"${term}"`)]);
     }
+    expect(problemsOf('docs/posting-rules.md', 'Die Beherbergungssteuer wird ohne Steuer gebucht.')).toEqual([expect.stringMatching(/^docs\/posting-rules\.md: .*"Beherbergungssteuer"/)]);
   });
 
-  it('German levy or rate: names the file and the term', () => {
-    expect(problemsOf('docs/posting-rules.md', 'Die Beherbergungssteuer wird ohne Steuer gebucht.')).toEqual([
-      expect.stringMatching(/^docs\/posting-rules\.md: .*"Beherbergungssteuer"/),
-    ]);
+  it('Foreign rate: names the file and 19 % or 10 %, matched only as a rate token', () => {
     expect(problemsOf('docs/posting-rules.md', 'Getränke mit 19 %.')).toEqual([expect.stringMatching(/^docs\/posting-rules\.md: .*"19 %"/)]);
-    expect(problemsOf('docs/x.md', 'Frühstück mit 7% und die Beherbergungssteuer, die Übernachtungssteuer.')).toHaveLength(3);
+    expect(problemsOf('docs/posting-rules.md', 'Beherbergung mit 10 %.')).toEqual([expect.stringMatching(/^docs\/posting-rules\.md: .*"10 %"/)]);
+    for (const rate of ['13 %', '20 %', '7%']) expect(problemsOf('docs/x.md', `Logis mit ${rate}.`), rate).toHaveLength(1);
+    expect(problemsOf('docs/x.md', 'Nie 110 %, 17 % oder 4,9 %. `19 %` im Code.\n\n```text\nKurtaxe 19 %\n```\n')).toEqual([]);
+  });
+
+  it('Old Swiss rates pass: 7,7 %, 3,7 % and 2,5 % report nothing, while 7 % in the same file does (Old Swiss rates are not foreign rates)', () => {
+    expect(problemsOf('docs/x.md', 'Normalsatz 7.7 %.')).toEqual([]);
+    expect(problemsOf('docs/mapping-guide.md', '7,7 %, 3,7 % und 2,5 % bis 31.12.2023')).toEqual([]);
+    expect(problemsOf('docs/mapping-guide.md', '7,7 %, 3,7 % und 2,5 % bis 31.12.2023\n\nGetränke mit 7 %.\n')).toEqual([
+      'docs/mapping-guide.md: "Getränke mit 7 %.": "7 %" is a term of German DATEV practice; use the Swiss Abacus term',
+    ]);
   });
 
   it('Swiss terms are allowed: Kurtaxe and Mandantennummer', () => {
-    expect(problemsOf('docs/abacus-format.md', 'Die Kurtaxe geht auf ein Durchlaufkonto, die Mandantennummer steht im Kopf.')).toEqual([]);
-    expect(checkSwissFile('docs/abacus-format.md', 'Die Kurtaxe geht auf ein Durchlaufkonto, die Mandantennummer steht im Kopf.')).toEqual([]);
+    const text = 'Die Kurtaxe geht auf ein Durchlaufkonto, die Mandantennummer steht im Kopf.';
+    expect(problemsOf('docs/abacus-format.md', text)).toEqual([]);
+    expect(checkSwissSpelling('docs/abacus-format.md', text)).toEqual([]);
   });
 
-  it('Old Swiss rates are not foreign rates: 7,7 % and 7.7 % pass, 7 % does not', () => {
-    expect(problemsOf('docs/x.md', 'Bis 31.12.2023 galten 7,7 %, 3,7 % und 2,5 % bis 31.12.2023. Normalsatz 7.7 %, nie 17 %.')).toEqual([]);
-    expect(problemsOf('docs/x.md', 'Bis 2023 galten 7,7 %. Getränke mit 7 %.')).toEqual([expect.stringContaining('"7 %"')]);
-  });
-
-  it('passes the Austrian rates and ignores code', () => {
-    expect(problemsOf('docs/x.md', 'Beherbergung 10 %, Therme 13 %, Getränke 20 %, Grundnahrungsmittel 4,9 % und 17 % nirgends. `SKR03` und `datev`.\n\n```text\nKurtaxe 19 %\n```\n')).toEqual([]);
-  });
-
-  it('Regional rate: passes 19 % in a sentence that names Jungholz or Mittelberg, and only there', () => {
-    expect(problemsOf('docs/posting-rules.md', 'In Jungholz und Mittelberg gilt der Steuersatz 19 % (§ 10 Abs. 4 UStG).')).toEqual([]);
-    expect(problemsOf('docs/x.md', 'Für Mittelberg: Beherbergung 19 %.')).toEqual([]);
-    expect(problemsOf('docs/x.md', 'In Jungholz gilt 19 %. Getränke mit 19 % wie in Deutschland.')).toEqual([expect.stringContaining('"19 %"')]);
-    expect(problemsOf('docs/x.md', 'Getränke mit 19 % im Mittelbergland.')).toEqual([expect.stringContaining('"19 %"')]);
-    expect(problemsOf('docs/x.md', 'In Jungholz Frühstück mit 7 %.')).toEqual([expect.stringContaining('"7 %"')]);
-  });
-
-  it('Bare DATEV mention: names the file and the token', () => {
-    expect(problemsOf('docs/abacus-import.md', 'Das läuft wie beim DATEV-Import.')).toEqual([
-      'docs/abacus-import.md: "Das läuft wie beim DATEV-Import.": "DATEV" is named outside the origin sentence and the findings for a copied German setup',
+  it('Bare target mention: names the file and the token BMD or DATEV', () => {
+    expect(problemsOf('docs/abacus-import.md', 'Das läuft wie beim BMD-Import.')).toEqual([
+      'docs/abacus-import.md: "Das läuft wie beim BMD-Import.": "BMD" is named outside a link to an origin project, the other target formats and the findings for a copied setup',
     ]);
-    expect(problemsOf('README.md', '## Häufige Fragen\n\n**DATEV?** Nein.\n')).toHaveLength(1);
+    expect(problemsOf('docs/abacus-import.md', 'Das läuft wie beim DATEV-Import.')).toEqual([expect.stringContaining('"DATEV" is named outside')]);
   });
 
-  it('Allowed DATEV mention: the README origin sentence and the other target formats, the changelog and the German-setup findings', () => {
+  it('Allowed origin mention: the README origin sentence and the other target formats, the changelog and the copied-setup findings', () => {
     const readme = [
+      'Das Tool baut auf [apaleo-bmd-export](https://github.com/krautdawg/apaleo-bmd-export) und [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) auf; wer mit BMD oder DATEV bucht, nimmt eines davon.',
+      '',
       '## Was es nicht macht',
       '',
-      '- Keine anderen Zielformate wie DATEV oder RZL.',
-      '',
-      '## Häufige Fragen',
-      '',
-      '**Gibt es das für DATEV?** Ja: Das Tool baut auf [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export) auf.',
+      '- Nur apaleo und keine anderen Zielformate wie DATEV oder BMD.',
     ].join('\n');
     expect(problemsOf('README.md', readme)).toEqual([]);
-    expect(problemsOf('docs/x.md', readme)).toHaveLength(2);
-    expect(problemsOf('CHANGELOG.md', 'Entfernt: der DATEV-Buchungsstapel (EXTF) und SKR03.')).toEqual([]);
-    const troubleshooting = `## Kontenzuordnung\n\nKein DATEV hier.\n\n## Einrichtung aus Deutschland übernommen\n\nEine DATEV-Zuordnung mit 7 % und BU-Schlüssel.\n`;
-    expect(problemsOf('docs/troubleshooting.md', troubleshooting)).toEqual([expect.stringContaining('"Kein DATEV hier."')]);
+    expect(problemsOf('docs/x.md', readme)).toHaveLength(4);
+    expect(problemsOf('README.md', '## Was es macht\n\n- Keine anderen Zielformate wie DATEV.\n')).toHaveLength(1);
+    expect(problemsOf('CHANGELOG.md', 'Entfernt: der BMD-Writer, die EKR-Vorlage und die Steuercodes.')).toEqual([]);
+    const troubleshooting = `## Kontenzuordnung\n\nKein BMD hier.\n\n## Einrichtung aus Deutschland oder Österreich übernommen\n\nEine BMD-Zuordnung mit 10 % und Steuercode, eine DATEV-Zuordnung mit 7 % und BU-Schlüssel.\n`;
+    expect(problemsOf('docs/troubleshooting.md', troubleshooting)).toEqual([expect.stringContaining('"Kein BMD hier."')]);
+  });
+
+  it('FAQ answer on BMD and DATEV: passes in a line that links the origin projects, while "**DATEV?** Nein." is reported', () => {
+    const faq = [
+      '## Häufige Fragen',
+      '',
+      '**Gibt es das auch für BMD oder DATEV?** Ja: [apaleo-bmd-export](https://github.com/krautdawg/apaleo-bmd-export) und [apaleo-datev-export](https://github.com/krautdawg/apaleo-datev-export/).',
+    ].join('\n');
+    expect(problemsOf('README.md', faq)).toEqual([]);
+    expect(problemsOf('README.md', '## Häufige Fragen\n\n**DATEV?** Nein.\n')).toEqual([expect.stringContaining('"DATEV" is named outside')]);
+    expect(problemsOf('README.md', '**BMD?** Siehe [das Projekt](https://github.com/krautdawg/elsewhere).')).toHaveLength(1);
   });
 });
 
-describe('the Swiss file check', () => {
-  const SWISS = 'docs/abacus-format.md';
-
-  it('lists the Abacus docs from the start and skips a listed file that does not exist yet', () => {
-    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/abacus-format.md', 'docs/abacus-import.md']));
-    // a05 rewrote the mapping guide and the posting rules for Switzerland.
-    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/mapping-guide.md', 'docs/posting-rules.md']));
-    // Since a06 the Swiss demo and its example output.
-    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/examples/README.md', 'examples/demo/README.md']));
-    // a07 rewrote the schedule and Docker guide for Switzerland.
-    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/docker.md']));
-    expect(existingSwissFiles(['docs/abacus-format.md', 'README.md', 'docs/does-not-exist.md'])).toEqual(
-      expect.not.arrayContaining(['docs/does-not-exist.md']),
-    );
-    expect(existingSwissFiles(['README.md', 'docs/does-not-exist.md'])).toEqual(['README.md']);
-  });
-
-  it('Swiss file checked from the start: names Kanzlei, Buchungssymbol and the letter ß, while a German file not in SWISS_FILES passes', () => {
+describe('the Swiss spelling check', () => {
+  it('Swiss file checked from the start: every German file, so docs/abacus-format.md and docs/export.md both report Kanzlei, Buchungssymbol and ß', () => {
     const text = 'Die Kanzlei legt das Buchungssymbol an.\n\nSchließe die Datei.\n';
-    const problems = checkSwissFile(SWISS, text);
-    expect(problems).toEqual([
-      expect.stringMatching(/^docs\/abacus-format\.md:3: .*"ß"/),
-      expect.stringMatching(/^docs\/abacus-format\.md: .*"Kanzlei"/),
-      expect.stringMatching(/^docs\/abacus-format\.md: .*"Buchungssymbol"/),
-    ]);
-    expect(checkSwissFile('docs/export.md', text)).toEqual([]);
-  });
-
-  it('names every Austrian BMD term and the token BMD, matched as whole words', () => {
-    for (const term of ['Steuercode', 'Einheitskontenrahmen', 'EKR', 'UVA', 'Ortstaxe', 'Nächtigungsabgabe', 'Personenkonto', 'BMD']) {
-      expect(checkSwissFile(SWISS, `Hier steht ${term} im Text.`), term).toEqual([expect.stringContaining(`"${term}"`)]);
+    for (const file of ['docs/abacus-format.md', 'docs/export.md']) {
+      expect([...checkSwissSpelling(file, text), ...checkPracticeTerms(file, text)], file).toEqual([
+        expect.stringMatching(new RegExp(`^${file.replace('.', '\\.')}:3: .*"ß"`)),
+        expect.stringMatching(/"Kanzlei"/),
+        expect.stringMatching(/"Buchungssymbol"/),
+      ]);
     }
-    for (const rate of ['10 %', '13 %', '20 %']) expect(checkSwissFile(SWISS, `Logis mit ${rate}.`), rate).toEqual([expect.stringContaining(`"${rate}"`)]);
-    expect(checkSwissFile(SWISS, 'Die Hauskanzlei, das BMDX-Feld, 2,0 % und 110 % sind keine Treffer. `BMD` im Code auch nicht.')).toEqual([]);
   });
 
-  it('Swiss rate notation: names 3.8 % and 3,8%, and passes 3,8 % and a rate in a code span', () => {
-    expect(checkSwissFile(SWISS, 'Beherbergung zu 3.8 %.')).toEqual([expect.stringMatching(/^docs\/abacus-format\.md: .*"3\.8 %" is not the Swiss rate notation/)]);
-    expect(checkSwissFile(SWISS, 'Beherbergung zu 3,8%.')).toEqual([expect.stringContaining('"3,8%" is not the Swiss rate notation')]);
-    expect(checkSwissFile(SWISS, 'Beherbergung zu 3,8 %, Normalsatz 8,1 %, `3.8` und `3.8%` im Code.\n\n```xml\n<Rate>3.8</Rate> 8%\n```\n')).toEqual([]);
+  it('Swiss rate notation: names 3.8 % and 3,8% in docs/abacus-format.md, and passes 3,8 %', () => {
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3.8 %.')).toEqual([expect.stringMatching(/^docs\/abacus-format\.md: .*"3\.8 %" is not the Swiss rate notation/)]);
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3,8%.')).toHaveLength(1);
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3,8 %, `3.8` im Code.')).toEqual([]);
+  });
+
+  it('Sharp s in a Swiss doc: names the file, the line and the letter ß, and passes once it reads "Schliesse"', () => {
+    expect(checkSwissSpelling('docs/docker.md', 'Text.\n\nSchließe das Terminal.\n')).toEqual([
+      'docs/docker.md:3: "Schließe das Terminal.": the letter "ß" is not Swiss; write "ss"',
+    ]);
+    expect(checkSwissSpelling('docs/docker.md', 'Text.\n\nSchliesse das Terminal.\n')).toEqual([]);
+    expect(checkSwissSpelling('CODE_OF_CONDUCT.md', '```text\nMaßnahmen\n```\n')).toHaveLength(1);
+  });
+
+  it('Decimal point in a German rate: names 7.7 % and 3,8%, does not report 7 %, and passes 7,7 %, 3,8 % and a rate in a code span', () => {
+    expect(checkSwissSpelling('docs/posting-rules.md', 'Beherbergung zu 7.7 %.')).toEqual([
+      'docs/posting-rules.md: "Beherbergung zu 7.7 %.": "7.7 %" is not the Swiss rate notation; write it like "8,1 %"',
+    ]);
+    expect(checkPracticeTerms('docs/posting-rules.md', 'Beherbergung zu 7.7 %.')).toEqual([]);
+    expect(checkSwissSpelling('docs/posting-rules.md', 'Beherbergung zu 3,8%.')).toEqual([expect.stringContaining('"3,8%" is not the Swiss rate notation')]);
+    expect(checkSwissSpelling('docs/posting-rules.md', 'Beherbergung zu 7,7 % und 3,8 %, Normalsatz 8,1 %, `3.8` und `3.8%` im Code.\n\n```xml\n<Rate>3.8</Rate> 8%\n```\n')).toEqual([]);
   });
 });
 
@@ -423,7 +436,6 @@ describe('the compatibility claim check', () => {
       'README.md: "getestet mit Abacus" claims a tested import, but docs/maintainers.md records no import under ## Testimporte',
     ]);
     expect(checkCompatibilityClaims('docs/x.md', 'Kompatibel mit Abacus FIBU und Abacus-zertifiziert.', 0)).toHaveLength(2);
-    expect(checkCompatibilityClaims('docs/x.md', 'Kompatibel mit BMD NTCS und BMD-zertifiziert.', 0)).toHaveLength(2);
     expect(checkCompatibilityClaims('README.md', 'Die Datei ist getestet mit Abacus FIBU.', 1)).toEqual([]);
   });
 
@@ -434,28 +446,25 @@ describe('the compatibility claim check', () => {
     'Die Datei wird von Abacus akzeptiert.',
     'The file is tested with Abacus FIBU.',
     'An Abacus-certified import file.',
-    'Die Datei ist mit BMD NTCS getestet.',
-    'Die Datei wurde mit\nBMD 5.5 erfolgreich getestet.',
-    'Der Export ist BMD-kompatibel.',
-    'Die Datei ist kompatibel zu BMD.',
-    'Die Datei ist mit BMD NTCS kompatibel.',
-    'Die Datei wird von BMD NTCS akzeptiert.',
-    'Zertifiziert durch BMD.',
-    'The file is tested with BMD NTCS.',
-    'A BMD-compatible import file.',
-    'The file is compatible with BMD NTCS.',
-    'BMD certified.',
-    'The file is accepted by BMD NTCS.',
+    'Die Datei wurde mit\nAbacus 2024 erfolgreich getestet.',
+    'Die Datei ist kompatibel zu Abacus.',
+    'Die Datei ist mit Abacus FIBU kompatibel.',
+    'Die Datei wird von Abacus FIBU akzeptiert.',
+    'Zertifiziert durch Abacus.',
+    'A Abacus-compatible import file.',
+    'The file is compatible with Abacus FIBU.',
+    'Abacus certified.',
+    'The file is accepted by Abacus FIBU.',
   ])('Claim in other words or in English: finds "%s"', (text) => {
     expect(checkCompatibilityClaims('README.en.md', text, 0)).toHaveLength(1);
   });
 
   it('passes the pending-import wording and other uses of the words', () => {
     for (const text of [
-      'Die Datei folgt dem dokumentierten BMD-Importformat (PR08/PR08A); ein erster Testimport mit einer Kanzlei steht noch aus.',
-      'The file follows the documented BMD import layout; a first test import with a Kanzlei is pending.',
+      'Die Datei folgt der dokumentierten AbaConnect-Schnittstelle «XML Buchungen»; ein erster Testimport mit einem Treuhänder steht noch aus.',
+      'The file follows the documented AbaConnect interface "XML Buchungen"; a first test import with a Treuhänder is still pending.',
       'Zwei Lint-Regeln (getestet in `test/lint/`) sorgen dafür, dass das so bleibt.',
-      'Kein zertifiziertes Archiv. BMD nimmt `4,9` in `prozent` an.',
+      'Kein zertifiziertes Archiv. Abacus nimmt `3.8` in `TaxRate` an.',
     ]) {
       expect(checkCompatibilityClaims('README.md', text, 0), text).toEqual([]);
     }

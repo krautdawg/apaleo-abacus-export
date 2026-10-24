@@ -4,7 +4,7 @@ Die Abacus-Datei ist nur so gut wie die Kontenzuordnung. Sie ist eine CSV-Datei 
 
 `init-mapping --template kmu-hotel` schreibt die Datei nach der Vorlage `templates/kmu-hotel.rules.csv` (Schweizer Kontenrahmen KMU und Kontenrahmen für die Hotellerie und Gastronomie). Der Kommentar jeder Zeile sagt, warum sie so vorgeschlagen ist. Die Kontonummern sind Vorschläge: Viele Mandanten haben einen eigenen Kontenplan, und die Kontonummern wählt dein Treuhänder.
 
-Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen Schweizer „Hotel Beispiel“, aus der die Beispieldatei in [examples/](examples/) entstanden ist: genau das, was `init-mapping --template kmu-hotel` auf dem Kontenplan der Demo schreibt, mit den MWST-Codes `311`, `312` und `313`, nur die Kurtaxe-Zeile ist ausgefüllt (`2210` ohne MWST-Code). Dein Treuhänder kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
+Ein vollständiges Beispiel liegt in [examples/mapping-BSP.example.csv](examples/mapping-BSP.example.csv): die Zuordnung des erfundenen Schweizer «Hotel Beispiel», aus der die Beispieldatei in [examples/](examples/) entstanden ist: genau das, was `init-mapping --template kmu-hotel` auf dem Kontenplan der Demo schreibt, mit den MWST-Codes `311`, `312` und `313`, nur die Kurtaxe-Zeile ist ausgefüllt (`2210` ohne MWST-Code). Dein Treuhänder kann damit die Ausgabe beurteilen, bevor jemand eine apaleo-App anlegt.
 
 ## Ablauf
 
@@ -32,7 +32,7 @@ Der Pfad der Datei kann in der Konfiguration stehen (`properties[].mapping`), so
 | `kost` | Kostenstelle, 1 bis 11 Ziffern (optional). Steht nur auf Erlös- und Debitorenverlust-Buchungen in der Datei, siehe unten |
 | `comment` | Freitext, zum Beispiel die Begründung deines Treuhänders |
 
-Sätze darfst du mit Komma oder Punkt schreiben (`8,1` oder `8.1`). Eine Zuordnung von apaleo-bmd-export (Spalten `bmd_account`, `steuercode`) oder aus einer deutschen Einrichtung (Spalten `datev_account`, `bu_key`) liest das Tool nicht; es nennt dann `init-mapping --template kmu-hotel` ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-übernommen)). Den Kontenexport eines kostenpflichtigen Connectors (Spalten `Apaleo Kontonummer`, `Kontoname`, `Kontotyp`, `Abacus Kontonummer`, `Kostenstelle`) liest es nur mit `init-mapping --accounts-from`, siehe [Umstieg von einem anderen Connector](#umstieg-von-einem-anderen-connector).
+Sätze darfst du mit Komma oder Punkt schreiben (`8,1` oder `8.1`). Eine Zuordnung von apaleo-bmd-export (Spalten `bmd_account`, `steuercode`) oder aus einer deutschen Einrichtung (Spalten `datev_account`, `bu_key`) liest das Tool nicht; es nennt dann `init-mapping --template kmu-hotel` ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-oder-österreich-übernommen)). Den Kontenexport eines kostenpflichtigen Connectors (Spalten `Apaleo Kontonummer`, `Kontoname`, `Kontotyp`, `Abacus Kontonummer`, `Kostenstelle`) liest es nur mit `init-mapping --accounts-from`, siehe [Umstieg von einem anderen Connector](#umstieg-von-einem-anderen-connector).
 
 ### Kontonummern und MWST-Codes
 
@@ -61,7 +61,7 @@ Abacus bekommt den Bruttobetrag und die MWST aus apaleo: Das Konto mit MWST-Code
 | 3,8 % | Sondersatz für Beherbergung, mit dem Frühstück, auch wenn es separat verrechnet wird (Art. 25 Abs. 4) | `313` | 343 |
 | 0 % | Erlöse ohne MWST, Annullationen, durchlaufende Posten | kein Code, oder ein Code des Mandanten mit Satz 0 | |
 
-Das Tool bucht den Satz, den apaleo auf der Buchung hat; die Liste hilft dir und deinem Treuhänder, die Erlöskonten in apaleo richtig einzurichten (ESTV MWST-Branchen-Info 08 Hotel- und Gastgewerbe, Ziff. 6). Der Sondersatz gilt nach heutigem Gesetz bis Ende 2027. Bis 2023-12-31 galten 7,7 %, 3,7 % und 2,5 %: Die Vorlage lässt diese Konten leer, damit eine Buchung darauf den Export stoppt (`E-UNMAPPED`). Exporte für 2023 und früher klärst du mit deinem Treuhänder.
+Das Tool bucht den Satz, den apaleo auf der Buchung hat; die Liste hilft dir und deinem Treuhänder, die Erlöskonten in apaleo richtig einzurichten (ESTV MWST-Branchen-Info 08 Hotel- und Gastgewerbe, Ziff. 6). Der Sondersatz gilt nach heutigem Gesetz bis Ende 2027. Welcher Satz gilt, hängt vom Datum der Leistung ab, nicht vom Datum der Rechnung oder des Exports: Bis 2023-12-31 galten 7,7 %, 3,7 % und 2,5 %: Die Vorlage lässt diese Konten leer, damit eine Buchung darauf den Export stoppt (`E-UNMAPPED`). Exporte für 2023 und früher klärst du mit deinem Treuhänder.
 
 `mapping check` prüft jede Zeile:
 
@@ -73,7 +73,7 @@ Das Tool bucht den Satz, den apaleo auf der Buchung hat; die Liste hilft dir und
 - `export` und `schedule --once` melden `W-MWST-CODE-UNCHECKED` und `W-MWST-CODE-RATE` ebenfalls, aber nur für die Zeilen, die die Buchungen des Monats tatsächlich brauchen: im Probelauf, in der Ausgabe und im Protokoll. Die Datei wird trotzdem geschrieben. So fällt ein vertauschter Code auch dann auf, wenn niemand `mapping check` startet.
 - Ein Satz ausser 0 %, 2,6 %, 3,8 % und 8,1 % ergibt `W-VAT-RATE-UNUSUAL`; bei 7,7 %, 3,7 % und 2,5 % sagt die Warnung, dass sie bis 2023 galten.
 - Der Satz der Zeile muss dem Satz in apaleo entsprechen (`E-VAT-MISMATCH`), auch über eine Elternzeile: Landet ein Konto mit 3,8 % über `5000;Revenues;…;3500;311;8.1` auf 3500 mit 8,1 %, meldet `mapping check --from --to` `E-VAT-MISMATCH` und verlangt eine eigene Zeile.
-- Eine Erlöszeile ohne MWST-Code ergibt `W-UNTAXED-REVENUE`: Mit „MWST berechnen“ setzt Abacus den Standard-MWST-Code des Kontos ein. Prüfe, dass das Abacus-Konto keinen hat, oder trag den MWST-Code des Mandanten für Umsätze ohne MWST ein.
+- Eine Erlöszeile ohne MWST-Code ergibt `W-UNTAXED-REVENUE`: Mit «MWST berechnen» setzt Abacus den Standard-MWST-Code des Kontos ein. Prüfe, dass das Abacus-Konto keinen hat, oder trag den MWST-Code des Mandanten für Umsätze ohne MWST ein.
 - Eine Kurtaxe mit MWST ergibt `W-KURTAXE-TAXED`, eine Annullation oder ein No-Show mit MWST `W-ANNULLATION-TAXED` (siehe unten).
 
 Beim Export prüft das Tool zusätzlich jede Buchung: Der Satz muss der Satz der apaleo-Buchung sein (`E-VAT-RATE`), und die MWST, die im Bruttobetrag steckt, darf höchstens einen Rappen von der Steuer abweichen (`W-VAT-ROUNDING`, die Buchung behält die Steuer aus apaleo). Auf 5 Rappen rundet das Tool nie: Das ist eine Praxis der Kasse, nicht der Buchhaltung. Mehr dazu in [posting-rules.md](posting-rules.md).
@@ -82,7 +82,7 @@ Die Saldosteuersatz- und die Pauschalsteuersatzmethode unterstützt diese Versio
 
 ## Die KMU-Vorlage
 
-Die Vorlage folgt dem Schweizer Kontenrahmen KMU und dem Kontenrahmen für die Hotellerie und Gastronomie. Jede Zeile trägt im Kommentar die Markierung „Vorschlag (ungeprüft)“.
+Die Vorlage folgt dem Schweizer Kontenrahmen KMU und dem Kontenrahmen für die Hotellerie und Gastronomie. Jede Zeile trägt im Kommentar die Markierung «Vorschlag (ungeprüft)».
 
 | Fall | Abacus-Konto | MWST-Code | Satz |
 |---|---|---|---|
@@ -128,7 +128,7 @@ Die Zeilen für CityTaxes, SecondCityTax und GuestLevies bleiben in der Vorlage 
 - eine Verbindlichkeit gegenüber der Gemeinde, zum Beispiel `2210` Übrige kurzfristige Verbindlichkeiten, **ohne MWST-Code**; oder
 - dasselbe Konto mit einem MWST-Code des Mandanten für Ziffer 910 und Satz 0, im KMU-Mustermandanten `491`.
 
-**Nie der Code `490`.** Im KMU-Mustermandanten heisst `490` „Subvention Kurtaxen“ und meldet in Ziffer 900. Er gilt für Subventionen und Tourismusabgaben eines Kurvereins, mit Vorsteuerkürzung, nicht für die Kurtaxe, die das Hotel einzieht. `W-MWST-CODE-UNCHECKED` nennt das, wenn er in der Datei steht.
+**Nie der Code `490`.** Im KMU-Mustermandanten heisst `490` «Subvention Kurtaxen» und meldet in Ziffer 900. Er gilt für Subventionen und Tourismusabgaben eines Kurvereins, mit Vorsteuerkürzung, nicht für die Kurtaxe, die das Hotel einzieht. `W-MWST-CODE-UNCHECKED` nennt das, wenn er in der Datei steht.
 
 **Die Abgabe ist Teil der Beherbergung zu 3,8 %**, wenn du die Kurtaxe nicht separat verrechnest, für den Teil, den das Hotel behält (zum Beispiel wenn es der Gemeinde nur eine Pauschale abliefert), und immer für eine kantonale oder kommunale Beherbergungsabgabe, die das Hotel selbst schuldet und nicht der Gast, auch wenn sie separat auf der Rechnung steht. Dann besteuert apaleo die Abgabe mit 3,8 %, und die Zeile gehört auf ein Erlöskonto mit dem MWST-Code für Beherbergung, zum Beispiel `3400` mit `313` und 3,8 %. `mapping check` warnt dann mit `W-KURTAXE-TAXED`, damit dieser Fall bewusst entschieden ist; der Export läuft trotzdem.
 
@@ -144,7 +144,7 @@ Der Name sagt nicht, wer die Abgabe schuldet. Gemeinden und Kantone nennen sie v
 
 Nicht gemeint ist eine Tourismusabgabe, die das Hotel selbst nach Zimmern oder Umsatz schuldet und die nicht auf der Gästerechnung steht: Die bucht apaleo nicht.
 
-Das Abacus-Konto einer Kurtaxe ohne MWST-Code darf in Abacus (F21) keinen Standard-MWST-Code haben: Sonst setzt „MWST berechnen“ ihn ein, und die Kurtaxe landet in der MWST-Abrechnung. Bis eine Zeile ausgefüllt ist, blockieren `mapping check --from --to` und der Export mit `E-UNMAPPED`. Hat apaleo eine Abgabe besteuert, ihre Zeile aber keinen MWST-Code, stoppt der Export mit `E-VAT-MISSING`: Das Tool ändert die MWST von apaleo nie.
+Das Abacus-Konto einer Kurtaxe ohne MWST-Code darf in Abacus (F21) keinen Standard-MWST-Code haben: Sonst setzt «MWST berechnen» ihn ein, und die Kurtaxe landet in der MWST-Abrechnung. Bis eine Zeile ausgefüllt ist, blockieren `mapping check --from --to` und der Export mit `E-UNMAPPED`. Hat apaleo eine Abgabe besteuert, ihre Zeile aber keinen MWST-Code, stoppt der Export mit `E-VAT-MISSING`: Das Tool ändert die MWST von apaleo nie.
 
 ## Anzahlungen
 
@@ -219,7 +219,7 @@ apaleo-abacus init-mapping --property BSP --template kmu-hotel --accounts-from k
 apaleo-abacus mapping check --property BSP --from 2026-09-01 --to 2026-09-30
 ```
 
-Das Tool nimmt für jedes apaleo-Konto mit Typ das Abacus-Konto und die Kostenstelle aus dem Export und den MWST-Code und Satz aus der Vorlage, denn der Export hat keine MWST-Spalte. Jede übernommene Zeile ist als „Vorschlag (ungeprüft)“ markiert und sagt im Kommentar, dass sie übernommen ist. Konten des Exports, die der apaleo-Kontenplan nicht hat, listet der Befehl auf. Gibt die Vorlage für ein Konto keinen MWST-Code, bleibt er leer, und `mapping check` meldet `E-MWST-CODE-MISSING`, bis du ihn mit deinem Treuhänder einträgst. Als Kontenzuordnung lehnt das Tool den Export ab und nennt `--accounts-from`.
+Das Tool nimmt für jedes apaleo-Konto mit Typ das Abacus-Konto und die Kostenstelle aus dem Export und den MWST-Code und Satz aus der Vorlage, denn der Export hat keine MWST-Spalte. Jede übernommene Zeile ist als «Vorschlag (ungeprüft)» markiert und sagt im Kommentar, dass sie übernommen ist. Konten des Exports, die der apaleo-Kontenplan nicht hat, listet der Befehl auf. Gibt die Vorlage für ein Konto keinen MWST-Code, bleibt er leer, und `mapping check` meldet `E-MWST-CODE-MISSING`, bis du ihn mit deinem Treuhänder einträgst. Als Kontenzuordnung lehnt das Tool den Export ab und nennt `--accounts-from`.
 
 ## Checkliste zur Freigabe durch den Treuhänder
 
