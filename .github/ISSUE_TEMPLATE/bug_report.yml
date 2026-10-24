@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         Danke für deine Meldung. **Füge nie Secrets oder Gästedaten ein.** Entferne vor dem Absenden das apaleo-Client-Secret
-        und Tokens, Gästenamen, E-Mail-Adressen, Reservierungs- und Rechnungsnummern echte Steuer- oder UID-Nummern
-        und Nummern von BMD-Mandanten.
+        und Tokens, Gästenamen, E-Mail-Adressen, Reservations- und Rechnungsnummern, echte MWST- oder UID-Nummern
+        und die Mandantennummer und Kontonummern des Abacus-Mandanten.
         Sicherheitsprobleme gehören nicht hierher, sondern in ein privates Security Advisory (siehe SECURITY.md).
 
         Meldungen auf Englisch sind ebenfalls willkommen.
