@@ -58,7 +58,7 @@ describe('contribution and conduct files', () => {
 
 describe('CHANGELOG.md', () => {
   const text = readRepoFile('CHANGELOG.md');
-  const unreleased = text.split(/^## \[Unveröffentlicht\]$/m)[1]?.split(/^## /m)[0] ?? '';
+  const unreleased = text.split(/^## \[0\.1\.0\] - \d{4}-\d{2}-\d{2}$/m)[1]?.split(/^## /m)[0] ?? '';
   const part = (heading: string) => unreleased.split(new RegExp(`^### ${heading}$`, 'm'))[1]?.split(/^### /m)[0] ?? '';
 
   it('follows the German edition of Keep a Changelog with an Unveröffentlicht section, in Swiss Standard German', () => {
@@ -71,11 +71,11 @@ describe('CHANGELOG.md', () => {
   it('starts the history of apaleo-abacus-export and names apaleo-bmd-export v0.1.0 as its origin instead of repeating its entries', () => {
     expect(text).toContain('Die Geschichte von apaleo-abacus-export beginnt hier.');
     expect(text).toContain('[apaleo-bmd-export](https://github.com/krautdawg/apaleo-bmd-export) v0.1.0');
-    expect(text).not.toMatch(/^## \[0\.1\.0\]/m);
+    expect(text.match(/^## \[0\.1\.0\]/gm)).toHaveLength(1);
     expect(text).not.toMatch(/\(b0\d/);
   });
 
-  it('Unreleased section: lists the Abacus features under Hinzugefügt and the BMD output under Entfernt', () => {
+  it('0.1.0 section: lists the Abacus features under Hinzugefügt and the BMD output under Entfernt', () => {
     const added = part('Hinzugefügt');
     for (const feature of ['XML Buchungen', 'init-mapping --template kmu-hotel', 'MWST-Codes', 'Kurtaxe', 'Anzahlungen', 'Debitorenverlust', 'Annullationen', 'CHF als Leitwährung', 'export --demo', 'schedule --once', 'Docker']) {
       expect(added, feature).toContain(feature);
