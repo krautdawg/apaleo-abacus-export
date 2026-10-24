@@ -452,6 +452,7 @@ export function checkGermanPracticeTerms(file: string, markdown: string): string
 export const SWISS_FILES: readonly string[] = [
   'docs/abacus-format.md',
   'docs/abacus-import.md',
+  'docs/docker.md',
   'docs/mapping-guide.md',
   'docs/posting-rules.md',
   'docs/examples/README.md',

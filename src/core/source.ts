@@ -101,7 +101,7 @@ export interface SourceProperty {
   id: string;
   code: string;
   name: string;
-  /** IANA time zone, for example `Europe/Vienna`. */
+  /** IANA time zone, for example `Europe/Zurich`. */
   timeZone: string;
   currency: string;
   countryCode?: string;

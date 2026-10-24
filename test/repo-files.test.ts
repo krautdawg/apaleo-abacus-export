@@ -91,6 +91,9 @@ describe('CI workflow', () => {
     expect(text).toContain('docker run --rm -w /data -v "$RUNNER_TEMP/demo-data:/data" apaleo-abacus-export:ci export --month 2026-09 --demo\n');
     expect(text).toContain('sudo chown 1000:1000 "$RUNNER_TEMP/demo-data"');
     expect(text).toContain('test -s "$RUNNER_TEMP/demo-data/demo-output/BSP/2026-09/ABACUS_Buchungen_20260901-20260930_BSP_DEMO.xml"');
+    for (const check of ["label description | grep -q 'apaleo'", "label description | grep -q 'Abacus'", "if label description | grep -q 'BMD'; then exit 1; fi", 'test "$(label licenses)" = MIT']) {
+      expect(text).toContain(check);
+    }
     for (const forbidden of ['docker login', 'docker push', 'docker/login-action', 'docker/build-push-action', 'ghcr.io', 'packages: write']) {
       expect(text).not.toContain(forbidden);
     }
@@ -118,17 +121,17 @@ describe('container image', () => {
     expect(dockerfile).not.toMatch(/^HEALTHCHECK/m);
   });
 
-  it('carries OCI labels for the BMD product, the repository and the MIT licence', () => {
+  it('carries OCI labels naming apaleo and Abacus, the repository and the MIT licence', () => {
     const labels = Object.fromEntries(
       [...dockerfile.matchAll(/(org\.opencontainers\.image\.[a-z]+)="([^"]*)"/g)].map(([, key = '', value = '']) => [key.replace('org.opencontainers.image.', ''), value]),
     );
     expect(labels).toEqual({
       title: 'apaleo-abacus-export',
-      description: expect.stringContaining('BMD Buchungsimport'),
+      description: 'apaleo -> Abacus Finanzbuchhaltung export (AbaConnect XML Buchungen)',
       source: 'https://github.com/krautdawg/apaleo-abacus-export',
       licenses: 'MIT',
     });
-    expect(dockerfile).not.toMatch(/datev/i);
+    expect(dockerfile).not.toMatch(/datev|bmd/i);
   });
 
   it('keeps secrets and local files out of the build context', () => {
@@ -165,6 +168,22 @@ describe('compose and env examples', () => {
   it('runs schedule --once in a while-sleep loop', () => {
     const script = services[0]?.entrypoint?.join('\n') ?? '';
     expect(script).toMatch(/while true; do\s+node \/app\/dist\/cli\/main\.js schedule --once\s+sleep \d+\s+done/);
+  });
+
+  it('sets APALEO_ABACUS_TIMEZONE only commented out, with the default Europe/Zurich', () => {
+    const text = read('docker-compose.example.yml');
+    expect(text).toMatch(/^ {4}# {3}APALEO_ABACUS_TIMEZONE: Europe\/Zurich$/m);
+    expect(text).toMatch(/^ {4}# environment:$/m);
+    expect((compose.services['apaleo-abacus'] as Record<string, unknown>).environment).toBeUndefined();
+  });
+
+  it('comments the compose and env examples in Swiss Standard German, without the letter "ß"', () => {
+    for (const file of ['docker-compose.example.yml', '.env.example']) {
+      const text = read(file);
+      expect(text, file).not.toContain('ß');
+      expect(text, file).not.toMatch(/\bBMD\b|Kanzlei/);
+    }
+    expect(read('docker-compose.example.yml')).toContain('Treuhänder');
   });
 
   it('lists only variable names with empty values in .env.example, and .env is git-ignored', () => {

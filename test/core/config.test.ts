@@ -59,7 +59,7 @@ describe('loading', () => {
       posting: { text2: 'receipt' },
       properties: [],
       checks: { aggregates: false },
-      schedule: { timezone: 'Europe/Vienna', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 },
+      schedule: { timezone: 'Europe/Zurich', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 },
     });
     expect(secrets.apaleoClientSecret).toBeUndefined();
   });
@@ -121,7 +121,7 @@ describe('loading', () => {
     expect(config.abacus).toEqual(ABACUS_DEFAULTS);
     expect(config.posting).toEqual({ text2: 'receipt' });
     expect(config.checks).toEqual({ aggregates: false });
-    expect(config.schedule).toEqual({ timezone: 'Europe/Vienna', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 });
+    expect(config.schedule).toEqual({ timezone: 'Europe/Zurich', cadence: 'monthly', daily: { offsetDays: 2 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 40 });
   });
 
   it('treats a section whose keys are all commented out as missing, with or without env overrides', async () => {
@@ -374,8 +374,8 @@ describe('properties section', () => {
 
 describe('schedule section', () => {
   it('reads a daily schedule', async () => {
-    const { config } = await load(`${VALID}schedule:\n  timezone: Europe/Zurich\n  cadence: daily\n  daily:\n    offsetDays: 3\n  catchUpDays: 10\n`);
-    expect(config.schedule).toEqual({ timezone: 'Europe/Zurich', cadence: 'daily', daily: { offsetDays: 3 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 10 });
+    const { config } = await load(`${VALID}schedule:\n  timezone: Europe/Berlin\n  cadence: daily\n  daily:\n    offsetDays: 3\n  catchUpDays: 10\n`);
+    expect(config.schedule).toEqual({ timezone: 'Europe/Berlin', cadence: 'daily', daily: { offsetDays: 3 }, monthly: { dayOfMonth: 3 }, finalAfter: '06:00', catchUpDays: 10 });
   });
 
   it('names schedule.daily.offsetDays and the range 1 to 3 for offsetDays 0', async () => {
@@ -398,7 +398,8 @@ describe('schedule section', () => {
   it('refuses a fixed UTC offset or an unknown zone as schedule.timezone', async () => {
     for (const zone of ['"+01:00"', 'Berlin', 'CEST+1']) {
       const error = await loadError(`${VALID}schedule:\n  timezone: ${zone}\n`);
-      expect(error.message).toContain('schedule.timezone: must be an IANA time zone name');
+      expect(error.message).toContain('schedule.timezone: must be an IANA time zone name, for example "Europe/Zurich"');
+      expect(error.message).not.toContain('Vienna');
     }
   });
 
@@ -449,10 +450,10 @@ describe('environment overrides', () => {
   });
 
   it('applies every allow-listed scalar override', async () => {
-    const { config } = await load(VALID, { APALEO_CLIENT_ID: 'client-1', APALEO_ABACUS_OUTPUT_DIR: '/data/out', APALEO_ABACUS_TIMEZONE: 'Europe/Zurich' });
+    const { config } = await load(VALID, { APALEO_CLIENT_ID: 'client-1', APALEO_ABACUS_OUTPUT_DIR: '/data/out', APALEO_ABACUS_TIMEZONE: 'Europe/Berlin' });
     expect(config.apaleo.clientId).toBe('client-1');
     expect(config.output.dir).toBe('/data/out');
-    expect(config.schedule.timezone).toBe('Europe/Zurich');
+    expect(config.schedule.timezone).toBe('Europe/Berlin');
   });
 
   it('no longer reads the DATEV overrides of the Berater- and Mandantennummer', async () => {
@@ -462,8 +463,8 @@ describe('environment overrides', () => {
   });
 
   it('APALEO_ABACUS_TIMEZONE sets schedule.timezone and is validated like the file value', async () => {
-    const { config } = await load(VALID, { APALEO_ABACUS_TIMEZONE: 'Europe/Zurich' });
-    expect(config.schedule.timezone).toBe('Europe/Zurich');
+    const { config } = await load(VALID, { APALEO_ABACUS_TIMEZONE: 'Europe/Berlin' });
+    expect(config.schedule.timezone).toBe('Europe/Berlin');
     const error = await loadError(VALID, { APALEO_ABACUS_TIMEZONE: 'Mars/Olympus' });
     expect(error.message).toContain('schedule.timezone: must be an IANA time zone name');
     expect(error.message).toContain('from APALEO_ABACUS_TIMEZONE');
