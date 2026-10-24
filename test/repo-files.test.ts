@@ -20,18 +20,20 @@ describe('licence and disclaimer', () => {
     expect(readme).toContain('](DISCLAIMER.md)');
   });
 
-  it('DISCLAIMER.md is German and binding first, then a non-binding English translation, both covering warranty, liability, advice, the Steuerberater and the BMD imports', () => {
+  it('DISCLAIMER.md is Swiss Standard German and binding first, then a non-binding English translation, both covering warranty, liability, advice, the Treuhänder and the Abacus imports', () => {
     const text = read('DISCLAIMER.md');
     expect(text.startsWith('# Haftungsausschluss\n')).toBe(true);
+    expect(text).not.toContain('ß');
     expect(text).toContain('Verbindlich ist die deutsche Fassung.');
     const [german = '', english = ''] = text.split('\n## English (non-binding translation)\n');
     expect(english).not.toBe('');
-    for (const phrase of ['ohne ausdrückliche oder stillschweigende Gewährleistung', 'haften', 'keine Steuerberatung', 'Kontenzuordnung', 'BMD-Importe']) {
+    for (const phrase of ['ohne ausdrückliche oder stillschweigende Gewährleistung', 'haften', 'keine Steuerberatung', 'Kontenzuordnung', 'Treuhänder', 'Abacus', 'MWST-Codes', 'Abacus Research AG', 'apaleo GmbH']) {
       expect(german).toContain(phrase);
     }
-    for (const phrase of ['without warranty', 'not liable', 'not tax advice', 'must review the account mapping', 'Steuerberater', 'first BMD imports']) {
+    for (const phrase of ['without warranty', 'not liable', 'not tax advice', 'must review the account mapping', 'Treuhänder', 'first Abacus imports', 'Abacus Research AG']) {
       expect(english).toContain(phrase);
     }
+    expect(text).not.toMatch(/\bBMD\b|Steuerberater|Kanzlei|\bUVA\b|\bBAO\b/);
   });
 });
 
@@ -177,8 +179,8 @@ describe('compose and env examples', () => {
     expect((compose.services['apaleo-abacus'] as Record<string, unknown>).environment).toBeUndefined();
   });
 
-  it('comments the compose and env examples in Swiss Standard German, without the letter "ß"', () => {
-    for (const file of ['docker-compose.example.yml', '.env.example']) {
+  it('comments the compose, env and config examples in Swiss Standard German, without the letter "ß"', () => {
+    for (const file of ['docker-compose.example.yml', '.env.example', 'apaleo-abacus.config.example.yaml']) {
       const text = read(file);
       expect(text, file).not.toContain('ß');
       expect(text, file).not.toMatch(/\bBMD\b|Kanzlei/);
