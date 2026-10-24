@@ -413,14 +413,18 @@ describe('docs folder', () => {
     expect(readRepoFile('docs/configuration.md')).toContain('](abacus-import.md)');
   });
 
-  it('Going public later: docs/maintainers.md has the "Vor der Veröffentlichung" checklist, starting with the test import', () => {
-    expect(MAINTAINERS).toContain('**niemand ausserhalb kann sie sehen, bis der Maintainer das Repository öffentlich macht**');
-    const checklist = section(MAINTAINERS, '## Vor der Veröffentlichung');
-    const steps = checklist.split('\n').filter((line) => /^\d+\. \[ \] /.test(line));
-    expect(steps[0]).toMatch(/Testimport in Abacus FIBU.*abacus-import\.md.*\[Testimporte\]\(#testimporte\)/);
-    expect(steps[1]).toMatch(/Schweizer apaleo-Sandbox.*`test\/fixtures\/apaleo\/live\/`/);
-    for (const step of ['--visibility public', 'Vorschaubild (Social Preview)', 'Discussions', 'v0.1.0']) expect(checklist).toContain(step);
-    expect(checklist).not.toContain('[x]');
+  it('Public: docs/maintainers.md says the repository is public and keeps the "Veröffentlichung" checklist, starting with the open test import', () => {
+    const publicSection = section(MAINTAINERS, '## Das Repository ist öffentlich');
+    expect(publicSection).toContain('öffentlich');
+    expect(MAINTAINERS).not.toMatch(/ist privat|bleibt trotzdem privat|vorerst privat/);
+    const checklist = section(MAINTAINERS, '## Veröffentlichung');
+    const open = checklist.split('\n').filter((line) => /^\d+\. \[ \] /.test(line));
+    expect(open[0]).toMatch(/Testimport in Abacus FIBU.*abacus-import\.md.*\[Testimporte\]\(#testimporte\)/);
+    expect(open[1]).toMatch(/Schweizer apaleo-Sandbox.*`test\/fixtures\/apaleo\/live\/`/);
+    for (const step of ['Vorschaubild (Social Preview)', 'Discussions', 'frischen Klon']) expect(open.join('\n')).toContain(step);
+    const done = checklist.split('\n').filter((line) => /^\d+\. \[x\] /.test(line)).join('\n');
+    for (const step of ['Sichtbarkeit', 'Sicherheitslücken', 'Schutz für den Branch', 'v0.1.0', 'Historie', 'pnpm test']) expect(done).toContain(step);
+    expect(MAINTAINERS).not.toContain('--visibility public');
   });
 
   it('records test imports under "Testimporte" in a table with date, Abacus version, interface version, import program and result', () => {
@@ -438,13 +442,13 @@ describe('docs folder', () => {
 
   it('Metadata applied: records the gh repo edit command with the Swiss description and every topic, removes BMD and DATEV topics and leaves the visibility alone', () => {
     const topics = ['apaleo', 'abacus', 'abacus-export', 'abaconnect', 'abacus-fibu', 'mwst', 'kmu-kontenrahmen', 'hotel', 'hospitality', 'accounting', 'buchhaltung', 'treuhand', 'switzerland', 'schweiz'];
-    const privateSection = section(MAINTAINERS, '## Das Repository ist vorerst privat');
-    expect(privateSection).toContain(`--add-topic ${topics.join(',')}`);
-    expect(privateSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*Abacus Finanzbuchhaltung .*für Hotels in der Schweiz/);
-    expect(privateSection).toMatch(/--remove-topic [^\n]*\bbmd\b[^\n]*\bdatev\b/);
-    expect(privateSection).not.toMatch(/--description "[^"]*\b(BMD|DATEV)\b|--add-topic [^\n]*\b(bmd|datev|ekr|austria|oesterreich)\b/);
-    expect(privateSection).not.toContain('--visibility');
-    expect(privateSection).toContain('gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility');
+    const metadataSection = section(MAINTAINERS, '## Das Repository ist öffentlich');
+    expect(metadataSection).toContain(`--add-topic ${topics.join(',')}`);
+    expect(metadataSection).toMatch(/--description "Kostenloser apaleo Abacus Export .*Abacus Finanzbuchhaltung .*für Hotels in der Schweiz/);
+    expect(metadataSection).toMatch(/--remove-topic [^\n]*\bbmd\b[^\n]*\bdatev\b/);
+    expect(metadataSection).not.toMatch(/--description "[^"]*\b(BMD|DATEV)\b|--add-topic [^\n]*\b(bmd|datev|ekr|austria|oesterreich)\b/);
+    expect(metadataSection).not.toContain('--visibility');
+    expect(metadataSection).toContain('gh repo view krautdawg/apaleo-abacus-export --json description,repositoryTopics,visibility');
   });
 });
 
