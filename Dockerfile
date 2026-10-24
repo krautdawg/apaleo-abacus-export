@@ -17,7 +17,7 @@ RUN pnpm build && pnpm prune --prod
 # --- runtime ------------------------------------------------------------------
 FROM node:24-bookworm-slim
 LABEL org.opencontainers.image.title="apaleo-abacus-export" \
-      org.opencontainers.image.description="Exports apaleo accounting data as BMD Buchungsimport files for BMD NTCS; run schedule --once from cron or the compose loop" \
+      org.opencontainers.image.description="apaleo -> Abacus Finanzbuchhaltung export (AbaConnect XML Buchungen)" \
       org.opencontainers.image.source="https://github.com/krautdawg/apaleo-abacus-export" \
       org.opencontainers.image.licenses="MIT"
 ENV NODE_ENV=production \
