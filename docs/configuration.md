@@ -127,7 +127,7 @@ Wann was fällig ist, mit den Standardwerten und der Zeitzone `Europe/Zurich` (0
 | täglich | `schedule.daily.offsetDays: 2` (Standard) | 18. Oktober 2026 | 20. Oktober 2026, 06:00 Uhr in Zürich |
 | täglich | `schedule.daily.offsetDays: 1` | 19. Oktober 2026 | 21. Oktober 2026, 06:00 Uhr in Zürich (vorher `not yet final`) |
 
-Ein Zeitraum, der am Tag T endet, ist erst ab `schedule.finalAfter` am Tag T+2 abgeschlossen, nach dem Tagesabschluss (Night Audit), der den Folgetag schliesst. Dein Treuhänder bekommt die Monatsdatei so früh im Folgemonat, wie es der bezahlte Connector aus dem apaleo Store auch tut. Mehr dazu in [docker.md](docker.md#was-fällig-ist).
+Ein Zeitraum, der am Tag T endet, ist erst ab `schedule.finalAfter` am Tag T+2 abgeschlossen, nach dem Tagesabschluss (Night Audit), der den Folgetag schliesst. Mit den Standardwerten bekommt dein Treuhänder die Monatsdatei am 3. des Folgemonats. Mehr dazu in [docker.md](docker.md#was-fällig-ist).
 
 ## Ein vollständiges Beispiel
 
