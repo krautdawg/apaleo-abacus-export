@@ -179,6 +179,19 @@ describe('injected context', () => {
     expect(ctx.out()).not.toContain('s3cr3t');
   });
 
+  it('doctor prints the effective schedule time zone: Europe/Zurich by default, else the configured or APALEO_ABACUS_TIMEZONE zone', async () => {
+    const config = 'abacus:\n  mandant: 1234\n';
+    const swiss = createTestContext({ files: { 'apaleo-abacus.config.yaml': config } });
+    expect(await runCli(['doctor'], swiss)).toBe(0);
+    expect(swiss.out()).toContain('Schedule:      cadence monthly, time zone Europe/Zurich');
+    const daily = createTestContext({ files: { 'apaleo-abacus.config.yaml': `${config}schedule:\n  timezone: Europe/Berlin\n  cadence: daily\n` } });
+    expect(await runCli(['doctor'], daily)).toBe(0);
+    expect(daily.out()).toContain('Schedule:      cadence daily, time zone Europe/Berlin');
+    const env = createTestContext({ files: { 'apaleo-abacus.config.yaml': config }, env: { APALEO_ABACUS_TIMEZONE: 'Europe/Vienna' } });
+    expect(await runCli(['doctor'], env)).toBe(0);
+    expect(env.out()).toContain('Schedule:      cadence monthly, time zone Europe/Vienna');
+  });
+
   it('doctor reports the example config valid with its Abacus Mandant 1234', async () => {
     const example = readFileSync(new URL('../../apaleo-abacus.config.example.yaml', import.meta.url), 'utf8');
     const ctx = createTestContext({ files: { 'apaleo-abacus.config.yaml': example } });

@@ -24,6 +24,8 @@ export const doctor: Command = {
       print('Client secret', loaded.secrets.apaleoClientSecret ? 'set (APALEO_CLIENT_SECRET)' : 'not set (APALEO_CLIENT_SECRET)');
       const { abacus } = loaded.config;
       print('Abacus', `Mandant ${abacus.mandant}, Leitwährung ${abacus.leitwaehrung}, ${abacus.abrechnungsart}, version ${abacus.version}`);
+      const { schedule } = loaded.config;
+      print('Schedule', `cadence ${schedule.cadence}, time zone ${schedule.timezone}`);
       for (const finding of [...sharedMandantFindings(loaded.config), ...abrechnungsartFindings(abacus)]) ctx.stdout.write(`${formatFinding(finding)}\n`);
     } catch (error) {
       if (!(error instanceof ConfigNotFoundError)) throw error;

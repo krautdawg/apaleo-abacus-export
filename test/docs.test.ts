@@ -370,6 +370,8 @@ describe('the Swiss file check', () => {
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/mapping-guide.md', 'docs/posting-rules.md']));
     // Since a06 the Swiss demo and its example output.
     expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/examples/README.md', 'examples/demo/README.md']));
+    // a07 rewrote the schedule and Docker guide for Switzerland.
+    expect(SWISS_FILES).toEqual(expect.arrayContaining(['docs/docker.md']));
     expect(existingSwissFiles(['docs/abacus-format.md', 'README.md', 'docs/does-not-exist.md'])).toEqual(
       expect.not.arrayContaining(['docs/does-not-exist.md']),
     );
@@ -457,5 +459,39 @@ describe('the compatibility claim check', () => {
     ]) {
       expect(checkCompatibilityClaims('README.md', text, 0), text).toEqual([]);
     }
+  });
+});
+
+describe('docs/docker.md (a07)', () => {
+  const docker = readRepoFile('docs/docker.md');
+
+  it('names the path of the monthly Abacus file and its protocol for one property, and that nothing is sent by e-mail or to a cloud', () => {
+    expect(docker).toContain('/data/<Hotel>/<JJJJ-MM>/');
+    expect(docker).toContain('`/data/BSP/2026-10/ABACUS_Buchungen_20261001-20261031_BSP.xml`');
+    expect(docker).toContain('`/data/BSP/2026-10/ABACUS_Buchungen_20261001-20261031_BSP.protokoll.txt`');
+    expect(docker).toContain('Das Tool verschickt nichts per E-Mail und lädt nichts in eine Cloud');
+  });
+
+  it('leaves the handover to the hotel: a shared folder or the Treuhänder\'s own transfer', () => {
+    const section = docker.slice(docker.indexOf('## Wo dein Treuhänder die Dateien findet'), docker.indexOf('## Cron auf dem Host'));
+    expect(section).toContain('entscheidet ihr im Hotel');
+    expect(section).toContain('freigegebenen Ordner');
+    expect(section).toContain('Datenaustausch, den dein Treuhänder ohnehin anbietet');
+  });
+
+  it('documents the compose loop, the host-cron alternative, the default time zone Europe/Zurich and the demo in the image', () => {
+    expect(docker).toContain('docker compose -f docker-compose.example.yml up -d --build');
+    expect(docker).toContain('## Cron auf dem Host statt der Schleife');
+    expect(docker).toContain('docker compose -f docker-compose.example.yml run --rm apaleo-abacus schedule --once >> schedule.log 2>&1');
+    expect(docker).toContain('(Standard `Europe/Zurich`)');
+    expect(docker).not.toContain('Vienna');
+    expect(docker).toContain('docker run --rm -w /data -v "$PWD/data:/data" apaleo-abacus-export:local export --month 2026-09 --demo');
+    expect(docker).toContain('uid 1000');
+    expect(docker).toContain('ABACUS_Buchungen_20260901-20260930_BSP_DEMO.xml');
+  });
+
+  it('gives the chown command for E-EXPORT as the export prints it', () => {
+    expect(docker).toContain('`E-EXPORT`');
+    expect(docker).toContain('`sudo chown -R 1000:1000 data`');
   });
 });
