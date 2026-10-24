@@ -1,6 +1,6 @@
 # Zeitplan und Docker
 
-`apaleo-abacus schedule --once` ermittelt, welche Zeiträume fällig sind, schreibt für jeden, der noch nicht im Ausgabeordner liegt, die Abacus-Datei (AbaConnect „XML Buchungen“) und endet. Im Tool läuft keine eigene Uhr: Cron, ein systemd-Timer, ein Kubernetes CronJob oder die Schleife in `docker-compose.example.yml` ruft es auf. Du kannst es so oft aufrufen, wie du willst, zum Beispiel stündlich: Ein Zeitraum, dessen Datei schon existiert, kostet keine Anfrage an apaleo.
+`apaleo-abacus schedule --once` ermittelt, welche Zeiträume fällig sind, schreibt für jeden, der noch nicht im Ausgabeordner liegt, die Abacus-Datei (AbaConnect «XML Buchungen») und endet. Im Tool läuft keine eigene Uhr: Cron, ein systemd-Timer, ein Kubernetes CronJob oder die Schleife in `docker-compose.example.yml` ruft es auf. Du kannst es so oft aufrufen, wie du willst, zum Beispiel stündlich: Ein Zeitraum, dessen Datei schon existiert, kostet keine Anfrage an apaleo.
 
 Keine Gewähr, keine Steuerberatung, lass deine Kontenzuordnung von deinem Treuhänder prüfen. Lass ihn auch die ersten Importe in Abacus prüfen, bevor das Tool allein läuft.
 
@@ -20,7 +20,7 @@ schedule:
   catchUpDays: 40           # mindestens 3 (monatlich) oder 5 (täglich)
 ```
 
-- „Heute“ ist das Datum in `schedule.timezone` (Standard `Europe/Zurich`), nie eine Schätzung in UTC: Am 3. November um 00:30 Uhr ist in Zürich der 3. November, auch wenn in UTC noch der 2. November ist. Ein Hotel in der Schweiz braucht den Schlüssel also nicht; setz ihn nur, wenn dein Rechner und deine Hotels woanders stehen. `apaleo-abacus doctor` zeigt die Zeitzone, mit der das Tool rechnet.
+- «Heute» ist das Datum in `schedule.timezone` (Standard `Europe/Zurich`), nie eine Schätzung in UTC: Am 3. November um 00:30 Uhr ist in Zürich der 3. November, auch wenn in UTC noch der 2. November ist. Ein Hotel in der Schweiz braucht den Schlüssel also nicht; setz ihn nur, wenn dein Rechner und deine Hotels woanders stehen. `apaleo-abacus doctor` zeigt die Zeitzone, mit der das Tool rechnet.
 - `cadence: monthly` (Standard): Ein Kalendermonat ist ab `schedule.monthly.dayOfMonth` des Folgemonats fällig. Mit Tag 3 wird der Oktober ab dem 3. November exportiert, und dein Treuhänder bekommt eine Abacus-Datei pro Monat, früh im Folgemonat.
 - `cadence: daily`: Ein Tag ist `schedule.daily.offsetDays` Tage später fällig. Mit 2 (Standard) wird der 18. Oktober am 20. Oktober ab 06:00 Uhr exportiert. Täglich heisst für deinen Treuhänder etwa 30 Importe im Monat; stimm das also vorher mit ihm ab.
 - Ein geplanter Lauf schreibt nie einen Zeitraum, der noch nicht abgeschlossen ist. apaleo kann auf einen Tag noch buchen, bis der Tagesabschluss (Night Audit) den *folgenden* Tag schliesst (ein Gast, der um 04:00 Uhr eincheckt, wird auf den Vortag gebucht), und dieser Abschluss läuft nach Mitternacht. Ein Zeitraum, der am Tag T endet, gilt deshalb erst ab `schedule.finalAfter` (Standard 06:00 Uhr) am Tag T+2 als abgeschlossen, nicht früher: Sobald die Datei existiert, überspringt jeder spätere Lauf den Zeitraum, spätere Buchungen kämen also nie in Abacus an. Bis dahin meldet das Tool den Zeitraum als `not yet final` (Hinweis `N-NOT-FINAL`), ohne apaleo zu fragen, und der erste Lauf nach dieser Uhrzeit exportiert ihn. Beispiele mit den Standardwerten: Der 18. Oktober wird am 20. Oktober ab 06:00 Uhr geschrieben; mit `offsetDays: 1` wartet der 19. Oktober bis zum 21. Oktober 06:00 Uhr; mit `dayOfMonth: 1` oder `2` wartet der Oktober bis zum 2. November 06:00 Uhr. Setz `finalAfter` auf die Uhrzeit, zu der dein Tagesabschluss sicher fertig ist (gern früher, nie später als 12:00 Uhr). Ob ein Zeitraum abgeschlossen ist, prüft das Tool in `schedule.timezone` und noch einmal in der Zeitzone des Hotels aus apaleo.
@@ -71,7 +71,7 @@ docker compose -f docker-compose.example.yml logs -f
 
 Der Dienst `apaleo-abacus` (Image `apaleo-abacus-export:local`, aus diesem Repository gebaut) ruft `schedule --once` auf, wartet eine Stunde und wiederholt das. Die Dateien erscheinen in `./data/<Hotel>/<JJJJ-MM>/`; wie sie zu deinem Treuhänder kommen, steht unten in [Wo dein Treuhänder die Dateien findet](#wo-dein-treuhänder-die-dateien-findet).
 
-Die Zeitzone für „heute“ ist `Europe/Zurich`. Stehen deine Hotels woanders, setz sie in der Konfiguration (`schedule.timezone`) oder nimm im Compose-Beispiel die auskommentierte Zeile `APALEO_ABACUS_TIMEZONE` unter `environment:` hinein.
+Die Zeitzone für «heute» ist `Europe/Zurich`. Stehen deine Hotels woanders, setz sie in der Konfiguration (`schedule.timezone`) oder nimm im Compose-Beispiel die auskommentierte Zeile `APALEO_ABACUS_TIMEZONE` unter `environment:` hinein.
 
 Lässt du das `chown` weg, legt Docker `./data` mit root als Besitzer an, und jeder Zeitraum scheitert mit `E-EXPORT` und `EACCES: permission denied`, gefolgt von dem `chown`-Befehl, den du ausführen musst (`sudo chown -R 1000:1000 data` neben `docker-compose.example.yml`). Der Lauf macht mit den anderen Hotels und Zeiträumen weiter und endet mit 1; es geht nichts verloren, der nächste Lauf nach der Korrektur exportiert sie.
 
@@ -119,7 +119,7 @@ data/
 
 Für den Oktober des Hotels `BSP` sind das also `/data/BSP/2026-10/ABACUS_Buchungen_20261001-20261031_BSP.xml` und daneben das Protokoll `/data/BSP/2026-10/ABACUS_Buchungen_20261001-20261031_BSP.protokoll.txt`.
 
-Das Tool verschickt nichts per E-Mail und lädt nichts in eine Cloud: Es schreibt nur in den Ausgabeordner. Wie die Dateien zu deinem Treuhänder kommen, entscheidet ihr im Hotel, zum Beispiel über einen freigegebenen Ordner, auf den `./data` zeigt, oder über den Datenaustausch, den dein Treuhänder ohnehin anbietet. Gib ihm die `.xml` zusammen mit dem Protokoll: Den Block „Import into Abacus FIBU“ vergleicht er vor dem Import mit dem Mandanten. Ändere die Datei dabei nicht, und öffne und speichere sie nicht in einem anderen Programm; Abacus liest sie so, wie das Tool sie geschrieben hat. Wie dein Treuhänder sie in Abacus importiert, steht in [abacus-import.md](abacus-import.md#buchungen-importieren).
+Das Tool verschickt nichts per E-Mail und lädt nichts in eine Cloud: Es schreibt nur in den Ausgabeordner. Wie die Dateien zu deinem Treuhänder kommen, entscheidet ihr im Hotel, zum Beispiel über einen freigegebenen Ordner, auf den `./data` zeigt, oder über den Datenaustausch, den dein Treuhänder ohnehin anbietet. Gib ihm die `.xml` zusammen mit dem Protokoll: Den Block «Import into Abacus FIBU» vergleicht er vor dem Import mit dem Mandanten. Ändere die Datei dabei nicht, und öffne und speichere sie nicht in einem anderen Programm; Abacus liest sie so, wie das Tool sie geschrieben hat. Wie dein Treuhänder sie in Abacus importiert, steht in [abacus-import.md](abacus-import.md#buchungen-importieren).
 
 Lösch oder verschieb nach der Übergabe nicht den ganzen Monatsordner, und nie die `manifest.json`: Solange der Zeitraum im Nachholfenster liegt, würde der nächste Lauf ihn sonst noch einmal exportieren, und Abacus würde ihn doppelt buchen. Die `.xml` allein darfst du verschieben; der Eintrag in `manifest.json` genügt.
 
@@ -154,7 +154,7 @@ Der Standardbefehl des Image ist `schedule --once`; Argumente ersetzen ihn. Das 
 
 ### Die Demo im Image
 
-`export --demo` braucht keine Konfiguration und kein Secret: Es exportiert den September 2026 des erfundenen Schweizer Hotels `BSP` „Hotel Beispiel“ in CHF. Der Probelauf funktioniert so, wie er ist:
+`export --demo` braucht keine Konfiguration und kein Secret: Es exportiert den September 2026 des erfundenen Schweizer Hotels `BSP` «Hotel Beispiel» in CHF. Der Probelauf funktioniert so, wie er ist:
 
 ```sh
 docker run --rm apaleo-abacus-export:local export --month 2026-09 --demo --dry-run

@@ -8,7 +8,7 @@ Das Tool liest eine Konfigurationsdatei im Format YAML oder JSON und dazu ein pa
 2. die Umgebungsvariable `APALEO_ABACUS_CONFIG`, sonst
 3. `./apaleo-abacus.config.yaml` im Arbeitsverzeichnis.
 
-Eine Datei, deren Name auf `.json` endet, wird als JSON gelesen, jede andere als YAML. Unbekannte Schlüssel lehnt das Tool mit ihrem Namen ab, damit ein Tippfehler nie unbemerkt bleibt. Ein Schlüssel ohne Wert (`mandant:`) gilt als nicht gesetzt. Eine Konfiguration aus einem Vorgängerprojekt mit einem Abschnitt `bmd` oder `datev` lehnt das Tool ab und nennt den Abschnitt `abacus`, der ihn ersetzt ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-übernommen)). `apaleo-abacus doctor` zeigt, welche Datei verwendet wird und ob sie gültig ist.
+Eine Datei, deren Name auf `.json` endet, wird als JSON gelesen, jede andere als YAML. Unbekannte Schlüssel lehnt das Tool mit ihrem Namen ab, damit ein Tippfehler nie unbemerkt bleibt. Ein Schlüssel ohne Wert (`mandant:`) gilt als nicht gesetzt. Eine Konfiguration aus einem Vorgängerprojekt mit einem Abschnitt `bmd` oder `datev` lehnt das Tool ab und nennt den Abschnitt `abacus`, der ihn ersetzt ([troubleshooting.md](troubleshooting.md#einrichtung-aus-deutschland-oder-österreich-übernommen)). `apaleo-abacus doctor` zeigt, welche Datei verwendet wird und ob sie gültig ist.
 
 ## Secrets
 
@@ -46,7 +46,7 @@ Diese Werte legt der Abacus-Mandant deines Treuhänders fest. Frag ihn, bevor du
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|
 | `abacus` | Pflicht | Der Abschnitt muss da sein, weil `abacus.mandant` keinen Standardwert hat. |
-| `abacus.mandant` | Pflicht | Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Sie steht im Block `Parameter` und in jeder Buchung (`Client`); mit der Importeinstellung „nur Buchungen mit gleicher Mandantennummer“ lehnt Abacus die Datei in einem anderen Mandanten ab. |
+| `abacus.mandant` | Pflicht | Die Mandantennummer in Abacus, 1 bis 6 Ziffern. Sie steht im Block `Parameter` und in jeder Buchung (`Client`); mit der Importeinstellung «nur Buchungen mit gleicher Mandantennummer» lehnt Abacus die Datei in einem anderen Mandanten ab. |
 | `abacus.leitwaehrung` | `CHF` | Die Leitwährung des Mandanten, `CHF` oder `EUR`. Jedes Hotel muss in dieser Währung buchen; das Tool rechnet nicht um. |
 | `abacus.abrechnungsart` | `vereinbart` | Die MWST-Abrechnungsart: `vereinbart` oder `vereinnahmt`. Sie bestimmt den `UseCode` (0 oder 1) und das Steuer- oder Hilfskonto in der Buchung, nie die Beträge. Mit `vereinnahmt` warnen `doctor` und jeder Export `W-ABRECHNUNGSART-VEREINNAHMT`, siehe [mapping-guide.md](mapping-guide.md#vereinnahmte-entgelte). |
 | `abacus.version` | `2015.00` | Die Version der AbaConnect-Schnittstelle: `2015.00`, `2020.00`, `2022.00` oder `2024.00`. Ändere sie nur, wenn Abacus die Datei mit der Standardversion ablehnt. |
@@ -70,7 +70,7 @@ Schreib einen Code mit führender Null, Buchstaben `x` oder `e` in Anführungsze
 
 ### `properties`
 
-Die apaleo-Hotels, mit denen das Tool arbeitet. `export` und `schedule --once` exportieren jedes hier eingetragene Hotel, außer du gibst `--property` an. Die IDs, die die Custom App lesen darf, listet `apaleo-abacus properties`.
+Die apaleo-Hotels, mit denen das Tool arbeitet. `export` und `schedule --once` exportieren jedes hier eingetragene Hotel, ausser du gibst `--property` an. Die IDs, die die Custom App lesen darf, listet `apaleo-abacus properties`.
 
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|
@@ -109,7 +109,7 @@ Nur für `schedule --once`. Was jede Einstellung bewirkt, mit Beispielen: [docke
 
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|
-| `schedule.timezone` | `Europe/Zurich` | „Heute“ ist das Datum in dieser IANA-Zeitzone. Für ein Hotel in der Schweiz passt der Standard; `apaleo-abacus doctor` zeigt die Zeitzone, mit der das Tool rechnet; ob ein Zeitraum abgeschlossen ist, prüft das Tool zusätzlich in der Zeitzone des Hotels aus apaleo. Auch über `APALEO_ABACUS_TIMEZONE`. |
+| `schedule.timezone` | `Europe/Zurich` | «Heute» ist das Datum in dieser IANA-Zeitzone. Für ein Hotel in der Schweiz passt der Standard; `apaleo-abacus doctor` zeigt die Zeitzone, mit der das Tool rechnet; ob ein Zeitraum abgeschlossen ist, prüft das Tool zusätzlich in der Zeitzone des Hotels aus apaleo. Auch über `APALEO_ABACUS_TIMEZONE`. |
 | `schedule.cadence` | `monthly` | `monthly` (eine Datei pro Monat) oder `daily` (eine Datei pro Tag). Ein Rhythmus pro Installation. |
 | `schedule.monthly` | | Einstellungen für `cadence: monthly`. |
 | `schedule.monthly.dayOfMonth` | `3` | Ein Monat ist ab diesem Tag des Folgemonats fällig, 1 bis 5. |
