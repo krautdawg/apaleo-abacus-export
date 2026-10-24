@@ -332,7 +332,8 @@ describe('the practice terms check', () => {
     expect(problemsOf('docs/x.md', 'Nie 110 %, 17 % oder 4,9 %. `19 %` im Code.\n\n```text\nKurtaxe 19 %\n```\n')).toEqual([]);
   });
 
-  it('Old Swiss rates pass: 7,7 %, 3,7 % and 2,5 % report nothing, while 7 % in the same file does', () => {
+  it('Old Swiss rates pass: 7,7 %, 3,7 % and 2,5 % report nothing, while 7 % in the same file does (Old Swiss rates are not foreign rates)', () => {
+    expect(problemsOf('docs/x.md', 'Normalsatz 7.7 %.')).toEqual([]);
     expect(problemsOf('docs/mapping-guide.md', '7,7 %, 3,7 % und 2,5 % bis 31.12.2023')).toEqual([]);
     expect(problemsOf('docs/mapping-guide.md', '7,7 %, 3,7 % und 2,5 % bis 31.12.2023\n\nGetränke mit 7 %.\n')).toEqual([
       'docs/mapping-guide.md: "Getränke mit 7 %.": "7 %" is a term of German DATEV practice; use the Swiss Abacus term',
@@ -381,6 +382,23 @@ describe('the practice terms check', () => {
 });
 
 describe('the Swiss spelling check', () => {
+  it('Swiss file checked from the start: every German file, so docs/abacus-format.md and docs/export.md both report Kanzlei, Buchungssymbol and ß', () => {
+    const text = 'Die Kanzlei legt das Buchungssymbol an.\n\nSchließe die Datei.\n';
+    for (const file of ['docs/abacus-format.md', 'docs/export.md']) {
+      expect([...checkSwissSpelling(file, text), ...checkPracticeTerms(file, text)], file).toEqual([
+        expect.stringMatching(new RegExp(`^${file.replace('.', '\\.')}:3: .*"ß"`)),
+        expect.stringMatching(/"Kanzlei"/),
+        expect.stringMatching(/"Buchungssymbol"/),
+      ]);
+    }
+  });
+
+  it('Swiss rate notation: names 3.8 % and 3,8% in docs/abacus-format.md, and passes 3,8 %', () => {
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3.8 %.')).toEqual([expect.stringMatching(/^docs\/abacus-format\.md: .*"3\.8 %" is not the Swiss rate notation/)]);
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3,8%.')).toHaveLength(1);
+    expect(checkSwissSpelling('docs/abacus-format.md', 'Beherbergung zu 3,8 %, `3.8` im Code.')).toEqual([]);
+  });
+
   it('Sharp s in a Swiss doc: names the file, the line and the letter ß, and passes once it reads "Schliesse"', () => {
     expect(checkSwissSpelling('docs/docker.md', 'Text.\n\nSchließe das Terminal.\n')).toEqual([
       'docs/docker.md:3: "Schließe das Terminal.": the letter "ß" is not Swiss; write "ss"',
